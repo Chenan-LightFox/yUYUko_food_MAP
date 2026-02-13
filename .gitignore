@@ -1,0 +1,9 @@
+﻿################################################################################
+# 此 .gitignore 文件已由 Microsoft(R) Visual Studio 自动创建。
+################################################################################
+
+/.vs
+/yUYUko_food_MAP.sln
+/yUYUko_food_MAP.vcxproj
+/yUYUko_food_MAP.vcxproj.filters
+/yUYUko_food_MAP.vcxproj.user
