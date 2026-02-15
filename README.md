@@ -21,14 +21,12 @@ GPT 给我拉了这个先慢慢看吧（
 
 #### 前端
 
-* Vue3 + Vite（简单好上手）
-* 或 React（如果你更熟）
+* React
 * 高德 JS API（核心地图）
 
 #### 后端
 
-* Node.js + Express / NestJS
-* 如果想写得规范一点推荐 NestJS
+* Node.js + Express
 
 #### 数据库
 
@@ -94,7 +92,7 @@ Comment
 实现方式：
 
 * 方案1：sql模糊查询
-* 方案2：ElasticSearch_（后期维护考虑）_
+* 方案2：ElasticSearch _（后期维护考虑）_
 
 ### ✔ 范围搜索（地图项目重点）
 

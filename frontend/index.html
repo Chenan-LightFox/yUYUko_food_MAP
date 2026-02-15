@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-cn">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>东方饭联地图</title>
+    <!-- TODO: 替换 YOUR_AMAP_KEY -->
+    <script src="https://webapi.amap.com/maps?v=2.0&key=YOUR_AMAP_KEY"></script>
+    <style>
+      html,body,#root { height: 100%; margin: 0; padding: 0; }
+      #map { width: 100%; height: 100%; }
+      .panel { position: absolute; top: 8px; left: 8px; z-index: 2000; background: white; padding: 8px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
