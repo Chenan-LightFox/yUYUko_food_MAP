@@ -171,8 +171,8 @@ Comment
 
 ```javascript
 const marker = new AMap.Marker({
-  position: [lng, lat],
-  title: place.name
+    position: [lng, lat],
+    title: place.name
 });
 marker.setMap(map);
 ```

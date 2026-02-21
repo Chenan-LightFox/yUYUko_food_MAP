@@ -22,5 +22,5 @@ app.use("/users", usersRouter);
 app.get("/", (req, res) => res.json({ ok: true, msg: "yUYUko Food Map Backend" }));
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
 });
