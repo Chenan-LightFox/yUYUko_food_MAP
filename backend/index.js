@@ -8,7 +8,7 @@ const commentsRouter = require("./routes/comments");
 const usersRouter = require("./routes/users");
 
 const app = express();
-const PORT = 3000; // ºó¶Ë¼àÌı¶Ë¿Ú
+const PORT = 3000; // ç¤ºä¾‹æœåŠ¡ç«¯å£
 
 app.use(cors());
 app.use(bodyParser.json());

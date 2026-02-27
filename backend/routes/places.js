@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { db } = require("../db");
 
-// ÁĞ³öËùÓĞµØµã
+// åˆ—å‡ºæ‰€æœ‰åœ°ç‚¹
 router.get("/", (req, res) => {
     db.all("SELECT * FROM Place ORDER BY created_time DESC", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -10,10 +10,10 @@ router.get("/", (req, res) => {
     });
 });
 
-// ¸ù¾İ bounds ²éÑ¯£¨·¶Î§ËÑË÷£©
+// æŒ‰ bounds æŸ¥è¯¢èŒƒå›´å†…åœ°ç‚¹
 router.get("/nearby", (req, res) => {
     const { minLng, minLat, maxLng, maxLat } = req.query;
-    if (![minLng, minLat, maxLng, maxLat].every(Boolean)) return res.status(400).json({ error: "È±ÉÙ·¶Î§²ÎÊı" });
+    if (![minLng, minLat, maxLng, maxLat].every(Boolean)) return res.status(400).json({ error: "ç¼ºå°‘èŒƒå›´å‚æ•°" });
     const sql = `SELECT * FROM Place WHERE longitude BETWEEN ? AND ? AND latitude BETWEEN ? AND ?`;
     db.all(sql, [minLng, maxLng, minLat, maxLat], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -21,11 +21,11 @@ router.get("/nearby", (req, res) => {
     });
 });
 
-// Ìí¼ÓµØµã
+// æ·»åŠ åœ°ç‚¹
 router.post("/", (req, res) => {
     const { name, description, latitude, longitude, category } = req.body;
     const creatorId = req.header("X-User-Id") || null;
-    if (!name || !latitude || !longitude) return res.status(400).json({ error: "È±ÉÙ±ØĞè×Ö¶Î" });
+    if (!name || !latitude || !longitude) return res.status(400).json({ error: "ç¼ºå°‘å¿…å¡«å­—æ®µ" });
 
     const sql = `INSERT INTO Place (name, description, latitude, longitude, category, creator_id) VALUES (?, ?, ?, ?, ?, ?)`;
     db.run(sql, [name, description || "", latitude, longitude, category || "", creatorId], function (err) {
@@ -37,16 +37,16 @@ router.post("/", (req, res) => {
     });
 });
 
-// É¾³ıµØµã£¨½ö´´½¨Õß»ò¹ÜÀíÔ±£©
+// åˆ é™¤åœ°ç‚¹ï¼ˆä»…åˆ›å»ºè€…æˆ–ç®¡ç†å‘˜ï¼‰
 router.delete("/:id", (req, res) => {
     const id = req.params.id;
     const requester = req.header("X-User-Id");
-    // ¼òµ¥ÑéÖ¤£ºÈç¹û requester === creator_id »ò requester === "admin" ÔòÔÊĞí
+    // æƒé™éªŒè¯ï¼šè¦æ±‚ requester === creator_id æˆ– requester === "admin"
     db.get("SELECT * FROM Place WHERE id = ?", [id], (err, place) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!place) return res.status(404).json({ error: "Not found" });
         if (String(place.creator_id) !== String(requester) && requester !== "admin") {
-            return res.status(403).json({ error: "Ã»ÓĞÈ¨ÏŞÉ¾³ı" });
+            return res.status(403).json({ error: "æ²¡æœ‰æƒé™åˆ é™¤" });
         }
         db.run("DELETE FROM Place WHERE id = ?", [id], function (e) {
             if (e) return res.status(500).json({ error: e.message });

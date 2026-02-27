@@ -3,10 +3,10 @@ const router = express.Router();
 const { db } = require("../db");
 
 // AIGC
-// ¼òµ¥ÓÃ»§×¢²á£¨Éú²úÇë¹şÏ£ÃÜÂë²¢Ìí¼ÓÑéÖ¤£©
+// ç”¨æˆ·æ³¨å†Œï¼ˆç¤ºä¾‹ç”¨é€”ï¼Œå¯†ç åº”åŠ å¯†å­˜å‚¨ï¼‰
 router.post("/register", (req, res) => {
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: "È±ÉÙ×Ö¶Î" });
+    if (!username || !password) return res.status(400).json({ error: "ç¼ºå°‘å­—æ®µ" });
     db.run("INSERT INTO User (username, password) VALUES (?, ?)", [username, password], function (err) {
         if (err) return res.status(500).json({ error: err.message });
         db.get("SELECT id, username FROM User WHERE id = ?", [this.lastID], (e, row) => {
@@ -16,12 +16,12 @@ router.post("/register", (req, res) => {
     });
 });
 
-// ¼òµ¥µÇÂ¼£¨·µ»Ø user id£©
+// ç®€å•ç™»å½•ï¼ˆè¿”å› user idï¼‰
 router.post("/login", (req, res) => {
     const { username, password } = req.body;
     db.get("SELECT id, username FROM User WHERE username = ? AND password = ?", [username, password], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
-        if (!row) return res.status(401).json({ error: "ÓÃ»§Ãû»òÃÜÂë´íÎó" });
+        if (!row) return res.status(401).json({ error: "ç”¨æˆ·åæˆ–å¯†ç é”™è¯¯" });
         res.json(row);
     });
 });
