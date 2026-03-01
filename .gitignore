@@ -10,9 +10,5 @@
 /yUYUko_food_MAP/x64/Debug
 /backend/node_modules
 /frontend/node_modules
-
-# macOS 系统文件
+/frontend/dist
 .DS_Store
-
-# 前端构建产物
-frontend/dist/
