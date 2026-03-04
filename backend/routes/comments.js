@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { db } = require("../db");
 
-// »ñÈ¡Ä³µØµãÆÀÂÛ
+// èŽ·å–æŸåœ°ç‚¹çš„è¯„è®º
 router.get("/place/:placeId", (req, res) => {
     const { placeId } = req.params;
     db.all("SELECT * FROM Comment WHERE place_id = ? ORDER BY time DESC", [placeId], (err, rows) => {
@@ -11,11 +11,11 @@ router.get("/place/:placeId", (req, res) => {
     });
 });
 
-// Ìí¼ÓÆÀÂÛ
+// æ·»åŠ è¯„è®º
 router.post("/", (req, res) => {
     const { place_id, content, rating } = req.body;
     const userId = req.header("X-User-Id") || null;
-    if (!place_id || !content) return res.status(400).json({ error: "È±ÉÙ±ØÐè×Ö¶Î" });
+    if (!place_id || !content) return res.status(400).json({ error: "ç¼ºå°‘å¿…å¡«å­—æ®µ" });
     db.run("INSERT INTO Comment (place_id, user_id, content, rating) VALUES (?, ?, ?, ?)",
         [place_id, userId, content, rating || null],
         function (err) {
