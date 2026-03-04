@@ -5,6 +5,10 @@ Now under construction.
 
 ---
 
+> 🚀 **初次运行？** 请先阅读 [GETTING_STARTED.md](GETTING_STARTED.md)
+
+---
+
 GPT 给我拉了这个先慢慢看吧（
 
 # 一、整体系统架构建议
