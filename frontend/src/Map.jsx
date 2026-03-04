@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 export default function MapView({ backendUrl, userId }) {
     const containerRef = useRef(null);  // 引用地图容器
@@ -62,16 +62,6 @@ export default function MapView({ backendUrl, userId }) {
         }
     };
 
-    // TODO: 考虑将逻辑放在后端进行，前端只负责展示和简单过滤
-    const fuzzyMatch = (term, place) => {
-        if (!term) return true;
-        const t = term.trim().toLowerCase();
-        if (!t) return true;
-        const fields = [place.name || ""].join(" ").toLowerCase();
-        // 简单模糊：子串匹配
-        return fields.indexOf(t) !== -1;
-    };
-
     const renderMarkers = (list) => {
         // 清空旧 markers
         markersRef.current.forEach((m) => m.setMap(null));
@@ -123,27 +113,30 @@ export default function MapView({ backendUrl, userId }) {
 
     const searchAllMarkers = async () => {
         setSearching(true);
-        // 确保已加载 places
-        if (!places || places.length === 0) {
-            await loadPlaces();
-        }
-        const term = searchTerm;
-        const matched = (places || []).filter(p => fuzzyMatch(term, p));
-        setSearchResults(matched);
-        // 渲染或清空匹配结果
-        const markers = renderMarkers(matched);
-        // 若匹配成功，调整视野到所有匹配 marker
-        if (markers && markers.length > 0) {
-            try {
-                mapRef.current.setFitView(markers);
-            } catch (e) {
-                // 以第一个点为中心并放大
-                const first = matched[0];
-                mapRef.current.setCenter([first.longitude, first.latitude]);
-                mapRef.current.setZoom(15);
+        try {
+            const q = (searchTerm || "").trim();
+            // 请求后端新接口：/api/places/search?q=...
+            const url = `${backendUrl}/places/search?q=${encodeURIComponent(q)}&limit=200`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`search failed: ${res.status}`);
+            const data = await res.json();
+            setSearchResults(data || []);
+            // 渲染匹配结果
+            const markers = renderMarkers(data || []);
+            if (markers && markers.length > 0) {
+                try {
+                    mapRef.current.setFitView(markers);
+                } catch (e) {
+                    const first = data[0];
+                    mapRef.current.setCenter([first.longitude, first.latitude]);
+                    mapRef.current.setZoom(15);
+                }
             }
+        } catch (e) {
+            console.error("searchAllMarkers error:", e);
+        } finally {
+            setSearching(false);
         }
-        setSearching(false);
     };
 
     const clearSearch = async () => {
