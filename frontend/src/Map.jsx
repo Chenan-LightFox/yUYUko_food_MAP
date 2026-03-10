@@ -11,6 +11,10 @@ export default function MapView({ backendUrl, userId }) {
     const [mapReady, setMapReady] = useState(false);    // 地图是否初始化完毕
     const [hoverTip, setHoverTip] = useState(false);    // 控制查找按钮 tooltip 显示
     const [addMode, setAddMode] = useState(false);      // 是否处于“添加地点”模式
+    const [searchTerm, setSearchTerm] = useState("");   // 搜索关键词
+    const [searchResults, setSearchResults] = useState(null);   // 搜索结果列表，null 表示未搜索或已清除搜索
+    const [searching, setSearching] = useState(false);  // 是否正在搜索中
+
     const tipText = mapReady ? "点击查找地点" : "地图尚未就绪，稍候再试"; // 查找功能 tooltip 提示
 
     // 同步 ref，以便地图上的 click handler 总能读取到最新的 addMode
@@ -89,7 +93,6 @@ export default function MapView({ backendUrl, userId }) {
         return created;
     };
 
-
     const submitPlace = async (payload) => {
         try {
             const res = await fetch(`${backendUrl}/places`, {
@@ -111,32 +114,49 @@ export default function MapView({ backendUrl, userId }) {
         }
     };
 
-    const searchAllMarkers = async () => {
+    // 使用后端 /api/places/search 接口进行搜索（注意 /api 前缀）
+    const searchServer = async ({ q = "", center = undefined, limit = 200 } = {}) => {
+        if (!mapRef.current && !center) {
+            console.warn("searchServer: 地图尚未就绪且未传入 center，直接返回");
+            return;
+        }
         setSearching(true);
         try {
-            const q = (searchTerm || "").trim();
-            // 请求后端新接口：/api/places/search?q=...
-            const url = `${backendUrl}/places/search?q=${encodeURIComponent(q)}&limit=200`;
+            const params = new URLSearchParams();
+            params.set("q", q || "");
+            if (limit) params.set("limit", String(limit));
+            if (center && center.lat != null && center.lng != null) {
+                params.set("centerLat", String(center.lat));
+                params.set("centerLng", String(center.lng));
+            }
+            const url = `${backendUrl}/api/places/search?${params.toString()}`;
             const res = await fetch(url);
-            if (!res.ok) throw new Error(`search failed: ${res.status}`);
             const data = await res.json();
-            setSearchResults(data || []);
-            // 渲染匹配结果
-            const markers = renderMarkers(data || []);
+            setSearchResults(data);
+            renderMarkers(data);
+            // 若匹配成功，调整视野到所有匹配 marker
+            const markers = markersRef.current;
             if (markers && markers.length > 0) {
                 try {
                     mapRef.current.setFitView(markers);
                 } catch (e) {
                     const first = data[0];
-                    mapRef.current.setCenter([first.longitude, first.latitude]);
-                    mapRef.current.setZoom(15);
+                    if (first) {
+                        mapRef.current.setCenter([first.longitude, first.latitude]);
+                        mapRef.current.setZoom(15);
+                    }
                 }
             }
         } catch (e) {
-            console.error("searchAllMarkers error:", e);
+            console.error("searchServer error", e);
         } finally {
             setSearching(false);
         }
+    };
+
+    const searchAllMarkers = async () => {
+        // 兼容旧名：直接调用后端搜全局（不传 center）
+        await searchServer({ q: searchTerm });
     };
 
     const clearSearch = async () => {
@@ -160,19 +180,10 @@ export default function MapView({ backendUrl, userId }) {
             console.warn("searchInView: 地图尚未初始化");
             return;
         }
-        const bounds = mapRef.current.getBounds(); // 返回 LngLatBounds
-        if (!bounds) {
-            console.warn("searchInView: 无法获取地图边界");
-            return;
-        }
-        const ne = bounds.getNorthEast();
-        const sw = bounds.getSouthWest();
-        const url = `${backendUrl}/places/nearby?minLng=${sw.lng}&minLat=${sw.lat}&maxLng=${ne.lng}&maxLat=${ne.lat}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        setPlaces(data);
-        setSearchResults(null);
-        renderMarkers(data);
+        // 使用地图中心作为 center 参数，调用后端的 /api/places/search
+        const center = mapRef.current.getCenter();
+        const centerObj = { lat: center.lat || (center.latlng && center.latlng.lat), lng: center.lng || (center.latlng && center.latlng.lng) };
+        await searchServer({ q: searchTerm, center: centerObj });
     };
 
     return (
@@ -182,11 +193,23 @@ export default function MapView({ backendUrl, userId }) {
 
             <div style={{ position: "absolute", right: 8, top: 8, zIndex: 2000 }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    {/* to delete */}
+                    {/* 搜索输入与按钮 */}
+                    <input
+                        placeholder="搜索关键词（例如：火锅/店名）"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        style={{ width: 220, padding: "6px 8px" }}
+                        disabled={!mapReady || searching}
+                    />
+                    <button onClick={() => searchServer({ q: searchTerm })} disabled={!mapReady || searching || !searchTerm}>
+                        {searching ? "搜索中..." : "按关键字查找"}
+                    </button>
+
+                    {/* 视野搜索：以地图中心作为参考点传给后端排序 */}
                     <div style={{ position: "relative", display: "inline-block" }}
                          onMouseEnter={() => setHoverTip(true)}
                          onMouseLeave={() => setHoverTip(false)}>
-                        <button onClick={searchInView} disabled={!mapReady}>
+                        <button onClick={searchInView} disabled={!mapReady || searching}>
                             查找地点（视野）
                         </button>
                         {hoverTip && (
@@ -207,7 +230,9 @@ export default function MapView({ backendUrl, userId }) {
                             </div>
                     )}</div>
                 </div>
+            </div>
 
+            <div style={{ position: "absolute", right: 8, bottom: 8, zIndex: 2000 }}>
                 {/* 添加地点开关按钮 */}
                 <div style={{ display: "inline-block" }}>
                     <button

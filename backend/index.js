@@ -13,10 +13,10 @@ const PORT = 3000; // 示例服务端口
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use('/api', searchRouter);
 
 init();
 
+app.use('/api', searchRouter);
 app.use("/places", placesRouter);
 app.use("/comments", commentsRouter);
 app.use("/users", usersRouter);
