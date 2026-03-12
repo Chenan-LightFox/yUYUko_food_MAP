@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import MapView from "./Map";
 import AuthPage from "./AuthPage";
 
@@ -17,7 +17,7 @@ export default function App() {
     }, [token]);
 
     if (!token || !user) {
-        return <AuthPage backendUrl={backendUrl}
+        return <AuthPage backendUrl={BACKEND_URL}
             onLoginSuccess={(u, t) => { setUser(u); setToken(t); }} />;
     }
 
