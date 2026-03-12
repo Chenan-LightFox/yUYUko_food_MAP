@@ -1,19 +1,16 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import MapView from "./Map";
 import AuthPage from "./AuthPage";
 
 const PORT = (typeof process !== "undefined" && process.env && process.env.REACT_APP_PORT) || 3000;
-console.log("REACT_APP_PORT =", typeof process !== "undefined" ? process.env.REACT_APP_PORT : undefined, "→ 使用 PORT =", PORT);
-
 const BACKEND_URL = `http://localhost:${PORT}`;
 
 export default function App() {
-    const [userId] = useState(864); // 临时模拟当前用户 id
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem("token"));
-    const [showAuth, setShowAuth] = useState(false);
+    const [showAuth, setShowAuth] = useState(!localStorage.getItem("token")); // 如果没有 token 默认展示登录/注册
 
-    // 登录成功
+    // 登录成功回调
     const handleLoginSuccess = (u, t) => {
         setUser(u);
         setToken(t);
@@ -21,34 +18,26 @@ export default function App() {
         setShowAuth(false);
     };
 
-    // 检查是否已登录
-    const isAuth = !!token && !!user;
-
-    // 提示并跳转登录
-    const requireAuth = () => {
-        alert("请先登录/注册才可进行此操作！");
+    // 注销
+    const handleLogout = () => {
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem("token");
         setShowAuth(true);
     };
 
     useEffect(() => {
-        // TODO: 自动检查 token 有效性，拉取用户信息
+        // TODO: 自动检查 token 有效性，拉取用户信息，若后端提供 /users/me 可在此自动校验 token 并 setUser
     }, [token]);
 
-    if (!token || !user) {
-        return <AuthPage backendUrl={BACKEND_URL}
-            onLoginSuccess={(u, t) => { setUser(u); setToken(t); }} />;
-    }
+    const isAuth = !!token && !!user;
 
-    // 已登录的主界面
     return (
         <div style={{ height: "100vh", position: "relative" }}>
             {/* 地图模块始终可见 */}
-            <MapView userId={user ? user.id : null} backendUrl={backendUrl}
-                onAddPlace={handleAddPlace}
-                onComment={handleComment}
-            />
+            <MapView userId={user ? user.id : null} backendUrl={BACKEND_URL} />
 
-            {/* 只在需要时展示登录/注册界面 */}
+            {/* 登录/注册弹窗：只在 showAuth 为 true 时显示，允许用户关闭弹窗 */}
             {showAuth && (
                 <div style={{
                     position: "absolute",
@@ -56,23 +45,24 @@ export default function App() {
                     background: "rgba(0,0,0,0.25)",
                     display: "flex", alignItems: "center", justifyContent: "center", zIndex: 5000
                 }}>
-                    <AuthPage backendUrl={backendUrl} onLoginSuccess={handleLoginSuccess} />
+                    <AuthPage backendUrl={BACKEND_URL} onLoginSuccess={handleLoginSuccess} onClose={() => setShowAuth(false)} />
                 </div>
             )}
 
             {/* 登录信息及注销按钮 */}
-            <div className="panel">
+            <div className="panel" style={{ position: "absolute", left: 12, top: 12, zIndex: 4000, padding: 8, background: "#fff", borderRadius: 6 }}>
                 <strong>东方饭联地图</strong>
-                {
-                    isAuthenticated ?
-                        (<div>
-                            当前用户：{user.username} <button onClick={() => {
-                                setUser(null); setToken(null); localStorage.removeItem("token");
-                            }}>注销</button>
-                        </div>)
-                        :
-                        (<div>未登录</div>)
-                }
+                <div style={{ marginTop: 8 }}>
+                    {isAuth ? (
+                        <div>
+                            当前用户：{user.username} <button onClick={handleLogout}>注销</button>
+                        </div>
+                    ) : (
+                        <div>
+                            未登录 <button onClick={() => setShowAuth(true)}>登录 / 注册</button>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
