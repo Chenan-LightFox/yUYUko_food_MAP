@@ -7,12 +7,16 @@ const placesRouter = require("./routes/places");
 const commentsRouter = require("./routes/comments");
 const usersRouter = require("./routes/users");
 const searchRouter = require('./routes/search');
+const adminUsersRouter = require("./routes/admin/adminUsers");
+
 
 const app = express();
 const PORT = 3000; // 示例服务端口
 
 app.use(cors());
 app.use(bodyParser.json());
+app.use("/admin/users", adminUsersRouter);
+
 
 init();
 

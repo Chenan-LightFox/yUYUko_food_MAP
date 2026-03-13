@@ -9,7 +9,7 @@ Now under construction.
 
 ---
 
-** 管理员后台权限相关 **
+**管理员后台权限相关**
 
 管理员权限分为以下几点：
 
@@ -25,19 +25,20 @@ Now under construction.
 
 管理员分为以下几个级别：
 
-    - ** 幽幽子（YUYUKO） **：拥有以上所有权限
+    - 幽幽子（YUYUKO）Y：拥有以上所有权限
 
-    - ** 妖梦（YOUMU） **：拥有以上权限2-5
+    - 妖梦（YOUMU）M：拥有以上权限2-5
 
-    - ** 四季映姬（EIKI） **：拥有以上权限2-4
+    - 四季映姬（EIKI）E：拥有以上权限2-4
 
-    - ** 小町（KOMACHI） **：拥有以上权限2和5
+    - 小町（KOMACHI）K：拥有以上权限2和5
 
 ---
 
-** TODO list: **
+**TODO list:**
 - admins.js: 完成各级权限具体操作，添加操作日志模块
 - adminAuth.js: 完善管理员鉴权功能
+- AdminDashboard.js: 挂载各等级管理面板路由
 - App.jsx: 自动检查 token 有效性，拉取用户信息
 - App.jsx: 添加进入管理员后台按钮
 - Map.jsx: 删除视野内查找相关功能
