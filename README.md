@@ -33,6 +33,18 @@ Now under construction.
 
     - 小町（KOMACHI）K：拥有以上权限2和5
 
+目前已经预设了一个管理员账号：
+- 用户名：dev
+- 密码：12345679
+- 权限等级：YUYUKO
+
+以及一个普通用户账号：
+- 用户名：dev1
+- 密码：12341234
+- 权限等级：普通用户
+
+以上预设账号已在`./backend/scripts/add_user.js`中创建，运行`npm run add-user`即可添加到数据库中
+
 ---
 
 **TODO list:**
@@ -44,4 +56,4 @@ Now under construction.
 - Map.jsx: 删除视野内查找相关功能
 - Map.jsx: 修改为自己的Marker图标，并在信息弹窗上添加关闭按钮及管理按钮
 - new!: 美化界面
-- new!: 完善管理员后台页面内容
+- imp!: 考虑使用cookie使用户登录状态持久化

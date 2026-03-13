@@ -3,10 +3,10 @@ import React, { useEffect, useState } from "react";
 export default function AdminUsers({ backendUrl, token, user }) {
     const [users, setUsers] = useState([]);
     const [message, setMessage] = useState("");
-    const isA = user && user.admin_level === "A";
+    const isY = user && user.admin_level === "YUYUKO";
 
     useEffect(() => {
-        if (isA) {
+        if (isY) {
             fetch(`${backendUrl}/admin/users`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
@@ -17,7 +17,7 @@ export default function AdminUsers({ backendUrl, token, user }) {
                 })
                 .catch(e => setMessage("加载失败：" + e.message));
         }
-    }, [isA, backendUrl, token]);
+    }, [isY, backendUrl, token]);
 
     // 更改等级操作
     const changeLevel = (userId, newLevel) => {
@@ -35,7 +35,7 @@ export default function AdminUsers({ backendUrl, token, user }) {
                     setMessage("权限已更新");
                     setUsers(users =>
                         users.map(u =>
-                            u.id === userId ? { ...u, admin_level: newLevel } : u
+                            u.id === userId ? { ...u, admin_level: newLevel || null } : u
                         )
                     );
                 } else setMessage(data.error || "更新失败");
@@ -60,7 +60,7 @@ export default function AdminUsers({ backendUrl, token, user }) {
             .catch(e => setMessage("失败：" + e.message));
     };
 
-    if (!isA) return <div>您的权限等级不足，无法进行此操作～</div>;
+    if (!isY) return <div>您的权限等级不足，无法进行此操作～</div>;
     return (
         <div>
             <h2>用户管理</h2>
@@ -76,26 +76,31 @@ export default function AdminUsers({ backendUrl, token, user }) {
                     </tr>
                 </thead>
                 <tbody>
-                    {users.map(u => (
-                        <tr key={u.id}>
-                            <td>{u.id}</td>
-                            <td>{u.username}</td>
-                            <td>{u.avatar || "-"}</td>
-                            <td>
-                                <select value={u.admin_level || "普通用户"}
-                                    onChange={e => changeLevel(u.id, e.target.value)}>
-                                    <option value="YUYUKO">YUYUKO</option>
-                                    <option value="YOUMU">YOUMU</option>
-                                    <option value="EIKI">EIKI</option>
-                                    <option value="KOMACHI">KOMACHI</option>
-                                    <option value="">普通用户</option>
-                                </select>
-                            </td>
-                            <td>
-                                <button onClick={() => deleteUser(u.id)}>删除</button>
-                            </td>
-                        </tr>
-                    ))}
+                    {users.map(u => {
+                        const isSelf = user && u.id === user.id;
+                        const isSuper = u.admin_level === "YUYUKO";
+                        return (
+                            <tr key={u.id}>
+                                <td>{u.id}</td>
+                                <td>{u.username}</td>
+                                <td>{u.avatar || "-"}</td>
+                                <td>
+                                    <select value={u.admin_level || ""}
+                                        onChange={e => changeLevel(u.id, e.target.value)}
+                                        disabled={isSelf || (isSuper && !isSelf)}>
+                                        <option value="YUYUKO">YUYUKO</option>
+                                        <option value="YOUMU">YOUMU</option>
+                                        <option value="EIKI">EIKI</option>
+                                        <option value="KOMACHI">KOMACHI</option>
+                                        <option value="">普通用户</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <button onClick={() => deleteUser(u.id)} disabled={isSelf || isSuper}>删除</button>
+                                </td>
+                            </tr>
+                        )
+                    })}
                 </tbody>
             </table>
         </div>
