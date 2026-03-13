@@ -77,11 +77,13 @@ export default function MapView({ backendUrl, userId }) {
         }
         const created = [];
         list.forEach((p) => {
+            // TODO: 修改为自己的Marker图标
             const marker = new AMap.Marker({
                 position: [p.longitude, p.latitude],
                 title: p.name
             });
             marker.setMap(mapRef.current);
+            // TODO: 在信息弹窗上添加关闭按钮及管理按钮
             marker.on("click", () => {
                 const info = `<div style="min-width:160px"><strong>${p.name}</strong><div>${p.description || ""}</div><div>分类: ${p.category || "-"}</div></div>`;
                 const infoWindow = new AMap.InfoWindow({ content: info });
