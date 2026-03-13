@@ -90,7 +90,6 @@ export default function AdminUsers({ backendUrl, token, user }) {
                                         disabled={isSelf || (isSuper && !isSelf)}>
                                         <option value="YUYUKO">YUYUKO</option>
                                         <option value="YOUMU">YOUMU</option>
-                                        <option value="EIKI">EIKI</option>
                                         <option value="KOMACHI">KOMACHI</option>
                                         <option value="">普通用户</option>
                                     </select>

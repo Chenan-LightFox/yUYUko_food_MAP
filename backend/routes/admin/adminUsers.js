@@ -3,7 +3,7 @@ const router = express.Router();
 const { db } = require("../../db");
 const requireAdmin = require("../../middleware/adminAuth");
 
-const ALLOWED_LEVELS = new Set(["YUYUKO", "YOUMU", "EIKI", "KOMACHI", ""]);
+const ALLOWED_LEVELS = new Set(["YUYUKO", "YOUMU", "KOMACHI", ""]);
 const SUPER_LEVEL = "YUYUKO";
 
 // 获取所有用户（仅Y级管理员）
@@ -46,8 +46,7 @@ router.post("/set-level", requireAdmin("manage_users"), (req, res) => {
                 const cnt = (row && row.cnt) || 0;
                 if (cnt <= 1) {
                     return res.status(403).json({ error: "不可降级最后一位 Y 级管理员" });
-        }
-
+                }
                 // 否则允许降级操作
                 db.run(
                     "UPDATE User SET admin_level = ? WHERE id = ?",
@@ -97,7 +96,6 @@ router.delete("/:id", requireAdmin("manage_users"), (req, res) => {
                 if (cnt <= 1) {
                     return res.status(403).json({ error: "不可删除最后一位 Y 级管理员" });
                 }
-
                 // 否则允许删除
                 db.run("DELETE FROM User WHERE id = ?", [targetId], function (err3) {
                     if (err3) return res.status(500).json({ error: err3.message });

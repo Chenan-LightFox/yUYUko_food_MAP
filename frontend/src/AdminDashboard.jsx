@@ -3,7 +3,6 @@ import AdminUsers from './admin/AdminUsers';
 const PERMISSIONS = {
     YUYUKO: ["用户管理", "普通用户管理", "标记点管理", "邀请码管理", "评论管理"],
     YOUMU: ["普通用户管理", "标记点管理", "邀请码管理", "评论管理"],
-    EIKI: ["普通用户管理", "标记点管理", "邀请码管理"],
     KOMACHI: ["普通用户管理", "评论管理"],
 };
 

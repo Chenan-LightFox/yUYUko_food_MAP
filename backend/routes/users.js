@@ -62,8 +62,8 @@ router.post("/register", (req, res) => {
                         }
                     );
                     
-                    // 检验是否注册成功
-                    db.get("SELECT id, username FROM User WHERE id = ?", [userId], (e, row) => {
+                    // 返回用户信息
+                    db.get("SELECT id, username, admin_level FROM User WHERE id = ?", [userId], (e, row) => {
                         if (e) return res.status(500).json({ error: e.message });
                         res.status(201).json({ user: row, token });
                     });
@@ -80,7 +80,7 @@ router.post("/login", (req, res) => {
     if (!username || !password) return res.status(400).json({ error: "缺少字段" });
 
     const hashed = hashPassword(password);
-    db.get("SELECT id, username FROM User WHERE username = ? AND password = ?", [username, hashed], (err, row) => {
+    db.get("SELECT id, username, admin_level FROM User WHERE username = ? AND password = ?", [username, hashed], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!row) return res.status(401).json({ error: "用户名或密码错误" });
 
@@ -91,6 +91,24 @@ router.post("/login", (req, res) => {
 
         res.json({ user: row, token });
     });
+});
+
+// 获取当前用户信息
+router.get('/me', (req, res) => {
+    const auth = req.get('Authorization') || req.get('authorization');
+    if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: '未提供授权 token' });
+    const token = auth.slice(7).trim();
+    try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        const userId = payload.id;
+        db.get('SELECT id, username, admin_level FROM User WHERE id = ?', [userId], (err, row) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (!row) return res.status(404).json({ error: '用户不存在' });
+            res.json({ user: row });
+        });
+    } catch (e) {
+        return res.status(401).json({ error: '无效或已过期的 token' });
+    }
 });
 
 module.exports = router;

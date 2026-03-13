@@ -29,8 +29,6 @@ Now under construction.
 
     - 妖梦（YOUMU）M：拥有以上权限2-5
 
-    - 四季映姬（EIKI）E：拥有以上权限2-4
-
     - 小町（KOMACHI）K：拥有以上权限2和5
 
 目前已经预设了一个管理员账号：
@@ -51,9 +49,6 @@ Now under construction.
 - admins.js: 完成各级权限具体操作，添加操作日志模块
 - adminAuth.js: 完善管理员鉴权功能
 - AdminDashboard.js: 挂载各等级管理面板路由
-- App.jsx: 自动检查 token 有效性，拉取用户信息
-- App.jsx: 添加进入管理员后台按钮
 - Map.jsx: 删除视野内查找相关功能
 - Map.jsx: 修改为自己的Marker图标，并在信息弹窗上添加关闭按钮及管理按钮
 - new!: 美化界面
-- imp!: 考虑使用cookie使用户登录状态持久化

@@ -11,7 +11,7 @@ const adminUsersRouter = require("./routes/admin/adminUsers");
 
 
 const app = express();
-const PORT = 3000; // 示例服务端口
+const PORT = process.env.PORT || 3000; // 使用 3000（可被环境覆盖）
 
 app.use(cors());
 app.use(bodyParser.json());
