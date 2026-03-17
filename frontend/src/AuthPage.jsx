@@ -4,6 +4,38 @@ const REQUEST_TIMEOUT_MS = 12000;
 const MAX_USERNAME_LENGTH = 64;
 const MAX_PASSWORD_LENGTH = 128;
 const MAX_INVITE_CODE_LENGTH = 64;
+const UI_COLORS = {
+    panelBackground: "#ffffff",
+    textStrong: "#1f2328",
+    textMuted: "#57606a",
+    border: "#d0d7de",
+    tabGroupBackground: "#f6f8fa",
+    tabActiveBackground: "#e7f1ff",
+    tabActiveBorder: "#8cb4ff",
+    tabActiveText: "#0a3069",
+    primaryAction: "#1f6feb",
+    primaryActionBorder: "#1558b0",
+    primaryActionDisabled: "#8fb7f2",
+    inputBackground: "#fbfdff",
+    successText: "#0f7a0f",
+    successBackground: "#edf9ed",
+    errorText: "#b00020",
+    errorBackground: "#fff1f3"
+};
+
+function getTabButtonStyle(isActive, disabled) {
+    return {
+        border: `1px solid ${isActive ? UI_COLORS.tabActiveBorder : "transparent"}`,
+        background: isActive ? UI_COLORS.tabActiveBackground : "transparent",
+        color: isActive ? UI_COLORS.tabActiveText : UI_COLORS.textMuted,
+        borderRadius: 8,
+        padding: "7px 14px",
+        lineHeight: 1.2,
+        fontWeight: isActive ? 700 : 500,
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.7 : 1
+    };
+}
 
 async function parseResponseBody(res) {
     const text = await res.text();
@@ -170,6 +202,25 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
         }
     };
     const isSuccessMessage = message.includes("成功");
+    const modeText = tab === "login" ? "登录已有账号" : "注册新账号";
+    const modeHint = tab === "login" ? "输入账号密码后登录" : "填写邀请码后创建账号并自动登录";
+    const submitButtonText = tab === "login"
+        ? (loading ? "登录中..." : "登录账号")
+        : (loading ? "注册中..." : "注册并登录");
+    const inputStyle = {
+        width: "100%",
+        boxSizing: "border-box",
+        padding: "9px 10px",
+        borderRadius: 8,
+        border: `1px solid ${UI_COLORS.border}`,
+        background: UI_COLORS.inputBackground
+    };
+    const labelStyle = {
+        display: "block",
+        marginBottom: 6,
+        fontSize: 13,
+        color: UI_COLORS.textMuted
+    };
 
     return (
         <div
@@ -181,83 +232,156 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                 width: "min(420px, calc(100vw - 32px))",
                 maxHeight: "calc(100vh - 32px)",
                 overflowY: "auto",
-                background: "#fff",
+                background: UI_COLORS.panelBackground,
                 padding: 18,
                 borderRadius: 8,
                 boxShadow: "0 6px 24px rgba(0,0,0,0.25)"
             }}
         >
-            <h2 id="auth-modal-title" style={{ margin: "0 0 10px 0", fontSize: 20 }}>账号登录</h2>
-            <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
-                <button type="button" disabled={loading} onClick={() => switchTab("login")} style={{ fontWeight: tab === "login" ? "bold" : "normal", whiteSpace: "nowrap" }}>登录</button>
-                <button type="button" disabled={loading} onClick={() => switchTab("register")} style={{ fontWeight: tab === "register" ? "bold" : "normal", whiteSpace: "nowrap" }}>注册</button>
+            <h2 id="auth-modal-title" style={{ margin: "0 0 10px 0", fontSize: 20, color: UI_COLORS.textStrong }}>账号登录</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                <div style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 10, border: `1px solid ${UI_COLORS.border}`, background: UI_COLORS.tabGroupBackground }}>
+                    <button
+                        type="button"
+                        aria-pressed={tab === "login"}
+                        disabled={loading}
+                        onClick={() => switchTab("login")}
+                        style={getTabButtonStyle(tab === "login", loading)}
+                    >
+                        登录
+                    </button>
+                    <button
+                        type="button"
+                        aria-pressed={tab === "register"}
+                        disabled={loading}
+                        onClick={() => switchTab("register")}
+                        style={getTabButtonStyle(tab === "register", loading)}
+                    >
+                        注册
+                    </button>
+                </div>
                 <div style={{ marginLeft: "auto" }}>
-                    <button type="button" disabled={loading} onClick={handleClose}>关闭</button>
+                    <button
+                        type="button"
+                        disabled={loading}
+                        onClick={handleClose}
+                        style={{ border: `1px solid ${UI_COLORS.border}`, borderRadius: 8, padding: "7px 10px", color: UI_COLORS.textMuted, background: UI_COLORS.panelBackground }}
+                    >
+                        关闭
+                    </button>
                 </div>
             </div>
+
+            <p style={{ margin: "0 0 12px 0", fontSize: 13, color: UI_COLORS.textMuted }}>
+                当前操作：<strong style={{ color: UI_COLORS.textStrong }}>{modeText}</strong>。{modeHint}
+            </p>
 
             {tab === "login" ? (
                 <form onSubmit={handleLogin}>
                     <div>
+                        <label htmlFor="auth-username" style={labelStyle}>用户名</label>
                         <input
-                            placeholder="用户名"
+                            id="auth-username"
+                            placeholder="请输入用户名"
                             value={username}
                             autoComplete="username"
                             maxLength={MAX_USERNAME_LENGTH}
                             onChange={(e) => handleUsernameChange(e.target.value)}
-                            style={{ width: "100%", boxSizing: "border-box" }}
+                            style={inputStyle}
                         />
                     </div>
-                    <div style={{ marginTop: 8 }}>
+                    <div style={{ marginTop: 10 }}>
+                        <label htmlFor="auth-password-login" style={labelStyle}>密码</label>
                         <input
+                            id="auth-password-login"
                             type="password"
-                            placeholder="密码"
+                            placeholder="请输入密码"
                             value={password}
                             autoComplete="current-password"
                             maxLength={MAX_PASSWORD_LENGTH}
                             onChange={(e) => handlePasswordChange(e.target.value)}
-                            style={{ width: "100%", boxSizing: "border-box" }}
+                            style={inputStyle}
                         />
                     </div>
-                    <div style={{ marginTop: 12, textAlign: "right" }}>
-                        <button type="submit" disabled={loading}>{loading ? "登录中..." : "登录"}</button>
-                    </div>
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        style={{
+                            width: "100%",
+                            marginTop: 14,
+                            padding: "10px 12px",
+                            borderRadius: 8,
+                            border: `1px solid ${loading ? UI_COLORS.primaryActionDisabled : UI_COLORS.primaryActionBorder}`,
+                            background: loading ? UI_COLORS.primaryActionDisabled : UI_COLORS.primaryAction,
+                            color: "#fff",
+                            fontWeight: 700,
+                            letterSpacing: "0.02em",
+                            cursor: loading ? "not-allowed" : "pointer"
+                        }}
+                    >
+                        {submitButtonText}
+                    </button>
                 </form>
             ) : (
                 <form onSubmit={handleRegister}>
                     <div>
+                        <label htmlFor="auth-username-register" style={labelStyle}>用户名</label>
                         <input
-                            placeholder="用户名"
+                            id="auth-username-register"
+                            placeholder="请输入用户名"
                             value={username}
                             autoComplete="username"
                             maxLength={MAX_USERNAME_LENGTH}
                             onChange={(e) => handleUsernameChange(e.target.value)}
-                            style={{ width: "100%", boxSizing: "border-box" }}
+                            style={inputStyle}
                         />
                     </div>
-                    <div style={{ marginTop: 8 }}>
+                    <div style={{ marginTop: 10 }}>
+                        <label htmlFor="auth-password-register" style={labelStyle}>密码</label>
                         <input
+                            id="auth-password-register"
                             type="password"
-                            placeholder="密码"
+                            placeholder="设置一个登录密码"
                             value={password}
                             autoComplete="new-password"
                             maxLength={MAX_PASSWORD_LENGTH}
                             onChange={(e) => handlePasswordChange(e.target.value)}
-                            style={{ width: "100%", boxSizing: "border-box" }}
+                            style={inputStyle}
                         />
                     </div>
-                    <div style={{ marginTop: 8 }}>
+                    <div style={{ marginTop: 10 }}>
+                        <label htmlFor="auth-invite-code" style={labelStyle}>邀请码</label>
                         <input
-                            placeholder="邀请码"
+                            id="auth-invite-code"
+                            placeholder="请输入邀请码"
                             value={inviteCode}
                             maxLength={MAX_INVITE_CODE_LENGTH}
                             onChange={(e) => handleInviteCodeChange(e.target.value)}
-                            style={{ width: "100%", boxSizing: "border-box" }}
+                            aria-describedby="auth-invite-note"
+                            style={inputStyle}
                         />
+                        <div id="auth-invite-note" style={{ marginTop: 4, fontSize: 12, color: UI_COLORS.textMuted }}>
+                            邀请码请向管理员或群友索取
+                        </div>
                     </div>
-                    <div style={{ marginTop: 12, textAlign: "right" }}>
-                        <button type="submit" disabled={loading}>{loading ? "注册中..." : "注册并登录"}</button>
-                    </div>
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        style={{
+                            width: "100%",
+                            marginTop: 14,
+                            padding: "10px 12px",
+                            borderRadius: 8,
+                            border: `1px solid ${loading ? UI_COLORS.primaryActionDisabled : UI_COLORS.primaryActionBorder}`,
+                            background: loading ? UI_COLORS.primaryActionDisabled : UI_COLORS.primaryAction,
+                            color: "#fff",
+                            fontWeight: 700,
+                            letterSpacing: "0.02em",
+                            cursor: loading ? "not-allowed" : "pointer"
+                        }}
+                    >
+                        {submitButtonText}
+                    </button>
                 </form>
             )}
 
@@ -267,7 +391,11 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                     aria-live="polite"
                     style={{
                         marginTop: 12,
-                        color: isSuccessMessage ? "#0f7a0f" : "#b00020",
+                        padding: "9px 11px",
+                        borderRadius: 8,
+                        border: `1px solid ${isSuccessMessage ? "#bfe5bf" : "#ffc7cf"}`,
+                        color: isSuccessMessage ? UI_COLORS.successText : UI_COLORS.errorText,
+                        background: isSuccessMessage ? UI_COLORS.successBackground : UI_COLORS.errorBackground,
                         overflowWrap: "anywhere",
                         whiteSpace: "pre-wrap"
                     }}
