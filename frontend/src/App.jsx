@@ -73,12 +73,20 @@ export default function App() {
 
             {/* 登录/注册弹窗：只在 showAuth 为 true 时显示，允许用户关闭弹窗 */}
             {showAuth && (
-                <div style={{
-                    position: "absolute",
-                    left: 0, top: 0, right: 0, bottom: 0,
-                    background: "rgba(0,0,0,0.25)",
-                    display: "flex", alignItems: "center", justifyContent: "center", zIndex: 5000
-                }}>
+                <div
+                    role="presentation"
+                    onMouseDown={(e) => {
+                        if (e.target === e.currentTarget) {
+                            setShowAuth(false);
+                        }
+                    }}
+                    style={{
+                        position: "absolute",
+                        left: 0, top: 0, right: 0, bottom: 0,
+                        background: "rgba(0,0,0,0.25)",
+                        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 5000
+                    }}
+                >
                     <AuthPage backendUrl={BACKEND_URL} onLoginSuccess={handleLoginSuccess} onClose={() => setShowAuth(false)} />
                 </div>
             )}
