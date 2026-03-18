@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
+import Tooltip from './components/Tooltip';
+import Button from './components/Button';
 
 export default function MapView({ backendUrl, userId }) {
     const containerRef = useRef(null);  // 引用地图容器
@@ -9,7 +11,6 @@ export default function MapView({ backendUrl, userId }) {
     const [addingPos, setAddingPos] = useState(null);   // 点击地图后要添加地点的位置
     const [places, setPlaces] = useState([]);           // 当前加载的地点列表
     const [mapReady, setMapReady] = useState(false);    // 地图是否初始化完毕
-    const [hoverTip, setHoverTip] = useState(false);    // 控制查找按钮 tooltip 显示
     const [addMode, setAddMode] = useState(false);      // 是否处于“添加地点”模式
     const [searchTerm, setSearchTerm] = useState("");   // 搜索关键词
     const [searchResults, setSearchResults] = useState(null);   // 搜索结果列表，null 表示未搜索或已清除搜索
@@ -176,18 +177,6 @@ export default function MapView({ backendUrl, userId }) {
         setAddingPos([lng, lat]);
     };
 
-    // to delete
-    const searchInView = async () => {
-        if (!mapRef.current) {
-            console.warn("searchInView: 地图尚未初始化");
-            return;
-        }
-        // 使用地图中心作为 center 参数，调用后端的 /api/places/search
-        const center = mapRef.current.getCenter();
-        const centerObj = { lat: center.lat || (center.latlng && center.latlng.lat), lng: center.lng || (center.latlng && center.latlng.lng) };
-        await searchServer({ q: searchTerm, center: centerObj });
-    };
-
     return (
         <>
             {/* 确保地图容器有尺寸，避免 AMap 无法渲染 */}
@@ -203,41 +192,18 @@ export default function MapView({ backendUrl, userId }) {
                         style={{ width: 220, padding: "6px 8px" }}
                         disabled={!mapReady || searching}
                     />
-                    <button onClick={() => searchServer({ q: searchTerm })} disabled={!mapReady || searching || !searchTerm}>
-                        {searching ? "搜索中..." : "按关键字查找"}
-                    </button>
-
-                    {/* 视野搜索：以地图中心作为参考点传给后端排序 */}
-                    <div style={{ position: "relative", display: "inline-block" }}
-                         onMouseEnter={() => setHoverTip(true)}
-                         onMouseLeave={() => setHoverTip(false)}>
-                        <button onClick={searchInView} disabled={!mapReady || searching}>
-                            查找地点（视野）
-                        </button>
-                        {hoverTip && (
-                            <div role="tooltip" style={{
-                                position: "absolute",
-                                top: "calc(100% + 6px)",
-                                right: 0,
-                                background: "rgba(0,0,0,0.75)",
-                                color: "#fff",
-                                padding: "6px 8px",
-                                borderRadius: 4,
-                                fontSize: 12,
-                                whiteSpace: "nowrap",
-                                zIndex: 4000,
-                                boxShadow: "0 2px 8px rgba(0,0,0,0.25)"
-                            }}>
-                            {tipText}
-                            </div>
-                    )}</div>
+                    <Tooltip text={tipText}>
+                        <Button onClick={() => searchServer({ q: searchTerm })} disabled={!mapReady || searching || !searchTerm}>
+                            {searching ? "搜索中..." : "按关键字查找"}
+                        </Button>
+                    </Tooltip>
                 </div>
             </div>
 
             <div style={{ position: "absolute", right: 8, bottom: 8, zIndex: 2000 }}>
                 {/* 添加地点开关按钮 */}
                 <div style={{ display: "inline-block" }}>
-                    <button
+                    <Button
                         onClick={() => setAddMode((v) => !v)}
                         disabled={!mapReady}
                         title={addMode ? "点击取消添加模式" : "点击后在地图上选择位置以添加地点"}
@@ -247,7 +213,7 @@ export default function MapView({ backendUrl, userId }) {
                         }}
                     >
                         {addMode ? "取消添加" : "添加地点"}
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -294,8 +260,8 @@ function AddForm({ defaultPos, onCancel, onSubmit }) {
                 <textarea placeholder="描述" value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: "100%" }} />
             </div>
             <div style={{ marginTop: 8, textAlign: "right" }}>
-                <button onClick={onCancel} style={{ marginRight: 8 }}>取消</button>
-                <button onClick={handle}>提交</button>
+                <Button onClick={onCancel} style={{ marginRight: 8 }}>取消</Button>
+                <Button onClick={handle}>提交</Button>
             </div>
         </div>
     );

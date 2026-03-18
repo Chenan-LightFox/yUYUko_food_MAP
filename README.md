@@ -49,6 +49,6 @@ Now under construction.
 - admins.js: 完成各级权限具体操作，添加操作日志模块
 - adminAuth.js: 完善管理员鉴权功能
 - AdminDashboard.js: 挂载各等级管理面板路由
-- Map.jsx: 删除视野内查找相关功能
+- Map.jsx: 添加获取用户当前位置并添加标记点的功能
 - Map.jsx: 修改为自己的Marker图标，并在信息弹窗上添加关闭按钮及管理按钮
 - new!: 美化界面
