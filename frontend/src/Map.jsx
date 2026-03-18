@@ -2,11 +2,73 @@ import React, { useEffect, useRef, useState } from "react";
 import Tooltip from './components/Tooltip';
 import Button from './components/Button';
 
+const DEFAULT_CENTER = [113.394405, 23.016485];
+const DEFAULT_ZOOM = 24;
+const MAP_VIEW_STORAGE_KEY = "yuyuko.map.lastView.v1";
+const MAP_VIEW_SAVE_DEBOUNCE_MS = 450;
+const MIN_CENTER_SAVE_DISTANCE_METERS = 30;
+const MIN_ZOOM_SAVE_DELTA = 0.2;
+
+function normalizeLngLat(center) {
+    if (!center) return null;
+    const lng = typeof center.getLng === "function"
+        ? center.getLng()
+        : (center.lng ?? (center.lnglat && center.lnglat.lng));
+    const lat = typeof center.getLat === "function"
+        ? center.getLat()
+        : (center.lat ?? (center.latlng && center.latlng.lat));
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
+    return { lng, lat };
+}
+
+function haversineDistanceMeters(a, b) {
+    const toRad = (deg) => (deg * Math.PI) / 180;
+    const earthRadius = 6371000;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+    const sinDLat = Math.sin(dLat / 2);
+    const sinDLng = Math.sin(dLng / 2);
+    const h = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
+    return 2 * earthRadius * Math.asin(Math.sqrt(h));
+}
+
+function readSavedMapView() {
+    if (typeof window === "undefined") return null;
+    try {
+        const raw = window.localStorage.getItem(MAP_VIEW_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        const lng = Number(parsed.lng);
+        const lat = Number(parsed.lat);
+        const zoom = Number(parsed.zoom);
+        if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
+        return {
+            lng,
+            lat,
+            zoom: Number.isFinite(zoom) ? zoom : DEFAULT_ZOOM
+        };
+    } catch (e) {
+        console.warn("读取上次地图视野失败，使用默认值", e);
+        return null;
+    }
+}
+
+function shouldPersistMapView(prevView, nextView) {
+    if (!prevView) return true;
+    const zoomDelta = Math.abs((prevView.zoom || 0) - (nextView.zoom || 0));
+    if (zoomDelta >= MIN_ZOOM_SAVE_DELTA) return true;
+    return haversineDistanceMeters(prevView, nextView) >= MIN_CENTER_SAVE_DISTANCE_METERS;
+}
+
 export default function MapView({ backendUrl, userId }) {
     const containerRef = useRef(null);  // 引用地图容器
     const mapRef = useRef(null);        // 存储 AMap 实例
     const markersRef = useRef([]);      // 存储当前地图上的 marker 实例，方便更新时清除旧 marker
     const addModeRef = useRef(false);   // 用于在地图事件中读取最新的添加模式状态
+    const saveViewTimerRef = useRef(null);  // 记录视野持久化防抖 timer
+    const lastSavedViewRef = useRef(null);  // 缓存最后一次成功持久化的视野
 
     const [addingPos, setAddingPos] = useState(null);   // 点击地图后要添加地点的位置
     const [places, setPlaces] = useState([]);           // 当前加载的地点列表
@@ -27,19 +89,79 @@ export default function MapView({ backendUrl, userId }) {
     }, [addMode]);
 
     useEffect(() => {
+        let pollTimer = null;
+        let handleMapClick = null;
+        let handleViewChange = null;
+        let handlePageHide = null;
+        let handleVisibilityChange = null;
+
+        const getCurrentMapView = () => {
+            if (!mapRef.current) return null;
+            const center = normalizeLngLat(mapRef.current.getCenter());
+            if (!center) return null;
+            const zoomRaw = Number(mapRef.current.getZoom());
+            const zoom = Number.isFinite(zoomRaw) ? zoomRaw : DEFAULT_ZOOM;
+            return {
+                lng: Number(center.lng.toFixed(6)),
+                lat: Number(center.lat.toFixed(6)),
+                zoom: Number(zoom.toFixed(2))
+            };
+        };
+
+        const persistCurrentMapView = (force = false) => {
+            const currentView = getCurrentMapView();
+            if (!currentView) return;
+            if (!force && !shouldPersistMapView(lastSavedViewRef.current, currentView)) return;
+            try {
+                window.localStorage.setItem(MAP_VIEW_STORAGE_KEY, JSON.stringify(currentView));
+                lastSavedViewRef.current = currentView;
+            } catch (e) {
+                console.warn("保存上次地图视野失败", e);
+            }
+        };
+
+        const schedulePersistMapView = () => {
+            if (saveViewTimerRef.current) {
+                window.clearTimeout(saveViewTimerRef.current);
+            }
+            saveViewTimerRef.current = window.setTimeout(() => {
+                saveViewTimerRef.current = null;
+                persistCurrentMapView(false);
+            }, MAP_VIEW_SAVE_DEBOUNCE_MS);
+        };
+
         // 等待 AMap 脚本加载
         const init = () => {
+            const savedView = readSavedMapView();
             mapRef.current = new AMap.Map(containerRef.current, {
                 resizeEnable: true,
-                center: [113.394405, 23.016485], // 考虑更改为用户当前位置，若无法获取定位则为用户上一次浏览位置的坐标，默认位置为b记鱼粥
-                zoom: 24
+                center: savedView ? [savedView.lng, savedView.lat] : DEFAULT_CENTER,
+                zoom: savedView ? savedView.zoom : DEFAULT_ZOOM
             });
+            lastSavedViewRef.current = savedView;
 
-            mapRef.current.on("click", (e) => {
+            handleMapClick = (e) => {
                 if (!addModeRef.current) return;
                 const { lng, lat } = e.lnglat;
                 setAddingPos([lng, lat]);
-            });
+            };
+            handleViewChange = () => {
+                schedulePersistMapView();
+            };
+            handlePageHide = () => {
+                persistCurrentMapView(true);
+            };
+            handleVisibilityChange = () => {
+                if (document.visibilityState === "hidden") {
+                    persistCurrentMapView(true);
+                }
+            };
+
+            mapRef.current.on("click", handleMapClick);
+            mapRef.current.on("moveend", handleViewChange);
+            mapRef.current.on("zoomend", handleViewChange);
+            window.addEventListener("pagehide", handlePageHide);
+            document.addEventListener("visibilitychange", handleVisibilityChange);
 
             setMapReady(true);
             loadPlaces();
@@ -47,13 +169,34 @@ export default function MapView({ backendUrl, userId }) {
 
         if (window.AMap) init();
         else {
-            const t = setInterval(() => {
+            pollTimer = setInterval(() => {
                 if (window.AMap) {
-                    clearInterval(t);
+                    clearInterval(pollTimer);
+                    pollTimer = null;
                     init();
                 }
             }, 200);
         }
+
+        return () => {
+            persistCurrentMapView(true);
+            if (pollTimer) clearInterval(pollTimer);
+            if (saveViewTimerRef.current) {
+                window.clearTimeout(saveViewTimerRef.current);
+                saveViewTimerRef.current = null;
+            }
+            if (mapRef.current) {
+                if (handleMapClick) mapRef.current.off("click", handleMapClick);
+                if (handleViewChange) {
+                    mapRef.current.off("moveend", handleViewChange);
+                    mapRef.current.off("zoomend", handleViewChange);
+                }
+            }
+            if (handlePageHide) window.removeEventListener("pagehide", handlePageHide);
+            if (handleVisibilityChange) {
+                document.removeEventListener("visibilitychange", handleVisibilityChange);
+            }
+        };
     }, []);
 
     const loadPlaces = async () => {
