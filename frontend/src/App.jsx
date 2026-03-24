@@ -6,8 +6,9 @@ import Button from './components/Button';
 import AuthPanel from './components/AuthPanel';
 import AuthModal from './components/AuthModal';
 
+const HOST = "8.210.201.2";
 const PORT = (typeof process !== "undefined" && process.env && process.env.REACT_APP_PORT) || 3000;
-const BACKEND_URL = `http://localhost:${PORT}`;
+const BACKEND_URL = `http://${HOST}:${PORT}`;
 
 export default function App() {
     const [user, setUser] = useState(null);

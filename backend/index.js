@@ -11,6 +11,7 @@ const adminUsersRouter = require("./routes/admin/adminUsers");
 
 
 const app = express();
+const HOST = localhost;
 const PORT = process.env.PORT || 3000; // 使用 3000（可被环境覆盖）
 
 app.use(cors());
@@ -28,5 +29,5 @@ app.use("/users", usersRouter);
 app.get("/", (req, res) => res.json({ ok: true, msg: "yUYUko Food Map Backend" }));
 
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://${HOST}:${PORT}`);
 });
