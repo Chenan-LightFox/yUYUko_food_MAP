@@ -21,27 +21,19 @@ const ALLOWED_ORIGINS = [
     "http://localhost:5173"
 ];
 
-app.use((req, res, next) => {
-    const origin = req.headers.origin;
-
-    // 检查请求来源是否在白名单中
-    if (ALLOWED_ORIGINS.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
-        res.setHeader('Access-Control-Max-Age', '3600');
-    }
-
-    // 处理预检请求
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
-    }
-
-    next();
-});
-
-app.options("*");
+// 使用官方 cors 中间件，保证预检和实际请求都带有正确响应头
+app.use(cors({
+    origin: (origin, callback) => {
+        // origin 为空时（例如某些本地请求或 curl），允许通过
+        if (!origin) return callback(null, true);
+        if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+        return callback(new Error('Not allowed by CORS'));
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    maxAge: 3600
+}));
 
 app.use(bodyParser.json());
 app.use("/admin/users", adminUsersRouter);
