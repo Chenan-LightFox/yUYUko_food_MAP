@@ -53,3 +53,4 @@ Now under construction.
 - Map.jsx: 修改为自己的Marker图标
 - Map.jsx: 添加地点信息面板中的管理按钮的功能
 - new!: 美化界面
+- imp!: 在服务器上用 HTTPS 终端反向代理到后端，前端通过同源或`https://`后端调用。
