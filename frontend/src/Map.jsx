@@ -335,6 +335,8 @@ export default function MapView({ backendUrl, userId }) {
 
     const submitPlace = async (payload) => {
         try {
+            // 调试日志：打印将要发送的 payload 和类型
+            console.log("submitPlace payload ->", payload, "typeof payload:", typeof payload);
             const res = await fetch(`${backendUrl}/places`, {
                 method: "POST",
                 headers: {
@@ -512,13 +514,16 @@ function AddForm({ defaultPos, onCancel, onSubmit }) {
 
     const handle = () => {
         if (!name) return alert("请输入名称");
-        onSubmit({
+        const payload = {
             name,
             category,
             description,
             longitude: defaultPos[0],
             latitude: defaultPos[1]
-        });
+        };
+        // 调试：打印要提交的对象与类型
+        console.log("AddForm submit payload ->", payload, "typeof:", typeof payload);
+        onSubmit(payload);
     };
 
     return (
