@@ -1,6 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-const bodyParser = require("body-parser");
 const { init } = require("./db");
 
 const placesRouter = require("./routes/places");
@@ -37,23 +36,47 @@ app.use(cors({
 /////////////////////////
 // 保留原始请求体用于调试：verify 回调会把 buf 存到 req.rawBody
 app.use(bodyParser.json({
-    verify: (req, res, buf) => {
+    verify: (req, res, buf, encoding) => {
         try {
-            req.rawBody = buf && buf.toString('utf8');
+            req.rawBody = buf && buf.toString(encoding || 'utf8');
         } catch (e) {
             req.rawBody = undefined;
         }
     }
 }));
 
-// 可选：简单日志中间件，打印出方法/路径/Content-Type/Content-Length/原始 body（生产环境请移除）
+// 详细调试中间件：打印 raw body、长度、预览和前若干字节的 charCode
 app.use((req, res, next) => {
     try {
-        console.log(`[RAW BODY DEBUG] ${req.method} ${req.originalUrl} Content-Type:${req.headers['content-type'] || '-'} Content-Length:${req.headers['content-length'] || '-'}\nRaw body ->`, req.rawBody);
-    } catch (e) { /* ignore */ }
+        const ct = req.headers['content-type'] || '-';
+        const cl = req.headers['content-length'] || '-';
+        const raw = req.rawBody;
+        console.log(`[RAW BODY DEBUG] ${req.method} ${req.originalUrl} Content-Type:${ct} Content-Length:${cl} rawLen:${raw ? raw.length : 0}`);
+        if (raw) {
+            // 打印前 200 字符的可读预览（避免日志太长）
+            const preview = raw.length > 200 ? raw.slice(0, 200) + '...(truncated)' : raw;
+            console.log('  Raw preview:', preview);
+            // 打印前 16 个字符的 Unicode 码点（十进制），便于发现不可见字符或 BOM
+            const codes = [];
+            for (let i = 0; i < Math.min(16, raw.length); i++) codes.push(raw.charCodeAt(i));
+            console.log('  Char codes (first 16):', codes);
+        } else {
+            console.log('  Raw body is empty or unavailable');
+        }
+    } catch (e) {
+        console.warn('RAW BODY DEBUG failed', e);
+    }
     next();
 });
 
+// 捕获 body-parser 的 JSON 解析错误并打印 rawBody（更友好）
+app.use((err, req, res, next) => {
+    if (err && err.type === 'entity.parse.failed') {
+        console.error('JSON parse error. Raw body (first 200 chars):', req.rawBody && req.rawBody.slice(0, 200));
+        return res.status(400).json({ error: 'Invalid JSON in request body' });
+    }
+    next(err);
+});
 //////////////////////////
 
 app.use("/admin/users", adminUsersRouter);
