@@ -34,7 +34,28 @@ app.use(cors({
     maxAge: 3600
 }));
 
-app.use(bodyParser.json());
+/////////////////////////
+// 保留原始请求体用于调试：verify 回调会把 buf 存到 req.rawBody
+app.use(bodyParser.json({
+    verify: (req, res, buf) => {
+        try {
+            req.rawBody = buf && buf.toString('utf8');
+        } catch (e) {
+            req.rawBody = undefined;
+        }
+    }
+}));
+
+// 可选：简单日志中间件，打印出方法/路径/Content-Type/Content-Length/原始 body（生产环境请移除）
+app.use((req, res, next) => {
+    try {
+        console.log(`[RAW BODY DEBUG] ${req.method} ${req.originalUrl} Content-Type:${req.headers['content-type'] || '-'} Content-Length:${req.headers['content-length'] || '-'}\nRaw body ->`, req.rawBody);
+    } catch (e) { /* ignore */ }
+    next();
+});
+
+//////////////////////////
+
 app.use("/admin/users", adminUsersRouter);
 
 
