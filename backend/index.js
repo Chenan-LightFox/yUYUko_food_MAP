@@ -11,7 +11,7 @@ const adminUsersRouter = require("./routes/admin/adminUsers");
 
 
 const app = express();
-const HOST = localhost;
+const HOST = "localhost";
 const PORT = process.env.PORT || 3000; // 使用 3000（可被环境覆盖）
 
 app.use(cors());
