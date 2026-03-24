@@ -11,8 +11,8 @@ const adminUsersRouter = require("./routes/admin/adminUsers");
 
 
 const app = express();
-const HOST = "0.0.0.0";
-const PORT = process.env.PORT || 3000; // 使用 3000（可被环境覆盖）
+const HOST = process.env.HOST || "0.0.0.0";
+const PORT = process.env.PORT || 3000;
 
 const ALLOWED_ORIGINS = [
     "http://8.210.201.2",
@@ -21,7 +21,6 @@ const ALLOWED_ORIGINS = [
     "http://localhost:5173"
 ];
 
-// 使用官方 cors 中间件，保证预检和实际请求都带有正确响应头
 app.use(cors({
     origin: (origin, callback) => {
         // origin 为空时（例如某些本地请求或 curl），允许通过
@@ -30,7 +29,7 @@ app.use(cors({
         return callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-User-Id'],
     credentials: true,
     maxAge: 3600
 }));

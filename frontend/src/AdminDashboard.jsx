@@ -1,3 +1,4 @@
+import React from 'react';
 import AdminUsers from './admin/AdminUsers';
 
 const PERMISSIONS = {

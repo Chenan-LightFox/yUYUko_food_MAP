@@ -78,6 +78,10 @@ export default function MapView({ backendUrl, userId }) {
     const [searchResults, setSearchResults] = useState(null);   // 搜索结果列表，null 表示未搜索或已清除搜索
     const [searching, setSearching] = useState(false);  // 是否正在搜索中
 
+    const [selectedPlace, setSelectedPlace] = useState(null); // 被选中的地点对象（来自 places）
+    const [popupPoint, setPopupPoint] = useState(null); // { x, y } 相对于地图容器的像素位置
+    const selectedPlaceRef = useRef(null);
+
     const tipText = mapReady ? "点击查找地点" : "地图尚未就绪，稍候再试"; // 查找功能 tooltip 提示
 
     // 同步 ref，以便地图上的 click handler 总能读取到最新的 addMode
@@ -94,6 +98,8 @@ export default function MapView({ backendUrl, userId }) {
         let handleViewChange = null;
         let handlePageHide = null;
         let handleVisibilityChange = null;
+        let handleUpdatePopup = null;
+        let handleResize = null;
 
         const getCurrentMapView = () => {
             if (!mapRef.current) return null;
@@ -130,7 +136,29 @@ export default function MapView({ backendUrl, userId }) {
             }, MAP_VIEW_SAVE_DEBOUNCE_MS);
         };
 
-        // 等待 AMap 脚本加载
+        // 将经纬度转换为容器像素
+        const lngLatToContainerPoint = (lnglat) => {
+            if (!mapRef.current || !lnglat) return null;
+            try {
+                const map = mapRef.current;
+                if (typeof map.lngLatToContainer === "function") {
+                    const p = map.lngLatToContainer([lnglat.lng ?? lnglat.longitude, lnglat.lat ?? lnglat.latitude]);
+                    return { x: p.x, y: p.y };
+                }
+                if (typeof map.lnglatToContainer === "function") {
+                    const p = map.lnglatToContainer([lnglat.lng ?? lnglat.longitude, lnglat.lat ?? lnglat.latitude]);
+                    return { x: p.x, y: p.y };
+                }
+                if (typeof map.lnglatToPixel === "function") {
+                    const p = map.lnglatToPixel([lnglat.lng ?? lnglat.longitude, lnglat.lat ?? lnglat.latitude]);
+                    return { x: p.x, y: p.y };
+                }
+            } catch (e) {
+            }
+            return null;
+        };
+
+        // 在地图初始化时绑定事件
         const init = () => {
             const savedView = readSavedMapView();
             mapRef.current = new AMap.Map(containerRef.current, {
@@ -157,9 +185,24 @@ export default function MapView({ backendUrl, userId }) {
                 }
             };
 
+            // 当地图移动/缩放等导致容器坐标变化时，更新弹窗像素位置
+            handleUpdatePopup = () => {
+                const selected = selectedPlaceRef.current;
+                if (!selected) return;
+                const point = lngLatToContainerPoint({ longitude: selected.longitude, latitude: selected.latitude });
+                setPopupPoint(point);
+            };
+            handleResize = () => {
+                handleUpdatePopup();
+            };
+
             mapRef.current.on("click", handleMapClick);
             mapRef.current.on("moveend", handleViewChange);
             mapRef.current.on("zoomend", handleViewChange);
+            mapRef.current.on("moveend", handleUpdatePopup);
+            mapRef.current.on("zoomend", handleUpdatePopup);
+            window.addEventListener("resize", handleResize);
+
             window.addEventListener("pagehide", handlePageHide);
             document.addEventListener("visibilitychange", handleVisibilityChange);
 
@@ -191,11 +234,16 @@ export default function MapView({ backendUrl, userId }) {
                     mapRef.current.off("moveend", handleViewChange);
                     mapRef.current.off("zoomend", handleViewChange);
                 }
+                if (handleUpdatePopup) {
+                    mapRef.current.off("moveend", handleUpdatePopup);
+                    mapRef.current.off("zoomend", handleUpdatePopup);
+                }
             }
             if (handlePageHide) window.removeEventListener("pagehide", handlePageHide);
             if (handleVisibilityChange) {
                 document.removeEventListener("visibilitychange", handleVisibilityChange);
             }
+            if (handleResize) window.removeEventListener("resize", handleResize);
         };
     }, []);
 
@@ -208,6 +256,52 @@ export default function MapView({ backendUrl, userId }) {
         } catch (e) {
             console.error("加载地点失败", e);
         }
+    };
+
+    // 用于展示自定义弹窗
+    // 优先在 React 层绘制
+    // 若计算容器坐标失败则回退到 InfoWindow
+    const showPopup = (p, lnglatObj) => {
+        selectedPlaceRef.current = p;
+        setSelectedPlace(p);
+        const point = lngLatToContainerPointLocal(lnglatObj || { longitude: p.longitude, latitude: p.latitude });
+        if (point) {
+            setPopupPoint(point);
+        } else {
+            // 使用默认 InfoWindow
+            try {
+                const info = `<div style="min-width:160px"><strong>${p.name}</strong><div>${p.description || ""}</div><div>分类: ${p.category || "-"}</div></div>`;
+                const infoWindow = new AMap.InfoWindow({ content: info });
+                infoWindow.open(mapRef.current, [p.longitude, p.latitude]);
+                // 清除 React 层选择
+                selectedPlaceRef.current = null;
+                setSelectedPlace(null);
+                setPopupPoint(null);
+            } catch (e) {
+                console.warn("打开 InfoWindow 失败", e);
+            }
+        }
+    };
+
+    // 局部复制的容器转换函数（在组件作用域中用于 showPopup）
+    const lngLatToContainerPointLocal = (lnglat) => {
+        if (!mapRef.current || !lnglat) return null;
+        try {
+            const map = mapRef.current;
+            if (typeof map.lngLatToContainer === "function") {
+                const p = map.lngLatToContainer([lnglat.lng ?? lnglat.longitude, lnglat.lat ?? lnglat.latitude]);
+                return { x: p.x, y: p.y };
+            }
+            if (typeof map.lnglatToContainer === "function") {
+                const p = map.lnglatToContainer([lnglat.lng ?? lnglat.longitude, lnglat.lat ?? lnglat.latitude]);
+                return { x: p.x, y: p.y };
+            }
+            if (typeof map.lnglatToPixel === "function") {
+                const p = map.lnglatToPixel([lnglat.lng ?? lnglat.longitude, lnglat.lat ?? lnglat.latitude]);
+                return { x: p.x, y: p.y };
+            }
+        } catch (e) { /* ignore */ }
+        return null;
     };
 
     const renderMarkers = (list) => {
@@ -227,11 +321,11 @@ export default function MapView({ backendUrl, userId }) {
                 title: p.name
             });
             marker.setMap(mapRef.current);
-            // TODO: 在信息弹窗上添加关闭按钮及管理按钮
             marker.on("click", () => {
-                const info = `<div style="min-width:160px"><strong>${p.name}</strong><div>${p.description || ""}</div><div>分类: ${p.category || "-"}</div></div>`;
-                const infoWindow = new AMap.InfoWindow({ content: info });
-                infoWindow.open(mapRef.current, marker.getPosition());
+                const pos = marker.getPosition();
+                // pos 可能是对象或数组，统一传入 { longitude, latitude } 或 { lng, lat }
+                const lnglatObj = (pos && pos.lng != null && pos.lat != null) ? { lng: pos.lng, lat: pos.lat } : { longitude: p.longitude, latitude: p.latitude };
+                showPopup(p, lnglatObj);
             });
             markersRef.current.push(marker);
             created.push(marker);
@@ -249,6 +343,10 @@ export default function MapView({ backendUrl, userId }) {
                 },
                 body: JSON.stringify(payload)
             });
+            if (!res.ok) {
+                const text = await res.text().catch(() => "");
+                throw new Error(`后端错误 ${res.status} ${res.statusText} ${text}`);
+            }
             const saved = await res.json();
             setAddingPos(null);
             // 重新加载数据并清除搜索结果（若正在搜索）
@@ -256,7 +354,8 @@ export default function MapView({ backendUrl, userId }) {
             setSearchResults(null);
             setSearching(false);
         } catch (e) { 
-            console.error(e);
+            console.error("提交地点失败", e);
+            alert("提交失败: " + (e.message || e));
         }
     };
 
@@ -320,10 +419,16 @@ export default function MapView({ backendUrl, userId }) {
         setAddingPos([lng, lat]);
     };
 
+    const closePopup = () => {
+        selectedPlaceRef.current = null;
+        setSelectedPlace(null);
+        setPopupPoint(null);
+    };
+
     return (
         <>
             {/* 确保地图容器有尺寸，避免 AMap 无法渲染 */}
-            <div ref={containerRef} id="map" style={{ width: "100%", height: "100%" }}></div>
+            <div ref={containerRef} id="map" style={{ width: "100%", height: "100%", position: "relative" }}></div>
 
             <div style={{ position: "absolute", right: 8, top: 8, zIndex: 2000 }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -344,7 +449,6 @@ export default function MapView({ backendUrl, userId }) {
             </div>
 
             <div style={{ position: "absolute", right: 8, bottom: 8, zIndex: 2000 }}>
-                {/* 添加地点开关按钮 */}
                 <div style={{ display: "inline-block" }}>
                     <Button
                         onClick={() => setAddMode((v) => !v)}
@@ -359,6 +463,33 @@ export default function MapView({ backendUrl, userId }) {
                     </Button>
                 </div>
             </div>
+
+            {selectedPlace && popupPoint && (
+                <div
+                    style={{
+                        position: "absolute",
+                        left: popupPoint.x,
+                        top: popupPoint.y,
+                        transform: "translate(-50%, -100%)",
+                        zIndex: 4000,
+                        pointerEvents: "auto"
+                    }}
+                >
+                    <div style={{ background: "#fff", padding: 10, borderRadius: 6, boxShadow: "0 2px 12px rgba(0,0,0,0.25)", minWidth: 200 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <strong style={{ fontSize: 14 }}>{selectedPlace.name}</strong>
+                            <Button onClick={closePopup} style={{ padding: "2px 8px", borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", fontSize: 18, lineHeight: 1 }} title="关闭">×</Button>
+                        </div>
+                        <div style={{ marginTop: 6, fontSize: 13 }}>{selectedPlace.description || ""}</div>
+                        <div style={{ marginTop: 6, color: "#666", fontSize: 12 }}>分类: {selectedPlace.category || "-"}</div>
+                        <div style={{ marginTop: 8, textAlign: "right" }}>
+                            <Tooltip text="管理此地点">
+                                <Button onClick={() => { /* TODO: 打开管理或详情面板 */ }}>管理</Button>
+                            </Tooltip>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {addingPos && (
                 <div style={{
