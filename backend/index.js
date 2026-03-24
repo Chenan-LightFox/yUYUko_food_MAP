@@ -41,7 +41,7 @@ app.use((req, res, next) => {
     next();
 });
 
-app.options("*", cors(corsOptions)); // 显式响应 preflight OPTIONS 请求
+app.options("*");
 
 app.use(bodyParser.json());
 app.use("/admin/users", adminUsersRouter);
