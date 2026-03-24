@@ -81,6 +81,12 @@ npm run dev       # 启动前端开发服务器，默认地址见终端输出（
 
 > `npm run dev` 启动的是 **Vite 开发服务器**，支持热更新，修改代码后浏览器自动刷新。  
 > 启动后在浏览器打开终端输出的地址（如 `http://localhost:5173`）即可看到页面。
+>
+> 若后端不在默认地址 `http://localhost:3000`，请编辑 `frontend/.env`：
+>
+> ```bash
+> VITE_BACKEND_URL=http://你的后端地址:端口
+> ```
 
 ---
 
