@@ -37,7 +37,7 @@ app.all("*", function (req, res, next) {
         res.send(200);  //让options尝试请求快速结束
     else
         next();
-}
+};
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions)); // 显式响应 preflight OPTIONS 请求
