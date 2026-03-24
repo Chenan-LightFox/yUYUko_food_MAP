@@ -14,7 +14,21 @@ const app = express();
 const HOST = "localhost";
 const PORT = process.env.PORT || 3000; // 使用 3000（可被环境覆盖）
 
-app.use(cors());
+// 明确配置 CORS，允许前端 origin（示例加入你的前端域名）并处理 preflight
+const corsOptions = {
+    origin: [
+        "http://8.210.201.2",
+        "http://8.210.201.2:3000"
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    credentials: true,
+    optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // 显式响应 preflight OPTIONS 请求
+
 app.use(bodyParser.json());
 app.use("/admin/users", adminUsersRouter);
 
@@ -28,6 +42,6 @@ app.use("/users", usersRouter);
 
 app.get("/", (req, res) => res.json({ ok: true, msg: "yUYUko Food Map Backend" }));
 
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
     console.log(`Server running on http://${HOST}:${PORT}`);
 });
