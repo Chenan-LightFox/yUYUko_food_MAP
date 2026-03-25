@@ -333,6 +333,13 @@ export default function MapView({ backendUrl, userId }) {
         return created;
     };
 
+    // 当 searchResults 或 places 改变时确保 markers 与当前数据同步
+    useEffect(() => {
+        if (!mapRef.current) return;
+        const listToRender = searchResults == null ? places : searchResults;
+        renderMarkers(listToRender || []);
+    }, [searchResults, places]);
+
     const submitPlace = async (payload) => {
         try {
             const res = await fetch(`${backendUrl}/places`, {
@@ -437,7 +444,14 @@ export default function MapView({ backendUrl, userId }) {
                     <input
                         placeholder="搜索关键词（例如：火锅/店名）"
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e) => {
+                            const v = e.target.value;
+                            setSearchTerm(v);
+                            // 用户清空输入时立即恢复所有 marker
+                            if (!v || !v.trim()) {
+                                clearSearch();
+                            }
+                        }}
                         style={{ width: 220, padding: "6px 8px" }}
                         disabled={!mapReady || searching}
                     />
