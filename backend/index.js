@@ -14,18 +14,34 @@ const app = express();
 const HOST = process.env.HOST || "0.0.0.0";
 const PORT = process.env.PORT || 3000;
 
-const ALLOWED_ORIGINS = [
+const STATIC_ALLOWED_ORIGINS = [
     "http://8.210.201.2",
     "http://8.210.201.2:3000",
     "http://localhost:3000",
-    "http://localhost:5173"
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173"
 ];
+const EXTRA_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+
+function isAllowedOrigin(origin) {
+    if (!origin) return true;
+    if (STATIC_ALLOWED_ORIGINS.includes(origin)) return true;
+    if (EXTRA_ALLOWED_ORIGINS.includes(origin)) return true;
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
+    if (/^https?:\/\/8\.210\.201\.2(:\d+)?$/i.test(origin)) return true;
+    return false;
+}
 
 app.use(cors({
     origin: (origin, callback) => {
         // origin 为空时（例如某些本地请求或 curl），允许通过
         if (!origin) return callback(null, true);
-        if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+        if (isAllowedOrigin(origin)) return callback(null, true);
+        console.warn(`[CORS] Blocked origin: ${origin}`);
         return callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

@@ -6,9 +6,28 @@ import Button from './components/Button';
 import AuthPanel from './components/AuthPanel';
 import AuthModal from './components/AuthModal';
 
-const HOST = "8.210.201.2";
-const PORT = (typeof process !== "undefined" && process.env && process.env.REACT_APP_PORT) || 3000;
-const BACKEND_URL = `http://${HOST}:${PORT}`;
+function normalizeUrl(url) {
+    return String(url).replace(/\/+$/, "");
+}
+
+function resolveBackendUrl() {
+    const env = (typeof import.meta !== "undefined" && import.meta.env) ? import.meta.env : {};
+    const explicitUrl = env.VITE_BACKEND_URL && String(env.VITE_BACKEND_URL).trim();
+    if (explicitUrl) return normalizeUrl(explicitUrl);
+
+    if (typeof window !== "undefined") {
+        const { protocol, hostname } = window.location;
+        // 本地开发默认连本机后端；线上默认同主机 3000 端口。
+        if (hostname === "localhost" || hostname === "127.0.0.1") {
+            return "http://localhost:3000";
+        }
+        return `${protocol}//${hostname}:3000`;
+    }
+
+    return "http://localhost:3000";
+}
+
+const BACKEND_URL = resolveBackendUrl();
 
 export default function App() {
     const [user, setUser] = useState(null);
@@ -52,7 +71,7 @@ export default function App() {
                     const data = await res.json();
                     if (data && data.user) setUser(data.user);
                 } catch (e) {
-                    console.error('Failed to fetch /users/me', e);
+                    console.error('Failed to fetch /users/me', { url, error: e });
                 }
             })();
         }

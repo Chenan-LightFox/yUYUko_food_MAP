@@ -14,7 +14,8 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
         if (!username || !password) return setMessage("请输入用户名和密码");
         setLoading(true);
         try {
-            const res = await fetch(`${backendUrl}/users/login`, {
+            const loginUrl = `${backendUrl}/users/login`;
+            const res = await fetch(loginUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password })
@@ -31,7 +32,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                 setMessage(data.error || `登录失败：${res.status}`);
             }
         } catch (err) {
-            setMessage(`网络错误：${err.message}`);
+            setMessage(`网络错误：${err.message}（接口：${backendUrl}/users/login）`);
         } finally {
             setLoading(false);
         }
@@ -43,7 +44,8 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
         if (!username || !password || !inviteCode) return setMessage("请填写用户名、密码和邀请码");
         setLoading(true);
         try {
-            const res = await fetch(`${backendUrl}/users/register`, {
+            const registerUrl = `${backendUrl}/users/register`;
+            const res = await fetch(registerUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password, inviteCode })
@@ -62,7 +64,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                 setMessage(data.error || `注册失败：${res.status}`);
             }
         } catch (err) {
-            setMessage(`网络错误：${err.message}`);
+            setMessage(`网络错误：${err.message}（接口：${backendUrl}/users/register）`);
         } finally {
             setLoading(false);
         }
