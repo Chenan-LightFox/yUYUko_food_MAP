@@ -36,11 +36,27 @@ function isAllowedOrigin(origin) {
     return false;
 }
 
+// Debug: 全局打印 incoming Origin / Referer，放在 cors 之前以便观察每个请求（含预检）
+app.use((req, res, next) => {
+    try {
+        console.log(`[CORS DEBUG] ${req.method} ${req.originalUrl} Origin:${req.headers.origin || '-'} Referer:${req.headers.referer || '-'}`);
+    } catch (e) {
+        console.warn('[CORS DEBUG] failed to log headers', e);
+    }
+    next();
+});
+
 app.use(cors({
     origin: (origin, callback) => {
         // origin 为空时（例如某些本地请求或 curl），允许通过
-        if (!origin) return callback(null, true);
-        if (isAllowedOrigin(origin)) return callback(null, true);
+        if (!origin) {
+            console.log('[CORS] origin absent -> allowed');
+            return callback(null, true);
+        }
+        if (isAllowedOrigin(origin)) {
+            console.log(`[CORS] Allowed origin: ${origin}`);
+            return callback(null, true);
+        }
         console.warn(`[CORS] Blocked origin: ${origin}`);
         return callback(new Error('Not allowed by CORS'));
     },
