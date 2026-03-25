@@ -13,3 +13,4 @@
 /frontend/dist
 .DS_Store
 /frontend/.env
+/backend/data.sqlite
