@@ -15,7 +15,7 @@ export default function AdminDashboard({ user }) {
 
     return (
         <div>
-            <h2>管理员后台</h2>
+            <h2>管理员后台 - 东方饭联地图</h2>
             <ul>
                 {perms.includes("用户管理") && <li><a href="/admin/users">管理所有用户</a></li>}
                 {perms.includes("普通用户管理") && <li><a href="/admin/general-users">管理一般用户</a></li>}

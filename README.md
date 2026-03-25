@@ -1,7 +1,13 @@
 # yUYUko_food_MAP
-This is Fanlian Map (?)
+这是东方饭联地图的网页端。
 
-Now under construction.
+目前还是一片工地（
+
+---
+
+**现可以登录`8.210.201.2/index.html`进行测试！**
+
+目前网页及服务器尚不稳定，随时可能发生无法访问的情况，访问过程中也随时会出现意外的BUG，如发现BUG请联系开发组。
 
 ---
 
@@ -46,6 +52,9 @@ Now under construction.
 ---
 
 **TODO list:**
+- BUG!: 用户添加新标记点后`addMode`可能出现并未更新的问题
+- BUG!: 用户搜索地点后返回地图，不符合搜索条件的标记未被正确渲染
+- BUG!: 地图应用在iPhone或iPad移动端浏览器上缩放比例不正确，其他平台尚未验证
 - admins.js: 完成各级权限具体操作，添加操作日志模块
 - adminAuth.js: 完善管理员鉴权功能
 - AdminDashboard.js: 挂载各等级管理面板路由
@@ -53,4 +62,4 @@ Now under construction.
 - Map.jsx: 修改为自己的Marker图标
 - Map.jsx: 添加地点信息面板中的管理按钮的功能
 - new!: 美化界面
-- imp!: 在服务器上用 HTTPS 终端反向代理到后端，前端通过同源或`https://`后端调用。
+- imp!: 在服务器上用 HTTPS 终端反向代理到后端，前端通过同源或`https://`后端调用
