@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { db } = require("../db");
 const redis = require("../redis");
+const { requireAuth } = require("../middleware/auth");
 
 const JWT_SECRET = process.env.JWT_SECRET || "yuyuko_secret_key";
 const JWT_EXPIRES_IN = 60 * 60 * 24 * 7; // 7天（秒）
@@ -93,21 +94,18 @@ router.post("/login", (req, res) => {
     });
 });
 
-// 获取当前用户信息
-router.get('/me', (req, res) => {
-    const auth = req.get('Authorization') || req.get('authorization');
-    if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: '未提供授权 token' });
-    const token = auth.slice(7).trim();
+// 获取当前用户信息（JWT + Redis session 一致性校验）
+router.get('/me', requireAuth, (req, res) => {
+    res.json({ user: req.user });
+});
+
+// 退出登录，清理当前会话
+router.post('/logout', requireAuth, async (req, res) => {
     try {
-        const payload = jwt.verify(token, JWT_SECRET);
-        const userId = payload.id;
-        db.get('SELECT id, username, admin_level FROM User WHERE id = ?', [userId], (err, row) => {
-            if (err) return res.status(500).json({ error: err.message });
-            if (!row) return res.status(404).json({ error: '用户不存在' });
-            res.json({ user: row });
-        });
+        await redis.del(`session:${req.user.id}`);
+        return res.json({ success: true });
     } catch (e) {
-        return res.status(401).json({ error: '无效或已过期的 token' });
+        return res.status(500).json({ error: "退出登录失败", detail: e.message });
     }
 });
 

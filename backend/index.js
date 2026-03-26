@@ -8,6 +8,7 @@ const commentsRouter = require("./routes/comments");
 const usersRouter = require("./routes/users");
 const searchRouter = require('./routes/search');
 const adminUsersRouter = require("./routes/admin/adminUsers");
+const { requireAuth } = require("./middleware/auth");
 
 
 const app = express();
@@ -112,7 +113,7 @@ app.use((err, req, res, next) => {
 });
 //////////////////////////
 
-app.use("/admin/users", adminUsersRouter);
+app.use("/admin/users", requireAuth, adminUsersRouter);
 
 
 init();
