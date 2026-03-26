@@ -12,7 +12,7 @@ export default function AdminDashboard({ user, onBackHome, onLogout }) {
     const perms = level ? (PERMISSIONS[level] || []) : [];
 
     return (
-        <div style={{ minHeight: "100vh", background: "#f6f7f9", padding: 20, boxSizing: "border-box" }}>
+        <div style={{ minHeight: "var(--app-height, 100vh)", background: "#f6f7f9", padding: 20, boxSizing: "border-box" }}>
             <div style={{ maxWidth: 760, margin: "0 auto" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                     <h2 style={{ margin: 0 }}>管理员后台</h2>

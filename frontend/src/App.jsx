@@ -84,6 +84,33 @@ export default function App() {
     }, []);
 
     useEffect(() => {
+        if (typeof document === "undefined" || typeof window === "undefined") return;
+
+        const root = document.documentElement;
+        const updateViewportHeight = () => {
+            const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            root.style.setProperty("--app-height", `${Math.round(viewportHeight)}px`);
+        };
+
+        updateViewportHeight();
+
+        const visualViewport = window.visualViewport;
+        window.addEventListener("resize", updateViewportHeight);
+        window.addEventListener("orientationchange", updateViewportHeight);
+        if (visualViewport) {
+            visualViewport.addEventListener("resize", updateViewportHeight);
+        }
+
+        return () => {
+            window.removeEventListener("resize", updateViewportHeight);
+            window.removeEventListener("orientationchange", updateViewportHeight);
+            if (visualViewport) {
+                visualViewport.removeEventListener("resize", updateViewportHeight);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
         // 如果有 token 但没有 user，就向后端请求 /users/me 获取用户信息
         if (!token || user) return;
 
@@ -125,14 +152,14 @@ export default function App() {
     const showAdminPage = pathname === "/admin" && !!token;
 
     return (
-        <div style={{ height: "100vh", position: "relative" }}>
+        <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
             {!showAdminPage && <MapView userId={user ? user.id : null} backendUrl={BACKEND_URL} />}
 
             {showAdminPage && (
                 user ? (
                     <AdminDashboard user={user} onBackHome={() => goPath("/")} onLogout={handleLogout} />
                 ) : (
-                    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         正在验证登录状态...
                     </div>
                 )

@@ -230,7 +230,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
             onMouseDown={(e) => e.stopPropagation()}
             style={{
                 width: "min(420px, calc(100vw - 32px))",
-                maxHeight: "calc(100vh - 32px)",
+                maxHeight: "calc(var(--app-height, 100vh) - 32px)",
                 overflowY: "auto",
                 background: UI_COLORS.panelBackground,
                 padding: 18,

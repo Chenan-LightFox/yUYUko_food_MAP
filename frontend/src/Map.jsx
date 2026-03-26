@@ -100,6 +100,7 @@ export default function MapView({ backendUrl, userId }) {
         let handleVisibilityChange = null;
         let handleUpdatePopup = null;
         let handleResize = null;
+        let resizeObserver = null;
 
         const getCurrentMapView = () => {
             if (!mapRef.current) return null;
@@ -193,6 +194,9 @@ export default function MapView({ backendUrl, userId }) {
                 setPopupPoint(point);
             };
             handleResize = () => {
+                if (mapRef.current && typeof mapRef.current.resize === "function") {
+                    mapRef.current.resize();
+                }
                 handleUpdatePopup();
             };
 
@@ -202,6 +206,12 @@ export default function MapView({ backendUrl, userId }) {
             mapRef.current.on("moveend", handleUpdatePopup);
             mapRef.current.on("zoomend", handleUpdatePopup);
             window.addEventListener("resize", handleResize);
+            if (containerRef.current && typeof ResizeObserver !== "undefined") {
+                resizeObserver = new ResizeObserver(() => {
+                    handleResize();
+                });
+                resizeObserver.observe(containerRef.current);
+            }
 
             window.addEventListener("pagehide", handlePageHide);
             document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -244,6 +254,7 @@ export default function MapView({ backendUrl, userId }) {
                 document.removeEventListener("visibilitychange", handleVisibilityChange);
             }
             if (handleResize) window.removeEventListener("resize", handleResize);
+            if (resizeObserver) resizeObserver.disconnect();
         };
     }, []);
 
