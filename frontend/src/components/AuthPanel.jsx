@@ -1,22 +1,198 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Button from './Button';
+import defaultAvatar from '../img/default.png';
 
 export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin }) {
+    const [open, setOpen] = useState(false);
+    const rootRef = useRef(null);
+    const menuRef = useRef(null);
+    const closeTimerRef = useRef(null);
+    const customThemeColor = '#002fa7';
+
+    const isTouchDevice = typeof window !== 'undefined' && (('ontouchstart' in window) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0));
+
+    useEffect(() => {
+        if (!open) return;
+        const onDocClick = (e) => {
+            if (rootRef.current && !rootRef.current.contains(e.target)) {
+                setOpen(false);
+            }
+        };
+        const onKey = (e) => {
+            if (e.key === 'Escape') setOpen(false);
+        };
+        document.addEventListener('mousedown', onDocClick);
+        document.addEventListener('touchstart', onDocClick);
+        document.addEventListener('keydown', onKey);
+        return () => {
+            document.removeEventListener('mousedown', onDocClick);
+            document.removeEventListener('touchstart', onDocClick);
+            document.removeEventListener('keydown', onKey);
+        };
+    }, [open]);
+
+    useEffect(() => {
+        return () => {
+            if (closeTimerRef.current) {
+                clearTimeout(closeTimerRef.current);
+                closeTimerRef.current = null;
+            }
+        };
+    }, []);
+
+    const scheduleClose = (delay = 150) => {
+        if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = setTimeout(() => {
+            closeTimerRef.current = null;
+            setOpen(false);
+        }, delay);
+    };
+
+    const cancelScheduledClose = () => {
+        if (closeTimerRef.current) {
+            clearTimeout(closeTimerRef.current);
+            closeTimerRef.current = null;
+        }
+    };
+
+    const handleAvatarClick = (e) => {
+        if (!isAuth) {
+            onOpenAuth && onOpenAuth();
+            return;
+        }
+        if (isTouchDevice) {
+            setOpen((v) => !v);
+        } else {
+            setOpen(true);
+        }
+    };
+
+    const handleAvatarMouseEnter = () => {
+        if (!isTouchDevice && isAuth) {
+            cancelScheduledClose();
+            setOpen(true);
+        }
+    };
+    const handleAvatarMouseLeave = () => {
+        if (!isTouchDevice && isAuth) {
+            scheduleClose();
+        }
+    };
+    const handleMenuMouseEnter = () => {
+        if (!isTouchDevice && isAuth) {
+            cancelScheduledClose();
+            setOpen(true);
+        }
+    };
+    const handleMenuMouseLeave = () => {
+        if (!isTouchDevice && isAuth) {
+            scheduleClose();
+        }
+    };
+
+    const initials = (name) => {
+        if (!name) return '?';
+        const parts = name.trim().split(/\s+/);
+        if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+        return (parts[0].slice(0, 1) + parts[1].slice(0, 1)).toUpperCase();
+    };
+
     return (
-        <div className="panel" style={{ position: "absolute", left: 12, top: 12, zIndex: 4000, padding: 8, background: "#fff", borderRadius: 6 }}>
-            <strong>东方饭联地图</strong>
-            <div style={{ marginTop: 8 }}>
-                {isAuth ? (
-                    <div>
-                        当前用户：{user.username} <Button onClick={onLogout}>注销</Button>
-                        {isAdmin && <Button style={{ marginLeft: 8 }} onClick={onOpenAdmin}>进入管理员后台</Button>}
-                    </div>
+        <div
+            ref={rootRef}
+            style={{
+                position: 'absolute',
+                left: 12,
+                top: 12,
+                zIndex: 4000,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+            }}
+        >
+            <div
+                role="button"
+                aria-haspopup="true"
+                aria-expanded={open}
+                onClick={handleAvatarClick}
+                onMouseEnter={handleAvatarMouseEnter}
+                onMouseLeave={handleAvatarMouseLeave}
+                style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: '50%',
+                    background: customThemeColor,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                    overflow: 'hidden',
+                    border: '3px solid' + customThemeColor,
+                    boxSizing: 'border-box'
+                }}
+            >
+                {isAuth && user ? (
+                    <img
+                        src={user.avatar || defaultAvatar}
+                        alt={user.username || 'avatar'}
+                        style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                    />
                 ) : (
-                    <div>
-                        未登录 <Button onClick={onOpenAuth}>登录 / 注册</Button>
-                    </div>
+                    <span style={{ fontWeight: 700, color: '#f2f2f2' }}>登录</span>
                 )}
             </div>
+
+            {/* 下拉菜单 */}
+            {open && (
+                <div
+                    ref={menuRef}
+                    role="menu"
+                    aria-label="用户菜单"
+                    onMouseEnter={handleMenuMouseEnter}
+                    onMouseLeave={handleMenuMouseLeave}
+                    style={{
+                        position: 'absolute',
+                        left: 12,
+                        top: 64,
+                        minWidth: 200,
+                        background: '#fff',
+                        borderRadius: 8,
+                        boxShadow: '0 6px 24px rgba(0,0,0,0.15)',
+                        padding: 12,
+                        border: '1px solid rgba(16,24,40,0.06)'
+                    }}
+                >
+                    {isAuth && user ? (
+                        <div>
+                            <div style={{ marginBottom: 6 }}>
+                                <big><strong>东方饭联地图</strong></big>
+                            </div>
+                            <div style={{ marginBottom: 6, paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: '#a2a2a2' }} />
+                            
+                            <div style={{ marginBottom: 8 }}>
+                                <div style={{ fontSize: 14, fontWeight: 700 }}>{user.username}</div>
+                                <div style={{ fontSize: 12, color: '#666' }}>{user.admin_level ? `管理员：${user.admin_level}` : '普通用户'}</div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                {isAdmin && (
+                                    <Button onClick={() => { setOpen(false); onOpenAdmin && onOpenAdmin(); }} style={{ flex: '1 0 auto' }}>
+                                        管理后台
+                                    </Button>
+                                )}
+                                <Button onClick={() => { setOpen(false); onLogout && onLogout(); }} style={{ background: '#fff', border: '1px solid #e5e7eb', color: '#b00020' }}>
+                                    注销
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                            <Button onClick={() => { setOpen(false); onOpenAuth && onOpenAuth(); }}>登录 / 注册</Button>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
