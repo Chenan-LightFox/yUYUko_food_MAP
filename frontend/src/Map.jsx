@@ -716,15 +716,12 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                                         opacity: (!mapReady || authPending) ? 0.6 : 1
                                     }}
                                 >
-                                    <span style={{
+                                    <span class="material-symbols-outlined" style={{
                                         display: 'inline-block',
-                                        fontSize: 48,
-                                        font: 'PingFang',
-                                        fontWeight: 'bold',
-                                        lineHeight: 0,
+                                        fontSize: 36,
                                         transform: addMode ? 'rotate(-45deg)' : 'rotate(0deg)',
                                         transition: 'transform 220ms ease'
-                                    }}>+</span>
+                                    }}>add</span>
                                 </Button>
                             </div>
                         </Tooltip>
