@@ -69,11 +69,10 @@ location / {
 ---
 
 **TODO list:**
-- BUG!: 地图应用在iPhone或iPad移动端浏览器上缩放比例不正确，其他平台尚未验证
 - admins.js: 完成各级权限具体操作，添加操作日志模块
-- adminAuth.js: 完善管理员鉴权功能
 - AdminDashboard.js: 挂载各等级管理面板路由
-- Map.jsx: 添加获取用户当前位置并添加标记点的功能
+- App.jsx: 添加用户头像模块
+- App.jsx: 目前网页在手机端上可读性差，模块之间有大幅度重叠。考虑将左上角信息面板改为用户头像，桌面端onHover时弹出下拉菜单，移动端onClick时弹出下拉菜单
 - Map.jsx: 修改为自己的Marker图标
 - Map.jsx: 添加地点信息面板中的管理按钮的功能
 - new!: 美化界面
