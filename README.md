@@ -71,8 +71,6 @@ location / {
 **TODO list:**
 - admins.js: 完成各级权限具体操作，添加操作日志模块
 - AdminDashboard.js: 挂载各等级管理面板路由
-- App.jsx: 添加用户头像模块
-- App.jsx: 目前网页在手机端上可读性差，模块之间有大幅度重叠。考虑将左上角信息面板改为用户头像，桌面端onHover时弹出下拉菜单，移动端onClick时弹出下拉菜单
 - Map.jsx: 修改为自己的Marker图标
 - Map.jsx: 添加地点信息面板中的管理按钮的功能
 - new!: 美化界面
