@@ -8,6 +8,40 @@ const MAP_VIEW_STORAGE_KEY = "yuyuko.map.lastView.v1";
 const MAP_VIEW_SAVE_DEBOUNCE_MS = 450;
 const MIN_CENTER_SAVE_DISTANCE_METERS = 30;
 const MIN_ZOOM_SAVE_DELTA = 0.2;
+const LOCATE_ME_MIN_ZOOM = 18;
+
+function isLocalhost(hostname) {
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
+function canUseLocationInCurrentContext() {
+    if (typeof window === "undefined") return false;
+    const { protocol, hostname } = window.location;
+    return window.isSecureContext || protocol === "https:" || isLocalhost(hostname);
+}
+
+function getLocationErrorMessage(errorLike) {
+    const info = String(errorLike?.info || "");
+    const message = String(errorLike?.message || "");
+    const detail = `${info} ${message}`.trim().toUpperCase();
+
+    if (detail.includes("PERMISSION_DENIED") || detail.includes("PERMISSION") || detail.includes("DENIED")) {
+        return "定位权限被拒绝，请在浏览器中允许访问位置信息后重试。";
+    }
+    if (detail.includes("TIME_OUT") || detail.includes("TIMEOUT")) {
+        return "定位超时，请检查网络或稍后重试。";
+    }
+    if (detail.includes("POSITION_UNAVAILABLE") || detail.includes("UNAVAILABLE")) {
+        return "暂时无法获取当前位置，请确认设备定位服务已开启。";
+    }
+    if (detail.includes("SECURE") || detail.includes("HTTPS") || detail.includes("INSECURE")) {
+        return "定位功能仅在 HTTPS 或 localhost 环境下可用。";
+    }
+    if (message) {
+        return `定位失败：${message}`;
+    }
+    return "定位失败，请稍后重试。";
+}
 
 function normalizeLngLat(center) {
     if (!center) return null;
@@ -66,6 +100,8 @@ export default function MapView({ backendUrl, userId }) {
     const containerRef = useRef(null);  // 引用地图容器
     const mapRef = useRef(null);        // 存储 AMap 实例
     const markersRef = useRef([]);      // 存储当前地图上的 marker 实例，方便更新时清除旧 marker
+    const geolocationRef = useRef(null);    // 缓存高德定位实例，避免重复创建
+    const userLocationMarkerRef = useRef(null); // 单独维护“我的位置” marker，避免被地点 marker 重绘清掉
     const addModeRef = useRef(false);   // 用于在地图事件中读取最新的添加模式状态
     const saveViewTimerRef = useRef(null);  // 记录视野持久化防抖 timer
     const lastSavedViewRef = useRef(null);  // 缓存最后一次成功持久化的视野
@@ -77,12 +113,19 @@ export default function MapView({ backendUrl, userId }) {
     const [searchTerm, setSearchTerm] = useState("");   // 搜索关键词
     const [searchResults, setSearchResults] = useState(null);   // 搜索结果列表，null 表示未搜索或已清除搜索
     const [searching, setSearching] = useState(false);  // 是否正在搜索中
+    const [locating, setLocating] = useState(false);    // 是否正在定位中
+    const [locationError, setLocationError] = useState("");  // 最近一次定位错误，供 tooltip 提示
 
     const [selectedPlace, setSelectedPlace] = useState(null); // 被选中的地点对象（来自 places）
     const [popupPoint, setPopupPoint] = useState(null); // { x, y } 相对于地图容器的像素位置
     const selectedPlaceRef = useRef(null);
 
     const tipText = mapReady ? "点击查找地点" : "地图尚未就绪，稍候再试"; // 查找功能 tooltip 提示
+    const locationTipText = !mapReady
+        ? "地图尚未就绪，稍候再试"
+        : (locationError || (canUseLocationInCurrentContext()
+            ? "点击获取当前位置并在地图上标记"
+            : "定位功能仅在 HTTPS 或 localhost 环境下可用"));
 
     // 同步 ref，以便地图上的 click handler 总能读取到最新的 addMode
     useEffect(() => {
@@ -100,6 +143,7 @@ export default function MapView({ backendUrl, userId }) {
         let handleVisibilityChange = null;
         let handleUpdatePopup = null;
         let handleResize = null;
+        let resizeObserver = null;
 
         const getCurrentMapView = () => {
             if (!mapRef.current) return null;
@@ -193,6 +237,9 @@ export default function MapView({ backendUrl, userId }) {
                 setPopupPoint(point);
             };
             handleResize = () => {
+                if (mapRef.current && typeof mapRef.current.resize === "function") {
+                    mapRef.current.resize();
+                }
                 handleUpdatePopup();
             };
 
@@ -202,6 +249,12 @@ export default function MapView({ backendUrl, userId }) {
             mapRef.current.on("moveend", handleUpdatePopup);
             mapRef.current.on("zoomend", handleUpdatePopup);
             window.addEventListener("resize", handleResize);
+            if (containerRef.current && typeof ResizeObserver !== "undefined") {
+                resizeObserver = new ResizeObserver(() => {
+                    handleResize();
+                });
+                resizeObserver.observe(containerRef.current);
+            }
 
             window.addEventListener("pagehide", handlePageHide);
             document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -244,6 +297,19 @@ export default function MapView({ backendUrl, userId }) {
                 document.removeEventListener("visibilitychange", handleVisibilityChange);
             }
             if (handleResize) window.removeEventListener("resize", handleResize);
+            if (resizeObserver) resizeObserver.disconnect();
+            if (userLocationMarkerRef.current) {
+                userLocationMarkerRef.current.setMap(null);
+                userLocationMarkerRef.current = null;
+            }
+            if (mapRef.current && geolocationRef.current && typeof mapRef.current.removeControl === "function") {
+                try {
+                    mapRef.current.removeControl(geolocationRef.current);
+                } catch (e) {
+                    console.warn("移除定位控件失败", e);
+                }
+            }
+            geolocationRef.current = null;
         };
     }, []);
 
@@ -302,6 +368,64 @@ export default function MapView({ backendUrl, userId }) {
             }
         } catch (e) { /* ignore */ }
         return null;
+    };
+
+    const ensureGeolocation = async () => {
+        if (!mapRef.current || !window.AMap) {
+            throw new Error("地图尚未就绪");
+        }
+        if (geolocationRef.current) {
+            return geolocationRef.current;
+        }
+
+        return new Promise((resolve, reject) => {
+            window.AMap.plugin("AMap.Geolocation", () => {
+                try {
+                    const geolocation = new window.AMap.Geolocation({
+                        convert: true,
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0,
+                        GeoLocationFirst: true,
+                        showButton: false,
+                        showMarker: false,
+                        showCircle: false,
+                        panToLocation: false,
+                        zoomToAccuracy: false,
+                        getCityWhenFail: false
+                    });
+
+                    if (mapRef.current && typeof mapRef.current.addControl === "function") {
+                        mapRef.current.addControl(geolocation);
+                    }
+                    geolocationRef.current = geolocation;
+                    resolve(geolocation);
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        });
+    };
+
+    const ensureUserLocationMarker = (position) => {
+        if (!mapRef.current || !window.AMap) return null;
+        if (!userLocationMarkerRef.current) {
+            userLocationMarkerRef.current = new window.AMap.Marker({
+                position,
+                title: "我的位置",
+                zIndex: 3000
+            });
+            userLocationMarkerRef.current.setMap(mapRef.current);
+            if (typeof userLocationMarkerRef.current.setTop === "function") {
+                userLocationMarkerRef.current.setTop(true);
+            }
+        } else {
+            userLocationMarkerRef.current.setPosition(position);
+            if (!userLocationMarkerRef.current.getMap()) {
+                userLocationMarkerRef.current.setMap(mapRef.current);
+            }
+        }
+        return userLocationMarkerRef.current;
     };
 
     const renderMarkers = (list) => {
@@ -433,6 +557,60 @@ export default function MapView({ backendUrl, userId }) {
         setPopupPoint(null);
     };
 
+    const handleLocateMe = async () => {
+        if (!mapReady || !mapRef.current) {
+            return;
+        }
+
+        if (!canUseLocationInCurrentContext()) {
+            const message = "定位功能仅在 HTTPS 或 localhost 环境下可用。";
+            setLocationError(message);
+            alert(message);
+            return;
+        }
+
+        setLocating(true);
+        setLocationError("");
+
+        try {
+            const geolocation = await ensureGeolocation();
+            const result = await new Promise((resolve, reject) => {
+                geolocation.getCurrentPosition((status, locateResult) => {
+                    if (status === "complete" && locateResult && locateResult.position) {
+                        resolve(locateResult);
+                        return;
+                    }
+                    reject(locateResult || new Error("定位失败"));
+                });
+            });
+
+            const position = normalizeLngLat(result.position);
+            if (!position) {
+                throw new Error("定位结果缺少有效坐标");
+            }
+
+            ensureUserLocationMarker([position.lng, position.lat]);
+
+            const currentZoomRaw = Number(mapRef.current.getZoom());
+            const nextZoom = Number.isFinite(currentZoomRaw)
+                ? Math.max(currentZoomRaw, LOCATE_ME_MIN_ZOOM)
+                : LOCATE_ME_MIN_ZOOM;
+            if (typeof mapRef.current.setZoomAndCenter === "function") {
+                mapRef.current.setZoomAndCenter(nextZoom, [position.lng, position.lat]);
+            } else {
+                mapRef.current.setCenter([position.lng, position.lat]);
+                mapRef.current.setZoom(nextZoom);
+            }
+        } catch (error) {
+            const message = getLocationErrorMessage(error);
+            setLocationError(message);
+            console.error("定位失败", error);
+            alert(message);
+        } finally {
+            setLocating(false);
+        }
+    };
+
     return (
         <>
             {/* 确保地图容器有尺寸，避免 AMap 无法渲染 */}
@@ -464,18 +642,36 @@ export default function MapView({ backendUrl, userId }) {
             </div>
 
             <div style={{ position: "absolute", right: 8, bottom: 8, zIndex: 2000 }}>
-                <div style={{ display: "inline-block" }}>
-                    <Button
-                        onClick={() => setAddMode((v) => !v)}
-                        disabled={!mapReady}
-                        title={addMode ? "点击取消添加模式" : "点击后在地图上选择位置以添加地点"}
-                        style={{
-                            background: addMode ? "#f0ad4e" : undefined,
-                            color: addMode ? "#fff" : undefined
-                        }}
-                    >
-                        {addMode ? "取消添加" : "添加地点"}
-                    </Button>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+                    <Tooltip text={locationTipText} placement="top">
+                        <div style={{ display: "inline-block" }}>
+                            <Button
+                                onClick={handleLocateMe}
+                                disabled={!mapReady || locating}
+                                title="点击获取当前位置并添加标记点"
+                                style={{
+                                    background: locating ? "#4f8cff" : undefined,
+                                    borderColor: locating ? "#4f8cff" : undefined,
+                                    color: locating ? "#fff" : undefined
+                                }}
+                            >
+                                {locating ? "定位中..." : "定位我"}
+                            </Button>
+                        </div>
+                    </Tooltip>
+                    <div style={{ display: "inline-block" }}>
+                        <Button
+                            onClick={() => setAddMode((v) => !v)}
+                            disabled={!mapReady}
+                            title={addMode ? "点击取消添加模式" : "点击后在地图上选择位置以添加地点"}
+                            style={{
+                                background: addMode ? "#f0ad4e" : undefined,
+                                color: addMode ? "#fff" : undefined
+                            }}
+                        >
+                            {addMode ? "取消添加" : "添加地点"}
+                        </Button>
+                    </div>
                 </div>
             </div>
 

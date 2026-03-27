@@ -7,7 +7,7 @@ export default function AuthModal({ backendUrl, onLoginSuccess, onClose }) {
             role="presentation"
             onMouseDown={(e) => {
                 if (e.target === e.currentTarget) {
-                    setShowAuth(false);
+                    onClose && onClose();
                 }
             }}
             style={{

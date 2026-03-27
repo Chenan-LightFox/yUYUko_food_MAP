@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import MapView from "./Map";
 import AdminDashboard from "./AdminDashboard";
-import Modal from './components/Modal';
-import Button from './components/Button';
-import AuthPanel from './components/AuthPanel';
-import AuthModal from './components/AuthModal';
+import AuthPanel from "./components/AuthPanel";
+import AuthModal from "./components/AuthModal";
 
 function normalizeUrl(url) {
     return String(url).replace(/\/+$/, "");
@@ -29,13 +27,34 @@ function resolveBackendUrl() {
 
 const BACKEND_URL = resolveBackendUrl();
 
+function currentPathname() {
+    if (typeof window === "undefined") return "/";
+    return window.location.pathname || "/";
+}
+
 export default function App() {
+    const [pathname, setPathname] = useState(currentPathname());
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem("token"));
-    const [showAuth, setShowAuth] = useState(!localStorage.getItem("token")); // 如果没有 token 默认展示登录/注册
-    const [showAdmin, setShowAdmin] = useState(false);
+    const [showAuth, setShowAuth] = useState(!localStorage.getItem("token"));
 
-    // 登录成功回调
+    const goPath = useCallback((path) => {
+        if (typeof window === "undefined") return;
+        if (window.location.pathname === path) {
+            setPathname(path);
+            return;
+        }
+        window.history.pushState({}, "", path);
+        setPathname(path);
+    }, []);
+
+    const clearAuthState = useCallback(() => {
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem("token");
+        setShowAuth(true);
+    }, []);
+
     const handleLoginSuccess = (u, t) => {
         setUser(u);
         setToken(t);
@@ -43,61 +62,126 @@ export default function App() {
         setShowAuth(false);
     };
 
-    // 注销
-    const handleLogout = () => {
-        setUser(null);
-        setToken(null);
-        localStorage.removeItem("token");
-        setShowAuth(true);
-        setShowAdmin(false);
-    };
+    const handleLogout = useCallback(async () => {
+        if (token) {
+            try {
+                await fetch(`${BACKEND_URL}/users/logout`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+            } catch (e) {
+                console.warn("调用 /users/logout 失败，继续清理本地登录态", e);
+            }
+        }
+        clearAuthState();
+        goPath("/");
+    }, [token, clearAuthState, goPath]);
+
+    useEffect(() => {
+        const onPopstate = () => setPathname(currentPathname());
+        window.addEventListener("popstate", onPopstate);
+        return () => window.removeEventListener("popstate", onPopstate);
+    }, []);
+
+    useEffect(() => {
+        if (typeof document === "undefined" || typeof window === "undefined") return;
+
+        const root = document.documentElement;
+        const updateViewportHeight = () => {
+            const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            root.style.setProperty("--app-height", `${Math.round(viewportHeight)}px`);
+        };
+
+        updateViewportHeight();
+
+        const visualViewport = window.visualViewport;
+        window.addEventListener("resize", updateViewportHeight);
+        window.addEventListener("orientationchange", updateViewportHeight);
+        if (visualViewport) {
+            visualViewport.addEventListener("resize", updateViewportHeight);
+        }
+
+        return () => {
+            window.removeEventListener("resize", updateViewportHeight);
+            window.removeEventListener("orientationchange", updateViewportHeight);
+            if (visualViewport) {
+                visualViewport.removeEventListener("resize", updateViewportHeight);
+            }
+        };
+    }, []);
 
     useEffect(() => {
         // 如果有 token 但没有 user，就向后端请求 /users/me 获取用户信息
-        if (token && !user) {
-            (async () => {
-                const url = `${BACKEND_URL}/users/me`;
-                try {
-                    const res = await fetch(url, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                    if (!res.ok) {
-                        setUser(null);
-                        setToken(null);
-                        localStorage.removeItem("token");
-                        setShowAuth(true);
-                        return;
-                    }
-                    const data = await res.json();
-                    if (data && data.user) setUser(data.user);
-                } catch (e) {
-                    console.error('Failed to fetch /users/me', { url, error: e });
+        if (!token || user) return;
+
+        (async () => {
+            const url = `${BACKEND_URL}/users/me`;
+            try {
+                const res = await fetch(url, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!res.ok) {
+                    clearAuthState();
+                    return;
                 }
-            })();
+                const data = await res.json();
+                if (data && data.user) setUser(data.user);
+            } catch (e) {
+                console.error("Failed to fetch /users/me", { url, error: e });
+            }
+        })();
+    }, [token, user, clearAuthState]);
+
+    useEffect(() => {
+        // 限定本阶段只支持两个页面路径
+        if (pathname !== "/" && pathname !== "/admin") {
+            goPath("/");
         }
-    }, [token, user]);
+    }, [pathname, goPath]);
+
+    useEffect(() => {
+        // 未登录访问 /admin 时，回首页并拉起登录框
+        if (pathname === "/admin" && !token) {
+            setShowAuth(true);
+            goPath("/");
+        }
+    }, [pathname, token, goPath]);
 
     const isAuth = !!token && !!user;
     const isAdmin = !!(user && user.admin_level);
+    const showAdminPage = pathname === "/admin" && !!token;
 
     return (
-        <div style={{ height: "100vh", position: "relative" }}>
-            {/* 地图模块始终可见 */}
-            <MapView userId={user ? user.id : null} backendUrl={BACKEND_URL} />
+        <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
+            {!showAdminPage && <MapView userId={user ? user.id : null} backendUrl={BACKEND_URL} />}
 
-            {/* 登录信息面板/按钮 */}
-            <AuthPanel user={user} isAuth={isAuth} isAdmin={isAdmin} onLogout={handleLogout} onOpenAuth={() => setShowAuth(true)} onOpenAdmin={() => setShowAdmin(true)} />
-
-            {/* 登录/注册弹窗 */}
-            {showAuth && (
-                <AuthModal backendUrl={BACKEND_URL} onLoginSuccess={handleLoginSuccess} onClose={() => setShowAuth(false)} />
+            {showAdminPage && (
+                user ? (
+                    <AdminDashboard user={user} onBackHome={() => goPath("/")} onLogout={handleLogout} />
+                ) : (
+                    <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        正在验证登录状态...
+                    </div>
+                )
             )}
 
-            {/* 管理后台面板（模态层） */}
-            {showAdmin && (
-                <Modal title="管理员后台" onClose={() => setShowAdmin(false)}>
-                    <AdminDashboard user={user} />
-                </Modal>
+            {pathname === "/" && (
+                <AuthPanel
+                    user={user}
+                    isAuth={isAuth}
+                    isAdmin={isAdmin}
+                    onLogout={handleLogout}
+                    onOpenAuth={() => setShowAuth(true)}
+                    onOpenAdmin={() => goPath("/admin")}
+                />
+            )}
+
+            {showAuth && (
+                <AuthModal
+                    backendUrl={BACKEND_URL}
+                    onLoginSuccess={handleLoginSuccess}
+                    onClose={() => setShowAuth(false)}
+                />
             )}
         </div>
     );

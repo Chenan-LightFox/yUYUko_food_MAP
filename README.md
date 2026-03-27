@@ -51,6 +51,23 @@
 
 ---
 
+**管理员后台访问（第一阶段）**
+
+- 独立后台入口路径：`/admin`
+- 访问前提：用户已登录，且 `admin_level` 不为空（管理员账号）
+- 当前能力范围：仅展示当前账号管理员等级与可见权限，不包含完整管理 CRUD 面板
+- 选择 `/admin` 的原因：语义清晰，便于后续 HTTPS 同源反代与权限入口统一
+
+若部署环境需要直接访问 `/admin`，服务端需配置 SPA 回退到 `index.html`，例如 Nginx：
+
+```nginx
+location / {
+    try_files $uri $uri/ /index.html;
+}
+```
+
+---
+
 **TODO list:**
 - BUG!: 地图应用在iPhone或iPad移动端浏览器上缩放比例不正确，其他平台尚未验证
 - admins.js: 完成各级权限具体操作，添加操作日志模块

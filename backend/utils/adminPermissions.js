@@ -3,3 +3,5 @@ const PERMISSIONS = {
     YOUMU: ["manage_users_general", "manage_places", "manage_invites", "manage_comments"],
     KOMACHI: ["manage_users_general", "manage_comments"]
 };
+
+module.exports = PERMISSIONS;
