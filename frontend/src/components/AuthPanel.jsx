@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Button from './Button';
+import Tooltip from './Tooltip';
 import defaultAvatar from '../img/default.png';
 
 export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin }) {
@@ -171,7 +172,9 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
                             <div style={{ marginBottom: 6, paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: '#a2a2a2' }} />
                             
                             <div style={{ marginBottom: 8 }}>
-                                <div style={{ fontSize: 14, fontWeight: 700 }}>{user.username}</div>
+                                <div style={{ fontSize: 14, fontWeight: 700 }}>
+                                    当前用户：<Tooltip text={`用户ID：${user.id}`} placement="top">{user.username}</Tooltip>
+                                </div>
                                 <div style={{ fontSize: 12, color: '#666' }}>{user.admin_level ? `管理员：${user.admin_level}` : '普通用户'}</div>
                             </div>
 

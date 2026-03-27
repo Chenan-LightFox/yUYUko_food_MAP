@@ -681,7 +681,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                             <Button
                                 onClick={handleLocateMe}
                                 disabled={!mapReady || locating}
-                                title="点击获取当前位置并添加标记点"
+                                aria-label="点击获取当前位置并添加标记点"
                                 style={{
                                     background: locating ? "#4f8cff" : undefined,
                                     borderColor: locating ? "#4f8cff" : undefined,
@@ -698,13 +698,33 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                                 <Button
                                     onClick={handleToggleAddMode}
                                     disabled={!mapReady || authPending}
-                                    title={addPlaceTipText}
+                                    aria-label={addPlaceTipText}
                                     style={{
-                                        background: addMode ? "#f0ad4e" : undefined,
-                                        color: addMode ? "#fff" : undefined
+                                        width: 44,
+                                        height: 44,
+                                        padding: 0,
+                                        borderRadius: '50%',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        background: addMode ? '#e02424' : '#002fa7',
+                                        color: '#fff',
+                                        border: 'none',
+                                        boxShadow: addMode ? '0 4px 12px rgba(224,36,36,0.2)' : '0 4px 12px rgba(0,47,167,0.2)',
+                                        transition: 'background 180ms ease, transform 220ms ease',
+                                        cursor: (!mapReady || authPending) ? 'not-allowed' : 'pointer',
+                                        opacity: (!mapReady || authPending) ? 0.6 : 1
                                     }}
                                 >
-                                    {addMode ? "取消添加" : "添加地点"}
+                                    <span style={{
+                                        display: 'inline-block',
+                                        fontSize: 36,
+                                        fontWeight: 'bold',
+                                        marginTop: 1,
+                                        lineHeight: 1,
+                                        transform: addMode ? 'rotate(-45deg)' : 'rotate(0deg)',
+                                        transition: 'transform 220ms ease'
+                                    }}>+</span>
                                 </Button>
                             </div>
                         </Tooltip>
