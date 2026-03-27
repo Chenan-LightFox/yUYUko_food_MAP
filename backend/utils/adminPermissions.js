@@ -4,4 +4,18 @@ const PERMISSIONS = {
     KOMACHI: ["manage_users_general", "manage_comments"]
 };
 
-module.exports = PERMISSIONS;
+function getPermissionsForLevel(adminLevel) {
+    if (!adminLevel) return [];
+    return PERMISSIONS[adminLevel] || [];
+}
+
+function hasPermission(user, permission) {
+    if (!user || !permission) return false;
+    return getPermissionsForLevel(user.admin_level).includes(permission);
+}
+
+module.exports = {
+    PERMISSIONS,
+    getPermissionsForLevel,
+    hasPermission
+};
