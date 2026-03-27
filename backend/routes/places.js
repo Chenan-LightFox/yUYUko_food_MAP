@@ -4,6 +4,55 @@ const { db } = require("../db");
 const { requireAuth } = require("../middleware/auth");
 const { hasPermission } = require("../utils/adminPermissions");
 
+const PLACE_NAME_MAX_LENGTH = 120;
+const PLACE_CATEGORY_MAX_LENGTH = 60;
+const PLACE_DESCRIPTION_MAX_LENGTH = 1000;
+const HTML_TAG_PATTERN = /<\/?[a-z][^>]*>/i;
+
+function normalizePlainTextField(value, {
+    fieldLabel,
+    maxLength,
+    required = false
+}) {
+    if (value == null || value === "") {
+        if (required) {
+            return { error: `${fieldLabel}不能为空` };
+        }
+        return { value: "" };
+    }
+
+    if (typeof value !== "string") {
+        return { error: `${fieldLabel}必须是字符串` };
+    }
+
+    const normalized = value.trim();
+    if (required && !normalized) {
+        return { error: `${fieldLabel}不能为空` };
+    }
+    if (normalized.length > maxLength) {
+        return { error: `${fieldLabel}不能超过 ${maxLength} 个字符` };
+    }
+    if (HTML_TAG_PATTERN.test(normalized)) {
+        return { error: `${fieldLabel}仅支持纯文本` };
+    }
+    return { value: normalized };
+}
+
+function normalizeCoordinate(value, {
+    fieldLabel,
+    min,
+    max
+}) {
+    const numericValue = typeof value === "number" ? value : Number(value);
+    if (!Number.isFinite(numericValue)) {
+        return { error: `${fieldLabel}必须是有效数字` };
+    }
+    if (numericValue < min || numericValue > max) {
+        return { error: `${fieldLabel}超出有效范围` };
+    }
+    return { value: numericValue };
+}
+
 // 列出所有地点
 router.get("/", (req, res) => {
     db.all("SELECT * FROM Place ORDER BY created_time DESC", [], (err, rows) => {
@@ -27,10 +76,48 @@ router.get("/nearby", (req, res) => {
 router.post("/", requireAuth, (req, res) => {
     const { name, description, latitude, longitude, category } = req.body;
     const creatorId = req.user.id;
-    if (!name || !latitude || !longitude) return res.status(400).json({ error: "缺少必填字段" });
+    const normalizedName = normalizePlainTextField(name, {
+        fieldLabel: "名称",
+        maxLength: PLACE_NAME_MAX_LENGTH,
+        required: true
+    });
+    if (normalizedName.error) return res.status(400).json({ error: normalizedName.error });
+
+    const normalizedCategory = normalizePlainTextField(category, {
+        fieldLabel: "分类",
+        maxLength: PLACE_CATEGORY_MAX_LENGTH
+    });
+    if (normalizedCategory.error) return res.status(400).json({ error: normalizedCategory.error });
+
+    const normalizedDescription = normalizePlainTextField(description, {
+        fieldLabel: "描述",
+        maxLength: PLACE_DESCRIPTION_MAX_LENGTH
+    });
+    if (normalizedDescription.error) return res.status(400).json({ error: normalizedDescription.error });
+
+    const normalizedLatitude = normalizeCoordinate(latitude, {
+        fieldLabel: "纬度",
+        min: -90,
+        max: 90
+    });
+    if (normalizedLatitude.error) return res.status(400).json({ error: normalizedLatitude.error });
+
+    const normalizedLongitude = normalizeCoordinate(longitude, {
+        fieldLabel: "经度",
+        min: -180,
+        max: 180
+    });
+    if (normalizedLongitude.error) return res.status(400).json({ error: normalizedLongitude.error });
 
     const sql = `INSERT INTO Place (name, description, latitude, longitude, category, creator_id) VALUES (?, ?, ?, ?, ?, ?)`;
-    db.run(sql, [name, description || "", latitude, longitude, category || "", creatorId], function (err) {
+    db.run(sql, [
+        normalizedName.value,
+        normalizedDescription.value,
+        normalizedLatitude.value,
+        normalizedLongitude.value,
+        normalizedCategory.value,
+        creatorId
+    ], function (err) {
         if (err) return res.status(500).json({ error: err.message });
         db.get("SELECT * FROM Place WHERE id = ?", [this.lastID], (e, row) => {
             if (e) return res.status(500).json({ error: e.message });

@@ -96,6 +96,25 @@ function shouldPersistMapView(prevView, nextView) {
     return haversineDistanceMeters(prevView, nextView) >= MIN_CENTER_SAVE_DISTANCE_METERS;
 }
 
+function buildInfoWindowContent(place) {
+    const root = document.createElement("div");
+    root.style.minWidth = "160px";
+
+    const title = document.createElement("strong");
+    title.textContent = String(place?.name || "");
+    root.appendChild(title);
+
+    const description = document.createElement("div");
+    description.textContent = String(place?.description || "");
+    root.appendChild(description);
+
+    const category = document.createElement("div");
+    category.textContent = `分类: ${String(place?.category || "-")}`;
+    root.appendChild(category);
+
+    return root;
+}
+
 export default function MapView({ backendUrl, token, isAuthenticated, onRequireAuth }) {
     const containerRef = useRef(null);  // 引用地图容器
     const mapRef = useRef(null);        // 存储 AMap 实例
@@ -352,8 +371,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         } else {
             // 使用默认 InfoWindow
             try {
-                const info = `<div style="min-width:160px"><strong>${p.name}</strong><div>${p.description || ""}</div><div>分类: ${p.category || "-"}</div></div>`;
-                const infoWindow = new AMap.InfoWindow({ content: info });
+                const infoWindow = new AMap.InfoWindow({ content: buildInfoWindowContent(p) });
                 infoWindow.open(mapRef.current, [p.longitude, p.latitude]);
                 // 清除 React 层选择
                 selectedPlaceRef.current = null;
