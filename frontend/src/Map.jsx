@@ -718,10 +718,10 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                                 >
                                     <span style={{
                                         display: 'inline-block',
-                                        fontSize: 36,
+                                        fontSize: 48,
+                                        font: 'PingFang',
                                         fontWeight: 'bold',
-                                        marginTop: 1,
-                                        lineHeight: 1,
+                                        lineHeight: 0,
                                         transform: addMode ? 'rotate(-45deg)' : 'rotate(0deg)',
                                         transition: 'transform 220ms ease'
                                     }}>+</span>
