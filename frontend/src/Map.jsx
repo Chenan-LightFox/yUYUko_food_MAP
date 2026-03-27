@@ -96,7 +96,7 @@ function shouldPersistMapView(prevView, nextView) {
     return haversineDistanceMeters(prevView, nextView) >= MIN_CENTER_SAVE_DISTANCE_METERS;
 }
 
-export default function MapView({ backendUrl, userId }) {
+export default function MapView({ backendUrl, token, isAuthenticated, onRequireAuth }) {
     const containerRef = useRef(null);  // 引用地图容器
     const mapRef = useRef(null);        // 存储 AMap 实例
     const markersRef = useRef([]);      // 存储当前地图上的 marker 实例，方便更新时清除旧 marker
@@ -119,6 +119,9 @@ export default function MapView({ backendUrl, userId }) {
     const [selectedPlace, setSelectedPlace] = useState(null); // 被选中的地点对象（来自 places）
     const [popupPoint, setPopupPoint] = useState(null); // { x, y } 相对于地图容器的像素位置
     const selectedPlaceRef = useRef(null);
+    const hasToken = !!token;
+    const authPending = hasToken && !isAuthenticated;
+    const canWrite = hasToken && isAuthenticated;
 
     const tipText = mapReady ? "点击查找地点" : "地图尚未就绪，稍候再试"; // 查找功能 tooltip 提示
     const locationTipText = !mapReady
@@ -126,6 +129,13 @@ export default function MapView({ backendUrl, userId }) {
         : (locationError || (canUseLocationInCurrentContext()
             ? "点击获取当前位置并在地图上标记"
             : "定位功能仅在 HTTPS 或 localhost 环境下可用"));
+    const addPlaceTipText = !mapReady
+        ? "地图尚未就绪，稍候再试"
+        : authPending
+            ? "正在验证登录状态，请稍候再试"
+            : canWrite
+                ? (addMode ? "点击取消添加模式" : "点击后在地图上选择位置以添加地点")
+                : "登录后才能添加地点";
 
     // 同步 ref，以便地图上的 click handler 总能读取到最新的 addMode
     useEffect(() => {
@@ -134,6 +144,12 @@ export default function MapView({ backendUrl, userId }) {
             containerRef.current.style.cursor = addMode ? "crosshair" : "";
         }
     }, [addMode]);
+
+    useEffect(() => {
+        if (canWrite) return;
+        if (addMode) setAddMode(false);
+        if (addingPos) setAddingPos(null);
+    }, [canWrite, addMode, addingPos]);
 
     useEffect(() => {
         let pollTimer = null;
@@ -465,20 +481,28 @@ export default function MapView({ backendUrl, userId }) {
     }, [searchResults, places]);
 
     const submitPlace = async (payload) => {
+        if (!token) {
+            onRequireAuth && onRequireAuth();
+            return;
+        }
+
         try {
             const res = await fetch(`${backendUrl}/places`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "X-User-Id": String(userId)
+                    Authorization: `Bearer ${token}`
                 },
                 body: JSON.stringify(payload)
             });
             if (!res.ok) {
+                if (res.status === 401) {
+                    onRequireAuth && onRequireAuth();
+                }
                 const text = await res.text().catch(() => "");
                 throw new Error(`后端错误 ${res.status} ${res.statusText} ${text}`);
             }
-            const saved = await res.json();
+            await res.json();
             setAddingPos(null);
             // 重新加载数据并清除搜索结果（若正在搜索）
             await loadPlaces();
@@ -541,6 +565,15 @@ export default function MapView({ backendUrl, userId }) {
         setSearchResults(null);
         setSearching(false);
         await loadPlaces();
+    };
+
+    const handleToggleAddMode = () => {
+        if (!mapReady || authPending) return;
+        if (!canWrite) {
+            onRequireAuth && onRequireAuth();
+            return;
+        }
+        setAddMode((v) => !v);
     };
 
     const handleCreateAtCenter = () => {
@@ -660,17 +693,21 @@ export default function MapView({ backendUrl, userId }) {
                         </div>
                     </Tooltip>
                     <div style={{ display: "inline-block" }}>
-                        <Button
-                            onClick={() => setAddMode((v) => !v)}
-                            disabled={!mapReady}
-                            title={addMode ? "点击取消添加模式" : "点击后在地图上选择位置以添加地点"}
-                            style={{
-                                background: addMode ? "#f0ad4e" : undefined,
-                                color: addMode ? "#fff" : undefined
-                            }}
-                        >
-                            {addMode ? "取消添加" : "添加地点"}
-                        </Button>
+                        <Tooltip text={addPlaceTipText} placement="top">
+                            <div style={{ display: "inline-block" }}>
+                                <Button
+                                    onClick={handleToggleAddMode}
+                                    disabled={!mapReady || authPending}
+                                    title={addPlaceTipText}
+                                    style={{
+                                        background: addMode ? "#f0ad4e" : undefined,
+                                        color: addMode ? "#fff" : undefined
+                                    }}
+                                >
+                                    {addMode ? "取消添加" : "添加地点"}
+                                </Button>
+                            </div>
+                        </Tooltip>
                     </div>
                 </div>
             </div>

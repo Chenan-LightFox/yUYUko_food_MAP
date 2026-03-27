@@ -153,7 +153,14 @@ export default function App() {
 
     return (
         <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
-            {!showAdminPage && <MapView userId={user ? user.id : null} backendUrl={BACKEND_URL} />}
+            {!showAdminPage && (
+                <MapView
+                    backendUrl={BACKEND_URL}
+                    token={token}
+                    isAuthenticated={isAuth}
+                    onRequireAuth={() => setShowAuth(true)}
+                />
+            )}
 
             {showAdminPage && (
                 user ? (
