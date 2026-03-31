@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useMemo } from "react";
 import Button from "./components/Button";
+import AdminPlaces from "./admin/AdminPlaces";
 
 const PERMISSIONS = {
     YUYUKO: ["用户管理", "普通用户管理", "标记点管理", "邀请码管理", "评论管理"],
@@ -7,13 +8,15 @@ const PERMISSIONS = {
     KOMACHI: ["普通用户管理", "评论管理"]
 };
 
-export default function AdminDashboard({ user, onBackHome, onLogout }) {
+export default function AdminDashboard({ user, token, backendUrl, onBackHome, onLogout, onRequireAuth }) {
     const level = user && user.admin_level ? user.admin_level : null;
     const perms = level ? (PERMISSIONS[level] || []) : [];
 
+    const canManagePlaces = useMemo(() => !!(user && user.admin_level), [user]);
+
     return (
         <div style={{ minHeight: "var(--app-height, 100vh)", background: "#f6f7f9", padding: 20, boxSizing: "border-box" }}>
-            <div style={{ maxWidth: 760, margin: "0 auto" }}>
+            <div style={{ maxWidth: 960, margin: "0 auto" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                     <h2 style={{ margin: 0 }}>管理员后台</h2>
                     <div>
@@ -39,6 +42,13 @@ export default function AdminDashboard({ user, onBackHome, onLogout }) {
                         <div style={{ color: "#b00020" }}>当前账号不是管理员，无法访问后台功能。</div>
                     )}
                 </div>
+
+                {/* Places management panel */}
+                {canManagePlaces && (
+                    <div style={{ marginTop: 18, background: '#fff', padding: 12, borderRadius: 8 }}>
+                        <AdminPlaces backendUrl={backendUrl} token={token} user={user} onRequireAuth={onRequireAuth} />
+                    </div>
+                )}
             </div>
         </div>
     );

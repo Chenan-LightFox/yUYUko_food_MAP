@@ -105,7 +105,6 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 	const addModeRef = useRef(false);   // 用于在地图事件中读取最新的添加模式状态
 	const saveViewTimerRef = useRef(null);  // 记录视野持久化防抖 timer
 	const lastSavedViewRef = useRef(null);  // 缓存最后一次成功持久化的视野
-
 	const [addingPos, setAddingPos] = useState(null);   // 点击地图后要添加地点的位置
 	const [places, setPlaces] = useState([]);           // 当前加载的地点列表
 	const [mapReady, setMapReady] = useState(false);    // 地图是否初始化完毕
@@ -115,13 +114,19 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 	const [searching, setSearching] = useState(false);  // 是否正在搜索中
 	const [locating, setLocating] = useState(false);    // 是否正在定位中
 	const [locationError, setLocationError] = useState("");  // 最近一次定位错误，供 tooltip 提示
-
+    const [currentUser, setCurrentUser] = useState(null);       // 当前用户信息
+    const [fetchingUser, setFetchingUser] = useState(false);    // 当前用户信息是否正在加载中
 	const [selectedPlace, setSelectedPlace] = useState(null); // 被选中的地点对象（来自 places）
 	const [popupPoint, setPopupPoint] = useState(null); // { x, y } 相对于地图容器的像素位置
 	const selectedPlaceRef = useRef(null);
 	const hasToken = !!token;
 	const authPending = hasToken && !isAuthenticated;
     const canWrite = hasToken && isAuthenticated;
+
+	const [manageOpen, setManageOpen] = useState(false);             // 地点管理面板是否开启
+	const [manageEdit, setManageEdit] = useState({ name: "", category: "", description: "" }); // 地点管理信息
+    const [manageSubmitting, setManageSubmitting] = useState(false); // 地点管理提交状态
+    const [manageMessage, setManageMessage] = useState("");          // 地点管理反馈消息
 
     const customThemeColor = '#002fa7';
 
@@ -152,6 +157,35 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 		if (addMode) setAddMode(false);
 		if (addingPos) setAddingPos(null);
 	}, [canWrite, addMode, addingPos]);
+
+	// 当 token 可用时尝试获取当前用户（用于判断是否有 admin 权限 / id）
+	useEffect(() => {
+		let active = true;
+		if (!token) {
+			setCurrentUser(null);
+			return;
+		}
+		if (currentUser) return; // 已有就不用重复请求
+		(async () => {
+			setFetchingUser(true);
+			try {
+				const res = await fetch(`${backendUrl}/users/me`, {
+					headers: { Authorization: `Bearer ${token}` }
+				});
+				if (!res.ok) {
+					setCurrentUser(null);
+					return;
+				}
+				const data = await res.json();
+				if (active && data && data.user) setCurrentUser(data.user);
+			} catch (e) {
+				console.warn("获取当前用户失败", e);
+			} finally {
+				setFetchingUser(false);
+			}
+		})();
+		return () => { active = false; };
+	}, [token, backendUrl, currentUser]);
 
 	useEffect(() => {
 		let pollTimer = null;
@@ -590,6 +624,8 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 		selectedPlaceRef.current = null;
 		setSelectedPlace(null);
 		setPopupPoint(null);
+		setManageOpen(false);
+		setManageMessage("");
 	};
 
 	const handleLocateMe = async () => {
@@ -643,6 +679,157 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 			alert(message);
 		} finally {
 			setLocating(false);
+		}
+	};
+
+	// 尝试从 selectedPlace 中读出最后修改人/时间，兼容多种字段名
+	const getLastModifierText = (place) => {
+		if (!place) return "-";
+		const by = place.updated_by || place.updated_by_name || place.modified_by || place.last_modified_by || place.updater || place.updater_name || place.updated_by_name || place.creator_name || null;
+		const rawDate = place.updated_at || place.updated_time || place.modified_time || place.last_modified_at || place.modifiedAt || place.updatedAt || place.created_time || null;
+		let when = "-";
+		if (rawDate) {
+			try {
+				const d = (typeof rawDate === "number" || /^\d+$/.test(String(rawDate))) ? new Date(Number(rawDate)) : new Date(String(rawDate));
+				if (!isNaN(d.getTime())) {
+					when = d.toLocaleString();
+				}
+			} catch (e) { /* ignore */ }
+		}
+		return `${by || "-" } · ${when}`;
+	};
+
+	// 打开管理面板（依据当前用户权限选择直接编辑或提交申请）
+	const openManagePanel = async () => {
+		if (!selectedPlace) return;
+		if (!token) {
+			onRequireAuth && onRequireAuth();
+			return;
+		}
+		// currentUser 可能尚未获取（useEffect 会触发），尝试再次请求确保
+		if (!currentUser && !fetchingUser) {
+			try {
+				setFetchingUser(true);
+				const res = await fetch(`${backendUrl}/users/me`, { headers: { Authorization: `Bearer ${token}` }});
+				if (res.ok) {
+					const data = await res.json();
+					if (data && data.user) setCurrentUser(data.user);
+				}
+			} catch (e) {
+				console.warn("获取当前用户失败", e);
+			} finally {
+				setFetchingUser(false);
+			}
+		}
+		// 填充编辑缓存
+		setManageEdit({ name: selectedPlace.name || "", category: selectedPlace.category || "", description: selectedPlace.description || "" });
+		setManageMessage("");
+		setManageOpen(true);
+	};
+
+	// 判断当前用户是否可直接管理
+	const canDirectManage = () => {
+		if (!selectedPlace || !currentUser) return false;
+		const isCreator = String(selectedPlace.creator_id) === String(currentUser.id);
+		const isAdmin = !!(currentUser && currentUser.admin_level);
+		return isCreator || isAdmin;
+	};
+
+	// 直接删除
+	const handleDirectDelete = async () => {
+		if (!selectedPlace) return;
+		if (!token) { onRequireAuth && onRequireAuth(); return; }
+		if (!window.confirm("确认删除此地点？此操作不可恢复。")) return;
+		setManageSubmitting(true);
+		try {
+			const res = await fetch(`${backendUrl}/places/${selectedPlace.id}`, {
+				method: "DELETE",
+				headers: { Authorization: `Bearer ${token}` }
+			});
+			const data = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				throw new Error(data.error || (`删除失败 ${res.status}`));
+			}
+			// 关闭面板并刷新列表
+			setManageMessage("已删除");
+			setManageOpen(false);
+			closePopup();
+			await loadPlaces();
+		} catch (e) {
+			console.error("删除失败", e);
+			setManageMessage("删除失败：" + (e.message || e));
+		} finally {
+			setManageSubmitting(false);
+		}
+	};
+
+	// 直接更新
+	const handleDirectUpdate = async () => {
+		if (!selectedPlace) return;
+		if (!token) { onRequireAuth && onRequireAuth(); return; }
+		setManageSubmitting(true);
+		try {
+			// 注意：后端需实现 PUT /places/:id 接口，此处按常规 REST 方式调用
+			const payload = {
+				name: (manageEdit.name || "").trim(),
+				category: (manageEdit.category || "").trim(),
+				description: (manageEdit.description || "").trim()
+			};
+			const res = await fetch(`${backendUrl}/places/${selectedPlace.id}`, {
+				method: "PUT",
+				headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+				body: JSON.stringify(payload)
+			});
+			const data = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				if (res.status === 401) onRequireAuth && onRequireAuth();
+				throw new Error(data.error || (`更新失败 ${res.status}`));
+			}
+			// 刷新并关闭
+			setManageMessage("已更新");
+			setManageOpen(false);
+			closePopup();
+			await loadPlaces();
+		} catch (e) {
+			console.error("更新失败", e);
+			setManageMessage("更新失败：" + (e.message || e));
+		} finally {
+			setManageSubmitting(false);
+		}
+	};
+
+	// 提交修改申请 -> 提交到管理员后台由管理员审核
+	const handleSubmitModifyRequest = async () => {
+		if (!selectedPlace) return;
+		if (!token) { onRequireAuth && onRequireAuth(); return; }
+		setManageSubmitting(true);
+		try {
+			const payload = {
+				place_id: selectedPlace.id,
+				proposed: {
+					name: (manageEdit.name || "").trim(),
+					category: (manageEdit.category || "").trim(),
+					description: (manageEdit.description || "").trim()
+				},
+				note: "用户提交地点信息修改申请"
+			};
+			const res = await fetch(`${backendUrl}/place-requests`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+				body: JSON.stringify(payload)
+			});
+			const data = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				if (res.status === 401) onRequireAuth && onRequireAuth();
+				throw new Error(data.error || (`申请提交失败 ${res.status}`));
+			}
+			setManageMessage("申请已提交，管理员将会审核。");
+			setManageOpen(false);
+		} catch (e) {
+			console.error("提交申请失败", e);
+			setManageMessage("提交申请失败：" + (e.message || e));
+		} finally {
+			setManageSubmitting(false);
 		}
 	};
 
@@ -810,11 +997,64 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 						</div>
 						<div style={{ marginTop: 6, fontSize: 13 }}>{selectedPlace.description || ""}</div>
 						<div style={{ marginTop: 6, color: "#666", fontSize: 12 }}>分类: {selectedPlace.category || "-"}</div>
+
+						{/* 新增：最近修改者与时间行 */}
+						<div style={{ marginTop: 8, color: "#888", fontSize: 12 }}>
+							最近修改：{getLastModifierText(selectedPlace)}
+						</div>
+
 						<div style={{ marginTop: 8, textAlign: "right" }}>
 							<Tooltip text="管理此地点">
-								<Button onClick={() => { /* TODO: 打开管理或详情面板 */ }}>管理</Button>
+								<Button onClick={openManagePanel}>管理</Button>
 							</Tooltip>
 						</div>
+					</div>
+				</div>
+			)}
+
+			{/* 管理面板（弹出） */}
+			{manageOpen && selectedPlace && (
+				<div style={{
+					position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
+					background: "#fff", padding: 12, zIndex: 5000, borderRadius: 6, boxShadow: "0 4px 18px rgba(0,0,0,0.35)",
+					minWidth: 360, maxWidth: "90%"
+				}}>
+					<h4 style={{ margin: 0 }}>管理地点 — {selectedPlace.name}</h4>
+					<div style={{ marginTop: 8, color: "#333" }}>
+						{/* 编辑内容 */}
+						<div>
+							<label style={{ display: "block", fontSize: 12, color: "#666" }}>名称</label>
+							<input value={manageEdit.name} onChange={(e) => setManageEdit(me => ({ ...me, name: e.target.value }))} style={{ width: "100%" }} />
+						</div>
+						<div style={{ marginTop: 8 }}>
+							<label style={{ display: "block", fontSize: 12, color: "#666" }}>分类</label>
+							<input value={manageEdit.category} onChange={(e) => setManageEdit(me => ({ ...me, category: e.target.value }))} style={{ width: "100%" }} />
+						</div>
+						<div style={{ marginTop: 8 }}>
+							<label style={{ display: "block", fontSize: 12, color: "#666" }}>描述</label>
+							<textarea value={manageEdit.description} onChange={(e) => setManageEdit(me => ({ ...me, description: e.target.value }))} style={{ width: "100%" }} />
+						</div>
+
+						{/* 根据权限显示不同操作 */}
+						<div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+							<div style={{ color: "#888", fontSize: 12 }}>
+								{canDirectManage() ? "您是创建者或管理员，可直接修改或删除。" : "您不是创建者，提交修改申请后由管理员审核。"}
+							</div>
+							<div>
+								<Button onClick={() => { setManageOpen(false); setManageMessage(""); }} style={{ marginRight: 8 }}>取消</Button>
+
+								{canDirectManage() ? (
+									<>
+										<Button onClick={handleDirectUpdate} disabled={manageSubmitting} style={{ marginRight: 8 }}>保存</Button>
+										<Button onClick={handleDirectDelete} disabled={manageSubmitting} style={{ background: "#e02424", color: "#fff" }}>删除</Button>
+									</>
+								) : (
+									<Button onClick={handleSubmitModifyRequest} disabled={manageSubmitting}>提交申请</Button>
+								)}
+							</div>
+						</div>
+
+						{manageMessage && <div style={{ marginTop: 8, color: "#c33" }}>{manageMessage}</div>}
 					</div>
 				</div>
 			)}

@@ -10,6 +10,12 @@ function extractBearerToken(req) {
     return auth.slice(7).trim();
 }
 
+function maskToken(t) {
+    if (!t) return '-';
+    if (t.length <= 20) return t;
+    return t.slice(0, 10) + '...' + t.slice(-6);
+}
+
 function loadUserById(userId) {
     return new Promise((resolve, reject) => {
         db.get("SELECT id, username, admin_level FROM User WHERE id = ?", [userId], (err, row) => {
@@ -21,12 +27,14 @@ function loadUserById(userId) {
 
 async function requireAuth(req, res, next) {
     const token = extractBearerToken(req);
+    console.log('[AUTH MW] incoming token:', maskToken(token));
     if (!token) return res.status(401).json({ error: "未提供授权 token" });
 
     let payload;
     try {
         payload = jwt.verify(token, JWT_SECRET);
     } catch (e) {
+        console.warn('[AUTH MW] jwt verify failed:', e && e.message);
         return res.status(401).json({ error: "无效或已过期的 token" });
     }
 
@@ -35,7 +43,9 @@ async function requireAuth(req, res, next) {
 
     try {
         const sessionToken = await redis.get(`session:${userId}`);
+        console.log('[AUTH MW] redis session for user', userId, 'present:', !!sessionToken, 'session:', maskToken(sessionToken));
         if (!sessionToken || sessionToken !== token) {
+            console.warn('[AUTH MW] session token mismatch or missing');
             return res.status(401).json({ error: "登录状态已失效，请重新登录" });
         }
 
@@ -46,6 +56,7 @@ async function requireAuth(req, res, next) {
         req.token = token;
         return next();
     } catch (err) {
+        console.error('[AUTH MW] auth error', err && err.message);
         return res.status(500).json({ error: "鉴权失败", detail: err.message });
     }
 }
