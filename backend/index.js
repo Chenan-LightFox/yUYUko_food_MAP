@@ -8,6 +8,7 @@ const commentsRouter = require("./routes/comments");
 const usersRouter = require("./routes/users");
 const searchRouter = require('./routes/search');
 const adminUsersRouter = require("./routes/admin/adminUsers");
+const adminInvitesRouter = require("./routes/admin/adminInvites");
 const placeRequestsRouter = require("./routes/placeRequests");
 const { requireAuth } = require("./middleware/auth");
 
@@ -58,7 +59,12 @@ app.use(cors({
     maxAge: 3600
 }));
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// mount admin routers under /admin
 app.use("/admin/users", requireAuth, adminUsersRouter);
+app.use("/admin/invites", requireAuth, adminInvitesRouter);
 
 
 init();

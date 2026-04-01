@@ -1,6 +1,8 @@
 import React, { useMemo } from "react";
 import Button from "./components/Button";
 import AdminPlaces from "./admin/AdminPlaces";
+import AdminUsers from "./admin/AdminUsers";
+import AdminInvitecode from "./admin/AdminInvitecodes";
 
 const PERMISSIONS = {
     YUYUKO: ["用户管理", "普通用户管理", "标记点管理", "邀请码管理", "评论管理"],
@@ -13,6 +15,8 @@ export default function AdminDashboard({ user, token, backendUrl, onBackHome, on
     const perms = level ? (PERMISSIONS[level] || []) : [];
 
     const canManagePlaces = useMemo(() => !!(user && user.admin_level), [user]);
+    const canManageUsers = useMemo(() => perms.includes("用户管理"), [perms]);
+    const canManageInvites = useMemo(() => perms.includes("邀请码管理"), [perms]);
 
     return (
         <div style={{ minHeight: "var(--app-height, 100vh)", background: "#f6f7f9", padding: 20, boxSizing: "border-box" }}>
@@ -43,10 +47,24 @@ export default function AdminDashboard({ user, token, backendUrl, onBackHome, on
                     )}
                 </div>
 
+                {/* Users management panel */}
+                {canManageUsers && (
+                    <div style={{ marginTop: 18, background: '#fff', padding: 12, borderRadius: 8 }}>
+                        <AdminUsers backendUrl={backendUrl} token={token} user={user} onRequireAuth={onRequireAuth} />
+                    </div>
+                )}
+
                 {/* Places management panel */}
                 {canManagePlaces && (
                     <div style={{ marginTop: 18, background: '#fff', padding: 12, borderRadius: 8 }}>
                         <AdminPlaces backendUrl={backendUrl} token={token} user={user} onRequireAuth={onRequireAuth} />
+                    </div>
+                )}
+
+                {/* Invite codes management panel */}
+                {canManageInvites && (
+                    <div style={{ marginTop: 18, background: '#fff', padding: 12, borderRadius: 8 }}>
+                        <AdminInvitecode backendUrl={backendUrl} token={token} user={user} onRequireAuth={onRequireAuth} />
                     </div>
                 )}
             </div>

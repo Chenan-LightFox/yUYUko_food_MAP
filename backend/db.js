@@ -127,6 +127,23 @@ function init() {
                     if (e) console.warn('Failed to create idx_placerequest_requester_id:', e.message);
                 });
             });
+
+            // Ensure InviteCode table exists for invite management
+            db.run(`CREATE TABLE IF NOT EXISTS "InviteCode" (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT,
+                max_uses INTEGER DEFAULT 1,
+                current_uses INTEGER DEFAULT 0,
+                created_time DATETIME DEFAULT CURRENT_TIMESTAMP
+            );`, [], (err) => {
+                if (err) {
+                    console.warn('Failed to create InviteCode table:', err.message);
+                    return;
+                }
+                db.run(`CREATE INDEX IF NOT EXISTS idx_invitecode_code ON InviteCode(code);`, [], (e) => {
+                    if (e) console.warn('Failed to create idx_invitecode_code:', e.message);
+                });
+            });
         }
 
     });
