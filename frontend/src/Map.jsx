@@ -3,6 +3,7 @@ import * as MapUtils from './map/utils';
 import * as Api from './map/api';
 import { renderMarkers } from './map/markers';
 import MapUI from './map/MapUI';
+import CommentPanel from './map/CommentPanel';
 
 const DEFAULT_CENTER = MapUtils.DEFAULT_CENTER;
 const DEFAULT_ZOOM = MapUtils.DEFAULT_ZOOM;
@@ -29,6 +30,12 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     const [fetchingUser, setFetchingUser] = useState(false);
 	const [selectedPlace, setSelectedPlace] = useState(null);
 	const [popupPoint, setPopupPoint] = useState(null);
+	const [commentOpen, setCommentOpen] = useState(false);
+	const [commentsList, setCommentsList] = useState([]);
+	const [commentsLoading, setCommentsLoading] = useState(false);
+	const [commentMessage, setCommentMessage] = useState("");
+	const [newComment, setNewComment] = useState("");
+	const [commentSubmitting, setCommentSubmitting] = useState(false);
 	const selectedPlaceRef = useRef(null);
 	const hasToken = !!token;
 	const authPending = hasToken && !isAuthenticated;
@@ -650,41 +657,124 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 		}
 	};
 
+	const openCommentPanel = async () => {
+		if (!selectedPlace) return;
+		setCommentMessage("");
+		if (!token) {
+			onRequireAuth && onRequireAuth();
+			return;
+		}
+		setCommentOpen(true);
+		await fetchComments();
+	};
+
+	const closeCommentPanel = () => {
+		setCommentOpen(false);
+		setCommentsList([]);
+		setNewComment("");
+		setCommentMessage("");
+	};
+
+	const fetchComments = async () => {
+		if (!selectedPlace) return;
+		setCommentsLoading(true);
+		setCommentMessage("");
+		try {
+			const res = await fetch(`${backendUrl}/comments/place/${selectedPlace.id}`);
+			if (!res.ok) throw new Error(`fetch comments failed ${res.status}`);
+			const data = await res.json();
+			setCommentsList(data || []);
+		} catch (e) {
+			console.error('fetchComments error', e);
+			setCommentMessage('加载评论失败');
+		} finally {
+			setCommentsLoading(false);
+		}
+	};
+
+	const submitComment = async () => {
+		if (!selectedPlace) return;
+		if (!token) { onRequireAuth && onRequireAuth(); return; }
+		if (!newComment || !newComment.trim()) return;
+		setCommentSubmitting(true);
+		setCommentMessage("");
+		try {
+			const res = await fetch(`${backendUrl}/comments`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+				body: JSON.stringify({ place_id: selectedPlace.id, content: newComment.trim() })
+			});
+			const data = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				if (res.status === 401) { onRequireAuth && onRequireAuth(); return; }
+				throw new Error(data.error || `post failed ${res.status}`);
+			}
+			// prepend new comment
+			setCommentsList(list => [data, ...list]);
+			setNewComment("");
+			setCommentMessage('已发布');
+		} catch (e) {
+			console.error('submitComment failed', e);
+			setCommentMessage('发布失败：' + (e.message || e));
+		} finally {
+			setCommentSubmitting(false);
+		}
+	};
+
 	return (
-		<MapUI
-			containerRef={containerRef}
-			searchTerm={searchTerm}
-			setSearchTerm={setSearchTerm}
-			clearSearch={clearSearch}
-			searchServer={searchServer}
-			mapReady={mapReady}
-			searching={searching}
-			tipText={tipText}
-			customThemeColor={customThemeColor}
-			authPending={authPending}
-			handleLocateMe={handleLocateMe}
-			locating={locating}
-			addMode={addMode}
-			handleToggleAddMode={handleToggleAddMode}
-			addPlaceTipText={addPlaceTipText}
-			popupPoint={popupPoint}
-			selectedPlace={selectedPlace}
-			getLastModifierText={getLastModifierText}
-			openManagePanel={openManagePanel}
-			closePopup={closePopup}
-			manageOpen={manageOpen}
-			manageEdit={manageEdit}
-			setManageEdit={setManageEdit}
-			manageSubmitting={manageSubmitting}
-			manageMessage={manageMessage}
-			canDirectManage={canDirectManage}
-			onManageClose={() => { setManageOpen(false); setManageMessage(""); }}
-			onManageSave={handleDirectUpdate}
-			onManageDelete={handleDirectDelete}
-			onManageSubmitRequest={handleSubmitModifyRequest}
-			addingPos={addingPos}
-			onAddCancel={() => { setAddingPos(null); setAddMode(false); }}
-			onAddSubmit={submitPlace}
-		/>
+		<>
+			<MapUI
+				containerRef={containerRef}
+				searchTerm={searchTerm}
+				setSearchTerm={setSearchTerm}
+				clearSearch={clearSearch}
+				searchServer={searchServer}
+				mapReady={mapReady}
+				searching={searching}
+				tipText={tipText}
+				customThemeColor={customThemeColor}
+				authPending={authPending}
+				handleLocateMe={handleLocateMe}
+				locating={locating}
+				addMode={addMode}
+				handleToggleAddMode={handleToggleAddMode}
+				addPlaceTipText={addPlaceTipText}
+				popupPoint={popupPoint}
+				selectedPlace={selectedPlace}
+				getLastModifierText={getLastModifierText}
+				openManagePanel={openManagePanel}
+				openCommentPanel={openCommentPanel}
+				closePopup={closePopup}
+				manageOpen={manageOpen}
+				manageEdit={manageEdit}
+				setManageEdit={setManageEdit}
+				manageSubmitting={manageSubmitting}
+				manageMessage={manageMessage}
+				canDirectManage={canDirectManage}
+				onManageClose={() => { setManageOpen(false); setManageMessage(""); }}
+				onManageSave={handleDirectUpdate}
+				onManageDelete={handleDirectDelete}
+				onManageSubmitRequest={handleSubmitModifyRequest}
+				addingPos={addingPos}
+				onAddCancel={() => { setAddingPos(null); setAddMode(false); }}
+				onAddSubmit={submitPlace}
+			/>
+
+			{commentOpen && selectedPlace && (
+				<CommentPanel
+					place={selectedPlace}
+					comments={commentsList}
+					loading={commentsLoading}
+					message={commentMessage}
+					newComment={newComment}
+					setNewComment={setNewComment}
+					submitting={commentSubmitting}
+					onClose={closeCommentPanel}
+					onRefresh={fetchComments}
+					onSubmit={submitComment}
+					canPost={isAuthenticated}
+				/>
+			)}
+		</>
 	);
 }

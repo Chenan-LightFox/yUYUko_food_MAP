@@ -9,16 +9,17 @@ export default function Button({ children, onClick, disabled, style, title }) {
         cursor: 'pointer'
     };
 
+    const userStyle = style || {};
     // Merge base and user style first
-    const merged = { ...base, ...(style || {}) };
+    const merged = { ...base, ...userStyle };
 
-    // If disabled, enforce disabled appearance (override any user-provided colors)
+    // If disabled, apply disabled appearance but do not override explicit user-provided colors/styles
     if (disabled) {
-        merged.background = '#f5f5f5';
-        merged.color = merged.color || '#999';
-        merged.border = merged.border || '1px solid #e6e6e6';
+        if (userStyle.background === undefined) merged.background = '#f5f5f5';
+        if (userStyle.color === undefined) merged.color = '#999';
+        if (userStyle.border === undefined) merged.border = '1px solid #e6e6e6';
         merged.cursor = 'not-allowed';
-        merged.opacity = merged.opacity || 0.9;
+        if (userStyle.opacity === undefined) merged.opacity = 0.9;
     }
 
     return (

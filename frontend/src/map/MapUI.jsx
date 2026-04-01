@@ -25,6 +25,7 @@ export default function MapUI(props) {
         selectedPlace,
         getLastModifierText,
         openManagePanel,
+        openCommentPanel,
         closePopup,
         manageOpen,
         manageEdit,
@@ -180,6 +181,10 @@ export default function MapUI(props) {
                         </div>
 
                         <div style={{ marginTop: 8, textAlign: "right" }}>
+                            <Tooltip text="在这里留下你的评论">
+                                <Button onClick={openCommentPanel}>评论</Button>
+                            </Tooltip>
+                            <span style={{ padding: 4 }}></span>
                             <Tooltip text="管理此地点">
                                 <Button onClick={openManagePanel}>管理</Button>
                             </Tooltip>
