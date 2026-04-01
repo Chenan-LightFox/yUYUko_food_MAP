@@ -9,6 +9,8 @@ const usersRouter = require("./routes/users");
 const searchRouter = require('./routes/search');
 const adminUsersRouter = require("./routes/admin/adminUsers");
 const adminInvitesRouter = require("./routes/admin/adminInvites");
+const adminCommentsRouter = require("./routes/admin/adminComments");
+const adminGeneralUsersRouter = require("./routes/admin/adminGeneralUsers");
 const placeRequestsRouter = require("./routes/placeRequests");
 const { requireAuth } = require("./middleware/auth");
 
@@ -65,6 +67,8 @@ app.use(express.urlencoded({ extended: true }));
 // mount admin routers under /admin
 app.use("/admin/users", requireAuth, adminUsersRouter);
 app.use("/admin/invites", requireAuth, adminInvitesRouter);
+app.use("/admin/comments", requireAuth, adminCommentsRouter);
+app.use("/admin/general-users", requireAuth, adminGeneralUsersRouter);
 
 
 init();
