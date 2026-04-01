@@ -72,5 +72,3 @@ location / {
 - admins.js: 添加操作日志模块
 - AdminDashboard.js: 美化管理员后台界面设计，完善权限展示与操作反馈
 - Map.jsx: 修改为自己的Marker图标
-- imp!: 目前主地图页面已基本完成美化，后续完善管理员后台和登录界面的美化设计
-- imp!: 在服务器上用 HTTPS 终端反向代理到后端，前端通过同源或`https://`后端调用

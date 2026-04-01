@@ -45,14 +45,11 @@ app.use(cors({
     origin: (origin, callback) => {
         // origin 为空时（例如某些本地请求或 curl），允许通过
         if (!origin) {
-            console.log('[CORS] origin absent -> allowed');
             return callback(null, true);
         }
         if (isAllowedOrigin(origin)) {
-            console.log(`[CORS] Allowed origin: ${origin}`);
             return callback(null, true);
         }
-        console.warn(`[CORS] Blocked origin: ${origin}`);
         return callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

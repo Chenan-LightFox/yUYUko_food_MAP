@@ -219,7 +219,9 @@ export default function AdminUsers({ backendUrl = null }) {
                                         </select>
                                     </td>
                                     <td>
-                                        <Button onClick={() => deleteUser(u.id)} disabled={isSelf || isSuper} style={{ background: '#e02424', color: '#ffffff' }}>删除</Button>
+                                        {isSuper ? null : (
+                                            <Button onClick={() => deleteUser(u.id)} disabled={isSelf} style={{ background: '#e02424', color: '#ffffff' }}>删除</Button>
+                                        )}
                                     </td>
                                 </tr>
                             )
