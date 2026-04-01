@@ -16,16 +16,26 @@ const { requireAuth } = require("./middleware/auth");
 
 
 const app = express();
+// When running behind an HTTPS reverse proxy (e.g. nginx), enable trust proxy
+// so Express respects X-Forwarded-* headers and req.secure reflects the original protocol.
+app.set('trust proxy', true);
+
 const HOST = process.env.HOST || "0.0.0.0";
 const PORT = process.env.PORT || 3000;
 
 const STATIC_ALLOWED_ORIGINS = [
     "http://8.210.201.2",
+    "https://8.210.201.2",
     "http://8.210.201.2:3000",
+    "https://8.210.201.2:3000",
     "http://localhost:3000",
+    "https://localhost:3000",
     "http://localhost:5173",
+    "https://localhost:5173",
     "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173"
+    "https://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "https://127.0.0.1:5173"
 ];
 const EXTRA_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || "")
     .split(",")
