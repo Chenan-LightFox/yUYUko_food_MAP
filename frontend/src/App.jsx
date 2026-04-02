@@ -3,7 +3,7 @@ import MapView from "./Map";
 import AdminDashboard from "./AdminDashboard";
 import AuthPanel from "./components/AuthPanel";
 import AuthModal from "./components/AuthModal";
-import { AuthProvider } from "./AuthContext";
+import { AuthProvider, useAuth } from "./AuthContext";
 
 function normalizeUrl(url) {
     return String(url).replace(/\/+$/, "");
@@ -33,6 +33,38 @@ function currentPathname() {
     return window.location.pathname || "/";
 }
 
+function BanNotice() {
+    const { user } = useAuth();
+    if (!user || !user.is_banned) return null;
+    const reason = user.ban_reason || '无';
+    const expires = user.ban_expires ? (new Date(user.ban_expires)).toLocaleString() : '永久';
+    const style = {
+        position: 'absolute',
+        top: 12,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '55%',
+        maxWidth: '960px',
+        minWidth: '280px',
+        zIndex: 9999,
+        padding: '12px 16px',
+        borderRadius: 8,
+        background: '#fff6f6',
+        border: '1px solid #ffd6d6',
+        color: '#8b0000',
+        textAlign: 'center',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
+    };
+
+    return (
+        <div style={style}>
+            <div style={{ fontWeight: 700 }}>账号已被封禁</div>
+            <div style={{ fontSize: 13, marginTop: 6 }}>原因：{reason}；到期：{expires}</div>
+            <div style={{ fontSize: 13, marginTop: 6 }}>被封禁的账号只能查看内容，无法进行发帖/修改等操作。</div>
+        </div>
+    );
+}
+
 export default function App() {
     const [pathname, setPathname] = useState(currentPathname());
     const [user, setUser] = useState(null);
@@ -52,14 +84,14 @@ export default function App() {
     const clearAuthState = useCallback(() => {
         setUser(null);
         setToken(null);
-        try { localStorage.removeItem("token"); } catch (e) {}
+        try { localStorage.removeItem("token"); } catch (e) { }
         setShowAuth(true);
     }, []);
 
     const handleLoginSuccess = (u, t) => {
         setUser(u);
         setToken(t);
-        try { localStorage.setItem("token", t); } catch (e) {}
+        try { localStorage.setItem("token", t); } catch (e) { }
         setShowAuth(false);
     };
 
@@ -194,7 +226,7 @@ export default function App() {
 
     const authValue = {
         token,
-        setToken: (t) => { setToken(t); try { localStorage.setItem('token', t); } catch (e) {} },
+        setToken: (t) => { setToken(t); try { localStorage.setItem('token', t); } catch (e) { } },
         user,
         setUser,
         onRequireAuth: handleRequireAuth
@@ -203,6 +235,7 @@ export default function App() {
     return (
         <AuthProvider value={authValue}>
             <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
+                <BanNotice />
                 {!showAdminPage && (
                     <MapView
                         backendUrl={BACKEND_URL}
