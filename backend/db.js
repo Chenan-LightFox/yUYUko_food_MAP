@@ -17,6 +17,28 @@ function init() {
 
         db.run(`CREATE INDEX IF NOT EXISTS idx_user_admin_level ON User(admin_level);`);
 
+        // Ensure User table has is_banned and ban_reason columns (migration for existing DBs)
+        db.all("PRAGMA table_info('User')", [], (err, rows) => {
+            if (err) {
+                console.error('Failed to check User table info:', err && err.message);
+            } else {
+                const cols = (rows || []).map(r => r.name);
+                const runAlter = (sql, cb) => {
+                    db.run(sql, [], (e) => {
+                        if (e) console.warn(`${sql} failed:`, e.message);
+                        else console.log(`Migrated: ${sql}`);
+                        if (cb) cb(e);
+                    });
+                };
+                if (!cols.includes('is_banned')) {
+                    runAlter("ALTER TABLE User ADD COLUMN is_banned INTEGER DEFAULT 0");
+                }
+                if (!cols.includes('ban_reason')) {
+                    runAlter("ALTER TABLE User ADD COLUMN ban_reason TEXT");
+                }
+            }
+        });
+
         // Create Place table with base columns; migration will add updated_* if needed
         db.run(`CREATE TABLE IF NOT EXISTS "Place" (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

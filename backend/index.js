@@ -11,6 +11,7 @@ const adminUsersRouter = require("./routes/admin/adminUsers");
 const adminInvitesRouter = require("./routes/admin/adminInvites");
 const adminCommentsRouter = require("./routes/admin/adminComments");
 const adminGeneralUsersRouter = require("./routes/admin/adminGeneralUsers");
+const adminAuditRouter = require('./routes/admin/adminAudit');
 const placeRequestsRouter = require("./routes/placeRequests");
 const { requireAuth } = require("./middleware/auth");
 
@@ -76,6 +77,7 @@ app.use("/admin/users", requireAuth, adminUsersRouter);
 app.use("/admin/invites", requireAuth, adminInvitesRouter);
 app.use("/admin/comments", requireAuth, adminCommentsRouter);
 app.use("/admin/general-users", requireAuth, adminGeneralUsersRouter);
+app.use("/admin/audit", requireAuth, adminAuditRouter);
 
 
 init();

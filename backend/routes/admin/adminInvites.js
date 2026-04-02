@@ -3,6 +3,7 @@ const router = express.Router();
 const { db } = require("../../db");
 const requireAdmin = require("../../middleware/adminAuth");
 const crypto = require("crypto");
+const { logAdminAction } = require("../../utils/adminAudit");
 
 function hashCode(invite) {
     return crypto.createHash("sha256").update(invite).digest("hex");
@@ -27,6 +28,8 @@ router.post("/", requireAdmin("manage_invites"), (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         db.get("SELECT id, code, max_uses, current_uses, created_time FROM InviteCode WHERE id = ?", [this.lastID], (e, row) => {
             if (e) return res.status(500).json({ error: e.message });
+            // log create invite - do not misuse target_user_id; include invite id in details
+            logAdminAction(req.user && req.user.id, 'create-invite', null, JSON.stringify({ invite_id: row.id, max_uses: row.max_uses }));
             res.status(201).json(row);
         });
     });
@@ -35,11 +38,15 @@ router.post("/", requireAdmin("manage_invites"), (req, res) => {
 // 删除邀请码（需 manage_invites 权限）
 router.delete("/:id", requireAdmin("manage_invites"), (req, res) => {
     const id = req.params.id;
-    db.get("SELECT id FROM InviteCode WHERE id = ?", [id], (err, row) => {
+    db.get("SELECT id, max_uses, current_uses FROM InviteCode WHERE id = ?", [id], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!row) return res.status(404).json({ error: "邀请码不存在" });
+        const { max_uses, current_uses } = row;
         db.run("DELETE FROM InviteCode WHERE id = ?", [id], function (e) {
             if (e) return res.status(500).json({ error: e.message });
+            // log deletion, include info whether invite reached max uses; don't set target_user_id
+            const details = JSON.stringify({ invite_id: id, max_uses, current_uses });
+            logAdminAction(req.user && req.user.id, 'delete-invite', null, details);
             res.json({ success: true });
         });
     });

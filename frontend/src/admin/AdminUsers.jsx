@@ -21,6 +21,7 @@ export default function AdminUsers({ backendUrl = null }) {
     const [users, setUsers] = useState([]);
     const [message, setMessage] = useState("");
     const [loading, setLoading] = useState(false);
+    const [processing, setProcessing] = useState({});
     const fetchIdRef = useRef(0);
 
     const canManage = user && user.admin_level;
@@ -177,6 +178,76 @@ export default function AdminUsers({ backendUrl = null }) {
         }
     };
 
+    const banUser = async (id) => {
+        if (Number(id) === Number(user && user.id)) {
+            setMessage('不可封禁自身账号');
+            return;
+        }
+        const reason = window.prompt('请输入封禁原因（可选）');
+        if (reason === null) return; // cancelled
+        setMessage("");
+        setProcessing(p => ({ ...p, [id]: true }));
+        try {
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+            };
+            const res = await fetch(`${base}/admin/users/ban`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ userId: id, reason })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                if (res.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
+                setMessage(data.error || `封禁失败 ${res.status}`);
+                return;
+            }
+            setMessage('用户已封禁');
+            setUsers(list => list.map(u => u.id === id ? { ...u, is_banned: 1, ban_reason: reason || null } : u));
+        } catch (e) {
+            console.error('banUser failed', e);
+            setMessage('封禁失败：' + (e.message || e));
+        } finally {
+            setProcessing(p => ({ ...p, [id]: false }));
+        }
+    };
+
+    const unbanUser = async (id) => {
+        setMessage("");
+        setProcessing(p => ({ ...p, [id]: true }));
+        try {
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+            };
+            const res = await fetch(`${base}/admin/users/unban`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ userId: id })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                if (res.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
+                setMessage(data.error || `解除封禁失败 ${res.status}`);
+                return;
+            }
+            setMessage('已解除封禁');
+            setUsers(list => list.map(u => u.id === id ? { ...u, is_banned: 0, ban_reason: null } : u));
+        } catch (e) {
+            console.error('unbanUser failed', e);
+            setMessage('解除封禁失败：' + (e.message || e));
+        } finally {
+            setProcessing(p => ({ ...p, [id]: false }));
+        }
+    };
+
     if (!canManage) return <div style={{ color: '#b00020' }}>您的账号无权访问此面板。</div>;
 
     return (
@@ -219,8 +290,16 @@ export default function AdminUsers({ backendUrl = null }) {
                                         </select>
                                     </td>
                                     <td>
+                                        {u.is_banned ? (
+                                            <Button onClick={() => unbanUser(u.id)} disabled={isSelf || processing[u.id]} style={{ marginRight: 8 }}>解除封禁</Button>
+                                        ) : (
+                                            !isSuper && (
+                                                <Button onClick={() => banUser(u.id)} disabled={isSelf || processing[u.id]} style={{ marginRight: 8, background: '#a04400', color: '#fff' }}>封禁</Button>
+                                            )
+                                        )}
+
                                         {isSuper ? null : (
-                                            <Button onClick={() => deleteUser(u.id)} disabled={isSelf} style={{ background: '#e02424', color: '#ffffff' }}>删除</Button>
+                                            <Button onClick={() => deleteUser(u.id)} disabled={isSelf || processing[u.id]} style={{ background: '#e02424', color: '#ffffff' }}>删除</Button>
                                         )}
                                     </td>
                                 </tr>

@@ -2,13 +2,14 @@ const express = require("express");
 const router = express.Router();
 const { db } = require("../../db");
 const requireAdmin = require("../../middleware/adminAuth");
+const { logAdminAction } = require("../../utils/adminAudit");
 
 const ALLOWED_LEVELS = new Set(["YUYUKO", "YOUMU", "KOMACHI", ""]);
 const SUPER_LEVEL = "YUYUKO";
 
 // 获取所有用户（仅Y级管理员）
 router.get("/", requireAdmin("manage_users"), (req, res) => {
-    db.all("SELECT id, username, avatar, admin_level FROM User", [], (err, rows) => {
+    db.all("SELECT id, username, avatar, admin_level, is_banned, ban_reason FROM User", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
@@ -54,6 +55,7 @@ router.post("/set-level", requireAdmin("manage_users"), (req, res) => {
                     function (err3) {
                         if (err3) return res.status(500).json({ error: err3.message });
                         console.log(`Admin ${actingAdminId} set user ${userId} admin_level => ${newLevel}`);
+                        logAdminAction(actingAdminId, `set-level ${currentLevel} -> ${newLevel}`, userId, null);
                         return res.json({ success: true });
                     }
                 );
@@ -68,9 +70,49 @@ router.post("/set-level", requireAdmin("manage_users"), (req, res) => {
             function (err2) {
             if (err2) return res.status(500).json({ error: err2.message });
                 console.log(`Admin ${actingAdminId} set user ${userId} admin_level => ${newLevel}`);
+                logAdminAction(actingAdminId, `set-level ${currentLevel} -> ${newLevel}`, userId, null);
             res.json({ success: true });
             }
         );
+    });
+});
+
+// 封禁用户（需 manage_users 权限）
+router.post('/ban', requireAdmin('manage_users'), (req, res) => {
+    const { userId, reason } = req.body;
+    const actingAdminId = req.user && req.user.id;
+    if (!userId) return res.status(400).json({ error: '缺少 userId' });
+    if (Number(userId) === Number(actingAdminId)) return res.status(403).json({ error: '不可封禁自身账号' });
+
+    db.get('SELECT id, is_banned FROM User WHERE id = ?', [userId], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: '用户不存在' });
+        if (row.is_banned) return res.status(400).json({ error: '用户已被封禁' });
+
+        db.run('UPDATE User SET is_banned = 1, ban_reason = ? WHERE id = ?', [reason || null, userId], function(e) {
+            if (e) return res.status(500).json({ error: e.message });
+            logAdminAction(actingAdminId, 'ban-user', userId, reason || null);
+            res.json({ success: true });
+        });
+    });
+});
+
+// 解除封禁（需 manage_users 权限）
+router.post('/unban', requireAdmin('manage_users'), (req, res) => {
+    const { userId } = req.body;
+    const actingAdminId = req.user && req.user.id;
+    if (!userId) return res.status(400).json({ error: '缺少 userId' });
+
+    db.get('SELECT id, is_banned FROM User WHERE id = ?', [userId], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: '用户不存在' });
+        if (!row.is_banned) return res.status(400).json({ error: '用户未被封禁' });
+
+        db.run('UPDATE User SET is_banned = 0, ban_reason = NULL WHERE id = ?', [userId], function(e) {
+            if (e) return res.status(500).json({ error: e.message });
+            logAdminAction(actingAdminId, 'unban-user', userId, null);
+            res.json({ success: true });
+        });
     });
 });
 
@@ -100,6 +142,7 @@ router.delete("/:id", requireAdmin("manage_users"), (req, res) => {
                 db.run("DELETE FROM User WHERE id = ?", [targetId], function (err3) {
                     if (err3) return res.status(500).json({ error: err3.message });
                     console.log(`Admin ${actingAdminId} deleted user ${targetId}`);
+                    logAdminAction(actingAdminId, `delete-user`, targetId, null);
                     return res.json({ success: true });
                 });
             });
@@ -110,6 +153,7 @@ router.delete("/:id", requireAdmin("manage_users"), (req, res) => {
         db.run("DELETE FROM User WHERE id = ?", [targetId], function (err2) {
             if (err2) return res.status(500).json({ error: err2.message });
             console.log(`Admin ${actingAdminId} deleted user ${targetId}`);
+            logAdminAction(actingAdminId, `delete-user`, targetId, null);
         res.json({ success: true });
         });
     });

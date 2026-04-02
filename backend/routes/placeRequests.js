@@ -3,6 +3,7 @@ const router = express.Router();
 const { db } = require("../db");
 const { requireAuth } = require("../middleware/auth");
 const requireAdmin = require("../middleware/adminAuth");
+const { logAdminAction } = require("../utils/adminAudit");
 
 // 提交地点修改申请（需登录）
 router.post("/", requireAuth, (req, res) => {
@@ -15,6 +16,12 @@ router.post("/", requireAuth, (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         db.get("SELECT * FROM PlaceRequest WHERE id = ?", [this.lastID], (e, row) => {
             if (e) return res.status(500).json({ error: e.message });
+            // log request creation
+            try {
+                logAdminAction(requester_id, 'place-request-created', null, JSON.stringify({ place_id, request_id: row.id, proposed }));
+            } catch (ex) {
+                console.error('Failed to log place request creation', ex && ex.message);
+            }
             res.status(201).json(row);
         });
     });
@@ -46,6 +53,12 @@ router.post("/:id/review", requireAuth, requireAdmin("manage_places"), (req, res
         if (action === 'reject') {
             db.run("UPDATE PlaceRequest SET status = ?, reviewed_by = ?, reviewed_time = CURRENT_TIMESTAMP WHERE id = ?", ['rejected', adminId, id], function (e) {
                 if (e) return res.status(500).json({ error: e.message });
+                // log rejection
+                try {
+                    logAdminAction(adminId, 'place-request-review', reqRow.requester_id || null, JSON.stringify({ request_id: id, action: 'reject' }));
+                } catch (ex) {
+                    console.error('Failed to log place request rejection', ex && ex.message);
+                }
                 res.json({ success: true });
             });
             return;
@@ -66,6 +79,12 @@ router.post("/:id/review", requireAuth, requireAdmin("manage_places"), (req, res
             if (e) return res.status(500).json({ error: e.message });
             db.run("UPDATE PlaceRequest SET status = ?, reviewed_by = ?, reviewed_time = CURRENT_TIMESTAMP WHERE id = ?", ['approved', adminId, id], function (e2) {
                 if (e2) return res.status(500).json({ error: e2.message });
+                // log approval
+                try {
+                    logAdminAction(adminId, 'place-request-review', reqRow.requester_id || null, JSON.stringify({ request_id: id, action: 'approve', applied: keys }));
+                } catch (ex) {
+                    console.error('Failed to log place request approval', ex && ex.message);
+                }
                 res.json({ success: true });
             });
         });
