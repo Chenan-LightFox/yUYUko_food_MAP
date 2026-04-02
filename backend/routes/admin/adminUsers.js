@@ -9,7 +9,7 @@ const SUPER_LEVEL = "YUYUKO";
 
 // 获取所有用户（仅Y级管理员）
 router.get("/", requireAdmin("manage_users"), (req, res) => {
-    db.all("SELECT id, username, avatar, admin_level, is_banned, ban_reason FROM User", [], (err, rows) => {
+    db.all("SELECT id, username, avatar, admin_level, is_banned, ban_reason, ban_expires FROM User", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
@@ -79,7 +79,7 @@ router.post("/set-level", requireAdmin("manage_users"), (req, res) => {
 
 // 封禁用户（需 manage_users 权限）
 router.post('/ban', requireAdmin('manage_users'), (req, res) => {
-    const { userId, reason } = req.body;
+    const { userId, reason, durationDays } = req.body;
     const actingAdminId = req.user && req.user.id;
     if (!userId) return res.status(400).json({ error: '缺少 userId' });
     if (Number(userId) === Number(actingAdminId)) return res.status(403).json({ error: '不可封禁自身账号' });
@@ -89,9 +89,15 @@ router.post('/ban', requireAdmin('manage_users'), (req, res) => {
         if (!row) return res.status(404).json({ error: '用户不存在' });
         if (row.is_banned) return res.status(400).json({ error: '用户已被封禁' });
 
-        db.run('UPDATE User SET is_banned = 1, ban_reason = ? WHERE id = ?', [reason || null, userId], function(e) {
+        let banExpires = null;
+        if (typeof durationDays === 'number' && durationDays > 0) {
+            const dt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+            banExpires = dt.toISOString();
+        }
+
+        db.run('UPDATE User SET is_banned = 1, ban_reason = ?, ban_expires = ? WHERE id = ?', [reason || null, banExpires, userId], function(e) {
             if (e) return res.status(500).json({ error: e.message });
-            logAdminAction(actingAdminId, 'ban-user', userId, reason || null);
+            logAdminAction(actingAdminId, 'ban-user', userId, JSON.stringify({ reason: reason || null, ban_expires: banExpires }));
             res.json({ success: true });
         });
     });
@@ -108,7 +114,7 @@ router.post('/unban', requireAdmin('manage_users'), (req, res) => {
         if (!row) return res.status(404).json({ error: '用户不存在' });
         if (!row.is_banned) return res.status(400).json({ error: '用户未被封禁' });
 
-        db.run('UPDATE User SET is_banned = 0, ban_reason = NULL WHERE id = ?', [userId], function(e) {
+        db.run('UPDATE User SET is_banned = 0, ban_reason = NULL, ban_expires = NULL WHERE id = ?', [userId], function(e) {
             if (e) return res.status(500).json({ error: e.message });
             logAdminAction(actingAdminId, 'unban-user', userId, null);
             res.json({ success: true });

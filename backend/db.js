@@ -17,7 +17,7 @@ function init() {
 
         db.run(`CREATE INDEX IF NOT EXISTS idx_user_admin_level ON User(admin_level);`);
 
-        // Ensure User table has is_banned and ban_reason columns (migration for existing DBs)
+        // Ensure User table has is_banned, ban_reason and ban_expires columns (migration for existing DBs)
         db.all("PRAGMA table_info('User')", [], (err, rows) => {
             if (err) {
                 console.error('Failed to check User table info:', err && err.message);
@@ -35,6 +35,9 @@ function init() {
                 }
                 if (!cols.includes('ban_reason')) {
                     runAlter("ALTER TABLE User ADD COLUMN ban_reason TEXT");
+                }
+                if (!cols.includes('ban_expires')) {
+                    runAlter("ALTER TABLE User ADD COLUMN ban_expires DATETIME");
                 }
             }
         });

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import { useAuth } from "../AuthContext";
+import AdminBanModal from "./AdminBanModal";
 
 function resolveBackendUrl() {
     if (typeof window === "undefined") return "http://localhost:3000";
@@ -22,6 +23,8 @@ export default function AdminUsers({ backendUrl = null }) {
     const [message, setMessage] = useState("");
     const [loading, setLoading] = useState(false);
     const [processing, setProcessing] = useState({});
+    const [banModalOpen, setBanModalOpen] = useState(false);
+    const [banTarget, setBanTarget] = useState(null);
     const fetchIdRef = useRef(0);
 
     const canManage = user && user.admin_level;
@@ -178,24 +181,28 @@ export default function AdminUsers({ backendUrl = null }) {
         }
     };
 
-    const banUser = async (id) => {
-        if (Number(id) === Number(user && user.id)) {
-            setMessage('不可封禁自身账号');
-            return;
-        }
-        const reason = window.prompt('请输入封禁原因（可选）');
-        if (reason === null) return; // cancelled
-        setMessage("");
+    const onBanClick = (u) => {
+        setBanTarget(u);
+        setBanModalOpen(true);
+    };
+
+    const handleBanConfirm = async ({ reason, durationDays }) => {
+        if (!banTarget) return;
+        const id = banTarget.id;
         setProcessing(p => ({ ...p, [id]: true }));
+        setMessage("");
         try {
             const headers = {
                 'Content-Type': 'application/json',
                 ...(token ? { Authorization: `Bearer ${token}` } : {})
             };
+            // durationDays: null -> no expiry (should be treated as permanent by backend)
+            const body = { userId: id, reason };
+            if (durationDays !== null) body.durationDays = durationDays;
             const res = await fetch(`${base}/admin/users/ban`, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify({ userId: id, reason })
+                body: JSON.stringify(body)
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
@@ -206,13 +213,15 @@ export default function AdminUsers({ backendUrl = null }) {
                 setMessage(data.error || `封禁失败 ${res.status}`);
                 return;
             }
+            setUsers(list => list.map(x => x.id === id ? { ...x, is_banned: 1, ban_reason: reason || null, ban_expires: data && data.ban_expires ? data.ban_expires : null } : x));
             setMessage('用户已封禁');
-            setUsers(list => list.map(u => u.id === id ? { ...u, is_banned: 1, ban_reason: reason || null } : u));
         } catch (e) {
             console.error('banUser failed', e);
             setMessage('封禁失败：' + (e.message || e));
         } finally {
-            setProcessing(p => ({ ...p, [id]: false }));
+            setProcessing(p => ({ ...p, [banTarget.id]: false }));
+            setBanModalOpen(false);
+            setBanTarget(null);
         }
     };
 
@@ -239,7 +248,7 @@ export default function AdminUsers({ backendUrl = null }) {
                 return;
             }
             setMessage('已解除封禁');
-            setUsers(list => list.map(u => u.id === id ? { ...u, is_banned: 0, ban_reason: null } : u));
+            setUsers(list => list.map(u => u.id === id ? { ...u, is_banned: 0, ban_reason: null, ban_expires: null } : u));
         } catch (e) {
             console.error('unbanUser failed', e);
             setMessage('解除封禁失败：' + (e.message || e));
@@ -294,7 +303,7 @@ export default function AdminUsers({ backendUrl = null }) {
                                             <Button onClick={() => unbanUser(u.id)} disabled={isSelf || processing[u.id]} style={{ marginRight: 8 }}>解除封禁</Button>
                                         ) : (
                                             !isSuper && (
-                                                <Button onClick={() => banUser(u.id)} disabled={isSelf || processing[u.id]} style={{ marginRight: 8, background: '#a04400', color: '#fff' }}>封禁</Button>
+                                                <Button onClick={() => onBanClick(u)} disabled={isSelf || processing[u.id]} style={{ marginRight: 8, background: '#a04400', color: '#fff' }}>封禁</Button>
                                             )
                                         )}
 
@@ -308,6 +317,7 @@ export default function AdminUsers({ backendUrl = null }) {
                     </tbody>
                 </table>
             )}
+            <AdminBanModal open={banModalOpen} onClose={() => { setBanModalOpen(false); setBanTarget(null); }} onConfirm={handleBanConfirm} targetUser={banTarget} />
         </div>
     );
 }
