@@ -63,7 +63,7 @@ export default function EditUsername({ user, onBack, backendUrl, token, onUpdate
 
                 <div style={{ display: 'flex', gap: 8 }}>
                     <Button type="submit" disabled={loading} style={{ padding: '8px 12px' }}>{loading ? '保存中...' : '保存'}</Button>
-                    <Button type="button" onClick={() => { setUsername(user ? user.username : ''); setError(null); setSuccess(null); }} style={{ padding: '8px 12px' }}>重置</Button>
+                    <Button type="button" onClick={() => { setUsername(user ? user.username : ''); setError(null); setSuccess(null); }} style={{ padding: '8px 12px' }}>取消</Button>
                 </div>
             </form>
         </PageTemplate>
