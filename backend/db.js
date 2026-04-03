@@ -39,6 +39,9 @@ function init() {
                 if (!cols.includes('ban_expires')) {
                     runAlter("ALTER TABLE User ADD COLUMN ban_expires DATETIME");
                 }
+                if (!cols.includes('map_settings')) {
+                    runAlter("ALTER TABLE User ADD COLUMN map_settings TEXT");
+                }
             }
         });
 

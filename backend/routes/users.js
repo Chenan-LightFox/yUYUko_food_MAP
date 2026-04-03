@@ -159,6 +159,31 @@ router.patch('/me/password', requireAuth, (req, res) => {
     });
 });
 
+// 更新当前用户的个性化设置（例如地图设置）
+router.patch('/me/settings', requireAuth, (req, res) => {
+    const { map_settings } = req.body || {};
+    if (typeof map_settings === 'undefined') return res.status(400).json({ error: '缺少 map_settings 字段' });
+
+    let payload = null;
+    try {
+        payload = typeof map_settings === 'string' ? map_settings : JSON.stringify(map_settings);
+    } catch (e) {
+        return res.status(400).json({ error: 'map_settings 必须是可序列化的 JSON' });
+    }
+
+    db.run('UPDATE User SET map_settings = ? WHERE id = ?', [payload, req.user.id], function (e) {
+        if (e) return res.status(500).json({ error: e.message });
+
+        db.get('SELECT id, username, admin_level, map_settings FROM User WHERE id = ?', [req.user.id], (err2, updated) => {
+            if (err2) return res.status(500).json({ error: err2.message });
+            if (updated && updated.map_settings) {
+                try { updated.map_settings = JSON.parse(updated.map_settings); } catch (ex) { /* ignore */ }
+            }
+            return res.json({ user: updated });
+        });
+    });
+});
+
 // 退出登录，清理当前会话
 router.post('/logout', requireAuth, async (req, res) => {
     try {

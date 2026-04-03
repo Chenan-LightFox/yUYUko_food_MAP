@@ -4,6 +4,7 @@ import AdminDashboard from "./AdminDashboard";
 import Settings from "./Settings";
 import EditUsername from "./settings/EditUsername";
 import EditPassword from "./settings/EditPassword";
+import PersonalizeMap from "./settings/PersonalizeMap";
 import AuthPanel from "./components/AuthPanel";
 import AuthModal from "./components/AuthModal";
 import { AuthProvider } from "./AuthContext";
@@ -201,6 +202,7 @@ export default function App() {
     const showSettingsBase = pathname === "/settings";
     const showSettingsEdit = pathname === "/settings/username";
     const showSettingsPassword = pathname === "/settings/password";
+    const showSettingsPersonalize = pathname === "/settings/personalize";
     const showSettingsAny = typeof pathname === 'string' && pathname.startsWith("/settings");
 
     const authValue = {
@@ -252,6 +254,7 @@ export default function App() {
                                 onUpdateUser={handleLoginSuccess}
                                 onOpenEditUsername={() => goPath('/settings/username')}
                                 onOpenEditPassword={() => goPath('/settings/password')}
+                                onOpenPersonalize={() => goPath('/settings/personalize')}
                             />
                         ) : (
                             <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -263,6 +266,22 @@ export default function App() {
                     {showSettingsPassword && (
                         user ? (
                             <EditPassword
+                                user={user}
+                                onBack={() => goPath('/settings')}
+                                backendUrl={BACKEND_URL}
+                                token={token}
+                                onUpdateUser={handleLoginSuccess}
+                            />
+                        ) : (
+                            <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                正在验证登录状态...
+                            </div>
+                        )
+                    )}
+
+                    {showSettingsPersonalize && (
+                        user ? (
+                            <PersonalizeMap
                                 user={user}
                                 onBack={() => goPath('/settings')}
                                 backendUrl={BACKEND_URL}

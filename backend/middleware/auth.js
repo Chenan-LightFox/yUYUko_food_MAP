@@ -19,8 +19,15 @@ function maskToken(t) {
 
 function loadUserById(userId) {
     return new Promise((resolve, reject) => {
-        db.get("SELECT id, username, admin_level, is_banned, ban_reason, ban_expires FROM User WHERE id = ?", [userId], (err, row) => {
+        db.get("SELECT id, username, admin_level, is_banned, ban_reason, ban_expires, map_settings FROM User WHERE id = ?", [userId], (err, row) => {
             if (err) return reject(err);
+            if (row && row.map_settings) {
+                try {
+                    row.map_settings = JSON.parse(row.map_settings);
+                } catch (e) {
+                    // ignore parse errors and keep raw string
+                }
+            }
             resolve(row || null);
         });
     });
