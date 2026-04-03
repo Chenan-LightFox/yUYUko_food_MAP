@@ -100,7 +100,7 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
 
     const currentPath = typeof pathname !== 'undefined' ? pathname : (typeof window !== 'undefined' ? window.location.pathname : '');
     const isOnAdmin = currentPath === '/admin';
-    const isOnSettings = currentPath === '/settings';
+    const isOnSettings = typeof currentPath === 'string' && currentPath.startsWith('/settings');
 
     return (
         <div

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import MapView from "./Map";
 import AdminDashboard from "./AdminDashboard";
 import Settings from "./Settings";
+import EditUsername from "./settings/EditUsername";
 import AuthPanel from "./components/AuthPanel";
 import AuthModal from "./components/AuthModal";
 import { AuthProvider } from "./AuthContext";
@@ -179,15 +180,15 @@ export default function App() {
     }, [token, user, clearAuthState]);
 
     useEffect(() => {
-        // 限定本阶段只支持若干页面路径（允许 /, /admin, /settings）
-        if (pathname !== "/" && pathname !== "/admin" && pathname !== "/settings") {
+        // 限定本阶段只支持若干页面路径（允许 /, /admin, /settings/*）
+        if (pathname !== "/" && pathname !== "/admin" && !pathname.startsWith("/settings")) {
             goPath("/");
         }
     }, [pathname, goPath]);
 
     useEffect(() => {
-        // 未登录访问 /admin 或 /settings 时，弹出登录对话框但不强制跳回首页，以便用户在页面内登录
-        if ((pathname === "/admin" || pathname === "/settings") && !token) {
+        // 未登录访问 /admin 或任何 /settings 子路径时，弹出登录对话框但不强制跳回首页，以便用户在页面内登录
+        if ((pathname === "/admin" || pathname.startsWith("/settings")) && !token) {
             setShowAuth(true);
             // do not navigate away; allow login modal to appear over these pages
         }
@@ -196,7 +197,9 @@ export default function App() {
     const isAuth = !!token && !!user;
     const isAdmin = !!(user && user.admin_level);
     const showAdminPage = pathname === "/admin" && !!token;
-    const showSettingsPage = pathname === "/settings";
+    const showSettingsBase = pathname === "/settings";
+    const showSettingsEdit = pathname === "/settings/username";
+    const showSettingsAny = typeof pathname === 'string' && pathname.startsWith("/settings");
 
     const authValue = {
         token,
@@ -211,7 +214,7 @@ export default function App() {
             <TipsProvider>
                 <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
                     <BanNotice />
-                    {!showAdminPage && !showSettingsPage && (
+                    {!showAdminPage && !showSettingsAny && (
                         <MapView
                             backendUrl={BACKEND_URL}
                             token={token}
@@ -237,9 +240,32 @@ export default function App() {
                         )
                     )}
 
-                    {showSettingsPage && (
+                    {showSettingsBase && (
                         user ? (
-                            <Settings user={user} onBack={() => goPath("/")} />
+                            <Settings
+                                user={user}
+                                onBack={() => goPath("/")}
+                                backendUrl={BACKEND_URL}
+                                token={token}
+                                onUpdateUser={handleLoginSuccess}
+                                onOpenEditUsername={() => goPath('/settings/username')}
+                            />
+                        ) : (
+                            <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                正在验证登录状态...
+                            </div>
+                        )
+                    )}
+
+                    {showSettingsEdit && (
+                        user ? (
+                            <EditUsername
+                                user={user}
+                                onBack={() => goPath('/settings')}
+                                backendUrl={BACKEND_URL}
+                                token={token}
+                                onUpdateUser={handleLoginSuccess}
+                            />
                         ) : (
                             <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                 正在验证登录状态...

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function Button({ children, onClick, disabled, style, title, variant = 'default', full = false }) {
+export default function Button({ children, onClick, disabled, style, title, variant = 'default', full = false, type = 'button' }) {
     const [hover, setHover] = useState(false);
 
     const base = {
@@ -44,6 +44,7 @@ export default function Button({ children, onClick, disabled, style, title, vari
 
     return (
         <button
+            type={type}
             onClick={onClick}
             disabled={disabled}
             title={title}

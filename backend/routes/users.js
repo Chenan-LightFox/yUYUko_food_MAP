@@ -62,7 +62,7 @@ router.post("/register", (req, res) => {
                             if (err4) console.error("邀请码更新失败：", err4.message); // 不影响注册流程
                         }
                     );
-                    
+
                     // 返回用户信息
                     db.get("SELECT id, username, admin_level FROM User WHERE id = ?", [userId], (e, row) => {
                         if (e) return res.status(500).json({ error: e.message });
@@ -97,6 +97,35 @@ router.post("/login", (req, res) => {
 // 获取当前用户信息（JWT + Redis session 一致性校验）
 router.get('/me', requireAuth, (req, res) => {
     res.json({ user: req.user });
+});
+
+// 更新当前用户信息（允许修改 username）
+router.patch('/me', requireAuth, (req, res) => {
+    const { username } = req.body || {};
+    if (!username || typeof username !== 'string') return res.status(400).json({ error: '缺少或无效的 username 字段' });
+    const newName = username.trim();
+    if (newName.length < 1 || newName.length > 64) return res.status(400).json({ error: '用户名长度应为 1-64 个字符' });
+
+    // 检查是否被占用
+    db.get('SELECT id FROM User WHERE username = ?', [newName], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (row && row.id !== req.user.id) return res.status(400).json({ error: '用户名已存在' });
+
+        db.run('UPDATE User SET username = ? WHERE id = ?', [newName, req.user.id], function (e) {
+            if (e) return res.status(500).json({ error: e.message });
+
+            // 生成新的 token 并更新 redis session
+            const token = jwt.sign({ id: req.user.id, username: newName }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+            redis.set(`session:${req.user.id}`, token, 'EX', JWT_EXPIRES_IN, (redisErr) => {
+                if (redisErr) console.error('Failed to update redis session after username change:', redisErr && redisErr.message);
+                // 返回更新后的用户信息
+                db.get('SELECT id, username, admin_level FROM User WHERE id = ?', [req.user.id], (err2, updated) => {
+                    if (err2) return res.status(500).json({ error: err2.message });
+                    return res.json({ user: updated, token });
+                });
+            });
+        });
+    });
 });
 
 // 退出登录，清理当前会话
