@@ -30,10 +30,6 @@ export default function AdminDashboard({ user, token, backendUrl, onBackHome, on
             <div style={{ maxWidth: 960, margin: "0 auto" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                     <h2 style={{ margin: 0 }}>管理员后台</h2>
-                    <div>
-                        <Button onClick={onBackHome} style={{ marginRight: 8 }}>返回地图</Button>
-                        <Button onClick={onLogout}>注销</Button>
-                    </div>
                 </div>
 
                 <div style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb" }}>

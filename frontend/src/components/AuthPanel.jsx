@@ -3,7 +3,7 @@ import Button from './Button';
 import Tooltip from './Tooltip';
 import defaultAvatar from '../img/default.png';
 
-export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin }) {
+export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onGoHome, pathname }) {
     const [open, setOpen] = useState(false);
     const rootRef = useRef(null);
     const menuRef = useRef(null);
@@ -98,6 +98,10 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
         return (parts[0].slice(0, 1) + parts[1].slice(0, 1)).toUpperCase();
     };
 
+    const currentPath = typeof pathname !== 'undefined' ? pathname : (typeof window !== 'undefined' ? window.location.pathname : '');
+    const isOnAdmin = currentPath === '/admin';
+    const isOnSettings = currentPath === '/settings';
+
     return (
         <div
             ref={rootRef}
@@ -165,33 +169,42 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
                     }}
                 >
                     {isAuth && user ? (
-                        <div>
-                            <div style={{ marginBottom: 6 }}>
-                                <big><strong>东方饭联地图</strong></big>
-                            </div>
-                            <div style={{ marginBottom: 6, paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: '#a2a2a2' }} />
-                            
-                            <div style={{ marginBottom: 8 }}>
-                                <div style={{ fontSize: 14, fontWeight: 700 }}>
-                                    当前用户：<Tooltip text={`用户ID：${user.id}`} placement="top">{user.username}</Tooltip>
-                                </div>
-                                <div style={{ fontSize: 12, color: '#666' }}>{user.admin_level ? `管理员：${user.admin_level}` : '普通用户'}</div>
-                            </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ fontSize: 20, fontWeight: 700 }}>东方饭联地图</div>
 
-                            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                                {isAdmin && (
-                                    <Button onClick={() => { setOpen(false); onOpenAdmin && onOpenAdmin(); }} style={{ flex: '1 0 auto' }}>
-                                        管理后台
+                            <div style={{ fontSize: 14 }}>
+                                <Tooltip text={`用户ID：${user.id}`} placement="top">{user.username}</Tooltip>
+                            </div>
+                            <div style={{ fontSize: 12, color: '#666' }}>{user.admin_level ? `管理员：${user.admin_level}` : '普通用户'}</div>
+
+                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: '#a2a2a2', margin: 0 }} />
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                                {(isAdmin || isOnAdmin) && (
+                                    <Button variant="menu" full onClick={() => { setOpen(false); if (isOnAdmin) { onGoHome && onGoHome(); } else { onOpenAdmin && onOpenAdmin(); } }}>
+                                        {isOnAdmin ? '返回地图' : '管理后台'}
                                     </Button>
                                 )}
-                                <Button onClick={() => { setOpen(false); onLogout && onLogout(); }} style={{ background: '#fff', border: '1px solid #e5e7eb', color: '#b00020' }}>
+                                {(isAdmin || isOnAdmin) && (
+                                    <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: '#a2a2a2', margin: 0 }} />
+                                )}
+
+                                <Button variant="menu" full onClick={() => { setOpen(false); if (isOnSettings) { onGoHome && onGoHome(); } else { onOpenSettings && onOpenSettings(); } }}>
+                                    {isOnSettings ? '返回地图' : '设置'}
+                                </Button>
+
+                                <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: '#a2a2a2', margin: 0 }} />
+                                <Button variant="menu" full onClick={() => { setOpen(false); onLogout && onLogout(); }} style={{ color: '#b00020' }}>
                                     注销
                                 </Button>
                             </div>
+                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: '#a2a2a2', margin: 0 }} />
                         </div>
                     ) : (
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                            <Button onClick={() => { setOpen(false); onOpenAuth && onOpenAuth(); }}>登录 / 注册</Button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: '#a2a2a2', margin: 0 }} />
+                            <Button variant="menu" full onClick={() => { setOpen(false); onOpenAuth && onOpenAuth(); }}>登录 / 注册</Button>
+                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: '#a2a2a2', margin: 0 }} />
                         </div>
                     )}
                 </div>

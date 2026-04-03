@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import MapView from "./Map";
 import AdminDashboard from "./AdminDashboard";
+import Settings from "./Settings";
 import AuthPanel from "./components/AuthPanel";
 import AuthModal from "./components/AuthModal";
 import { AuthProvider } from "./AuthContext";
@@ -178,23 +179,24 @@ export default function App() {
     }, [token, user, clearAuthState]);
 
     useEffect(() => {
-        // 限定本阶段只支持两个页面路径
-        if (pathname !== "/" && pathname !== "/admin") {
+        // 限定本阶段只支持若干页面路径（允许 /, /admin, /settings）
+        if (pathname !== "/" && pathname !== "/admin" && pathname !== "/settings") {
             goPath("/");
         }
     }, [pathname, goPath]);
 
     useEffect(() => {
-        // 未登录访问 /admin 时，弹出登录对话框但不强制跳回首页，以便用户在 /admin 页面内登录
-        if (pathname === "/admin" && !token) {
+        // 未登录访问 /admin 或 /settings 时，弹出登录对话框但不强制跳回首页，以便用户在页面内登录
+        if ((pathname === "/admin" || pathname === "/settings") && !token) {
             setShowAuth(true);
-            // do not navigate away; allow login modal to appear over /admin
+            // do not navigate away; allow login modal to appear over these pages
         }
     }, [pathname, token]);
 
     const isAuth = !!token && !!user;
     const isAdmin = !!(user && user.admin_level);
     const showAdminPage = pathname === "/admin" && !!token;
+    const showSettingsPage = pathname === "/settings";
 
     const authValue = {
         token,
@@ -209,7 +211,7 @@ export default function App() {
             <TipsProvider>
                 <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
                     <BanNotice />
-                    {!showAdminPage && (
+                    {!showAdminPage && !showSettingsPage && (
                         <MapView
                             backendUrl={BACKEND_URL}
                             token={token}
@@ -235,6 +237,16 @@ export default function App() {
                         )
                     )}
 
+                    {showSettingsPage && (
+                        user ? (
+                            <Settings user={user} onBack={() => goPath("/")} />
+                        ) : (
+                            <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                正在验证登录状态...
+                            </div>
+                        )
+                    )}
+
                     <AuthPanel
                         user={user}
                         isAuth={isAuth}
@@ -242,6 +254,9 @@ export default function App() {
                         onLogout={handleLogout}
                         onOpenAuth={() => setShowAuth(true)}
                         onOpenAdmin={() => goPath("/admin")}
+                        onOpenSettings={() => goPath("/settings")}
+                        onGoHome={() => goPath("/")}
+                        pathname={pathname}
                     />
 
                     {showAuth && (
