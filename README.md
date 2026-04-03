@@ -53,4 +53,5 @@
 - AdminDashboard.js: 美化管理员后台界面设计，完善操作反馈
 - AuthPanel.jsx: 下拉菜单按钮间距调整到一致
 - Map.jsx: 修改为自己的Marker图标
+- Settings.jsx: 完善页面
 - 大家找找bug（
