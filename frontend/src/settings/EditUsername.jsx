@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import PageTemplate from '../components/PageTemplate';
 import Button from '../components/Button';
 import { useTips } from '../components/Tips';
+import useDarkMode from '../hooks/useDarkMode';
 
 export default function EditUsername({ user, onBack, backendUrl, token, onUpdateUser }) {
     const [username, setUsername] = useState(user ? user.username : '');
     const [loading, setLoading] = useState(false);
     const showTip = useTips();
+    const dark = useDarkMode();
 
     useEffect(() => {
         setUsername(user ? user.username : '');
@@ -54,19 +56,19 @@ export default function EditUsername({ user, onBack, backendUrl, token, onUpdate
         >
             <form onSubmit={handleSubmit}>
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>用户名</div>
+                    <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>用户名</div>
                     <input
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4, border: '1px solid #d1d5db' }}
+                        style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }}
                     />
                 </label>
 
 
 
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <Button type="submit" disabled={loading} style={{ padding: '8px 12px' }}>{loading ? '保存中...' : '保存'}</Button>
-                    <Button type="button" onClick={() => { setUsername(user ? user.username : ''); }} style={{ padding: '8px 12px' }}>取消</Button>
+                    <Button themeAware type="submit" disabled={loading} style={{ padding: '8px 12px' }}>{loading ? '保存中...' : '保存'}</Button>
+                    <Button themeAware type="button" onClick={() => { setUsername(user ? user.username : ''); }} style={{ padding: '8px 12px' }}>取消</Button>
                 </div>
             </form>
         </PageTemplate>

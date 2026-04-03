@@ -164,7 +164,7 @@ export default function AdminPlaces({ backendUrl = null }) {
             {canManage && (
                 <div>
                     <div style={{ marginBottom: 8 }}>
-                        <Button onClick={fetchRequests} disabled={loading}>刷新</Button>
+                        <Button themeAware onClick={fetchRequests} disabled={loading}>刷新</Button>
                     </div>
                     {message && <div style={{ color: '#c33', marginBottom: 8 }}>{message}</div>}
                     {loading ? (
@@ -201,8 +201,8 @@ export default function AdminPlaces({ backendUrl = null }) {
                                                 <td style={{ whiteSpace: 'nowrap' }}>
                                                     {r.status === 'pending' ? (
                                                         <>
-                                                            <Button onClick={() => review(r.id, 'approve')} disabled={processing[r.id]} style={{ marginRight: 6 }}>通过</Button>
-                                                            <Button onClick={() => review(r.id, 'reject')} disabled={processing[r.id]} style={{ background: '#e02424', color: '#fff' }}>驳回</Button>
+                                                            <Button themeAware onClick={() => review(r.id, 'approve')} disabled={processing[r.id]} style={{ marginRight: 6 }}>通过</Button>
+                                                            <Button themeAware onClick={() => review(r.id, 'reject')} disabled={processing[r.id]} style={{ background: '#e02424', color: '#fff' }}>驳回</Button>
                                                         </>
                                                     ) : (
                                                         <div>已处理: {r.status}</div>

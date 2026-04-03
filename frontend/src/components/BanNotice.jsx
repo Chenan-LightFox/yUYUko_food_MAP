@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../AuthContext";
+import useDarkMode from '../hooks/useDarkMode';
 
 export default function BanNotice({ canClose = true }) {
     const { user } = useAuth();
@@ -12,6 +13,8 @@ export default function BanNotice({ canClose = true }) {
     // 封禁通知强制不可关闭
     const closable = Boolean(canClose) && !user.is_banned;
 
+    const dark = useDarkMode();
+
     const style = {
         position: 'absolute',
         top: 12,
@@ -23,11 +26,11 @@ export default function BanNotice({ canClose = true }) {
         zIndex: 9999,
         padding: '12px 16px',
         borderRadius: 8,
-        background: '#fff6f6',
-        border: '1px solid #ffd6d6',
-        color: '#8b0000',
+        background: dark ? '#3b0b0b' : '#fff6f6',
+        border: dark ? '1px solid #6b1414' : '1px solid #ffd6d6',
+        color: dark ? '#ffd6d6' : '#8b0000',
         textAlign: 'center',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
+        boxShadow: dark ? '0 2px 10px rgba(0,0,0,0.6)' : '0 2px 10px rgba(0,0,0,0.08)'
     };
 
     const closeBtnStyle = {
@@ -36,7 +39,7 @@ export default function BanNotice({ canClose = true }) {
         right: 8,
         border: 'none',
         background: 'transparent',
-        color: '#8b0000',
+        color: dark ? '#ffd6d6' : '#8b0000',
         fontSize: 16,
         cursor: 'pointer',
         lineHeight: '1'

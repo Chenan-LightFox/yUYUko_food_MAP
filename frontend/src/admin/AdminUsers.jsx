@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import { useAuth } from "../AuthContext";
 import AdminBanModal from "./AdminBanModal";
+import useDarkMode from "../hooks/useDarkMode";
 
 function resolveBackendUrl() {
     if (typeof window === "undefined") return "http://localhost:3000";
@@ -26,6 +27,7 @@ export default function AdminUsers({ backendUrl = null }) {
     const [banModalOpen, setBanModalOpen] = useState(false);
     const [banTarget, setBanTarget] = useState(null);
     const fetchIdRef = useRef(0);
+    const dark = useDarkMode();
 
     const canManage = user && user.admin_level;
 
@@ -263,7 +265,7 @@ export default function AdminUsers({ backendUrl = null }) {
         <div>
             <h2>用户管理</h2>
             <div style={{ marginBottom: 8 }}>
-                <Button onClick={fetchUsers} disabled={loading}>刷新</Button>
+                <Button themeAware onClick={fetchUsers} disabled={loading}>刷新</Button>
             </div>
             {message && <div style={{ color: "red" }}>{message}</div>}
             {loading ? (
@@ -291,7 +293,8 @@ export default function AdminUsers({ backendUrl = null }) {
                                     <td>
                                         <select value={u.admin_level || ""}
                                             onChange={e => changeLevel(u.id, e.target.value)}
-                                            disabled={isSelf || (isSuper && !isSelf)}>
+                                            disabled={isSelf || (isSuper && !isSelf)}
+                                            style={{ padding: '6px 8px', borderRadius: 4, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }}>
                                             <option value="YUYUKO">YUYUKO</option>
                                             <option value="YOUMU">YOUMU</option>
                                             <option value="KOMACHI">KOMACHI</option>
@@ -300,15 +303,15 @@ export default function AdminUsers({ backendUrl = null }) {
                                     </td>
                                     <td>
                                         {u.is_banned ? (
-                                            <Button onClick={() => unbanUser(u.id)} disabled={isSelf || processing[u.id]} style={{ marginRight: 8 }}>解除封禁</Button>
+                                            <Button themeAware onClick={() => unbanUser(u.id)} disabled={isSelf || processing[u.id]} style={{ marginRight: 8 }}>解除封禁</Button>
                                         ) : (
                                             !isSuper && (
-                                                <Button onClick={() => onBanClick(u)} disabled={isSelf || processing[u.id]} style={{ marginRight: 8, background: '#a04400', color: '#fff' }}>封禁</Button>
+                                                <Button themeAware onClick={() => onBanClick(u)} disabled={isSelf || processing[u.id]} style={{ marginRight: 8, background: '#a04400', color: '#fff' }}>封禁</Button>
                                             )
                                         )}
 
                                         {isSuper ? null : (
-                                            <Button onClick={() => deleteUser(u.id)} disabled={isSelf || processing[u.id]} style={{ background: '#e02424', color: '#ffffff' }}>删除</Button>
+                                            <Button themeAware onClick={() => deleteUser(u.id)} disabled={isSelf || processing[u.id]} style={{ background: '#e02424', color: '#ffffff' }}>删除</Button>
                                         )}
                                     </td>
                                 </tr>

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import Button from "./components/Button";
+import useDarkMode from './hooks/useDarkMode';
 import AdminPlaces from "./admin/AdminPlaces";
 import AdminUsers from "./admin/AdminUsers";
 import AdminInvitecode from "./admin/AdminInvitecodes";
@@ -25,14 +26,22 @@ export default function AdminDashboard({ user, token, backendUrl, onBackHome, on
     const canManageGeneralUsers = useMemo(() => perms.includes("普通用户管理"), [perms]);
     const canViewAudit = useMemo(() => perms.includes("操作日志"), [perms]);
 
+    const dark = useDarkMode();
+
+    const rootStyle = { minHeight: "var(--app-height, 100vh)", background: dark ? '#0f1724' : '#f6f7f9', padding: 20, boxSizing: "border-box", color: dark ? '#e5e7eb' : 'inherit' };
+    const containerStyle = { maxWidth: 960, margin: "0 auto" };
+    const headerRow = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 };
+    const cardStyle = { background: dark ? '#0b1220' : '#fff', borderRadius: 8, padding: 16, border: `1px solid ${dark ? '#1f2937' : '#e5e7eb'}` };
+    const panelStyle = { marginTop: 18, background: dark ? '#0b1220' : '#fff', padding: 12, borderRadius: 8, border: `1px solid ${dark ? '#1f2937' : 'transparent'}` };
+
     return (
-        <div style={{ minHeight: "var(--app-height, 100vh)", background: "#f6f7f9", padding: 20, boxSizing: "border-box" }}>
-            <div style={{ maxWidth: 960, margin: "0 auto" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div style={rootStyle}>
+            <div style={containerStyle}>
+                <div style={headerRow}>
                     <h2 style={{ margin: 0 }}>管理员后台</h2>
                 </div>
 
-                <div style={{ background: "#fff", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb" }}>
+                <div style={cardStyle}>
                     <div style={{ marginBottom: 8 }}><strong>当前用户：</strong>{user ? user.username : "-"}</div>
                     <div style={{ marginBottom: 10 }}><strong>管理员等级：</strong>{level || "普通用户"}</div>
 
@@ -41,7 +50,7 @@ export default function AdminDashboard({ user, token, backendUrl, onBackHome, on
                             <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div><strong>当前可见权限：</strong></div>
                                 {canViewAudit && (
-                                    <Button onClick={() => setAuditOpen(true)} style={{ marginLeft: 12 }}>查看操作日志</Button>
+                                    <Button themeAware onClick={() => setAuditOpen(true)} style={{ marginLeft: 12 }}>查看操作日志</Button>
                                 )}
                             </div>
                             <ul style={{ margin: 0, paddingLeft: 22 }}>
@@ -51,41 +60,41 @@ export default function AdminDashboard({ user, token, backendUrl, onBackHome, on
                             </ul>
                         </div>
                     ) : (
-                        <div style={{ color: "#b00020" }}>当前账号不是管理员，无法访问后台功能。</div>
+                        <div style={{ color: dark ? '#ffb4b4' : '#b00020' }}>当前账号不是管理员，无法访问后台功能。</div>
                     )}
                 </div>
 
                 {/* 用户管理面板 */}
                 {canManageUsers && (
-                    <div style={{ marginTop: 18, background: '#fff', padding: 12, borderRadius: 8 }}>
+                    <div style={panelStyle}>
                         <AdminUsers backendUrl={backendUrl} token={token} user={user} onRequireAuth={onRequireAuth} />
                     </div>
                 )}
 
                 {/* 普通用户管理面板 */}
                 {canManageGeneralUsers && (
-                    <div style={{ marginTop: 18, background: '#fff', padding: 12, borderRadius: 8 }}>
+                    <div style={panelStyle}>
                         <AdminGeneralUsers backendUrl={backendUrl} token={token} user={user} onRequireAuth={onRequireAuth} />
                     </div>
                 )}
 
                 {/* 标记点管理面板 */}
                 {canManagePlaces && (
-                    <div style={{ marginTop: 18, background: '#fff', padding: 12, borderRadius: 8 }}>
+                    <div style={panelStyle}>
                         <AdminPlaces backendUrl={backendUrl} token={token} user={user} onRequireAuth={onRequireAuth} />
                     </div>
                 )}
 
                 {/* 邀请码管理面板 */}
                 {canManageInvites && (
-                    <div style={{ marginTop: 18, background: '#fff', padding: 12, borderRadius: 8 }}>
+                    <div style={panelStyle}>
                         <AdminInvitecode backendUrl={backendUrl} token={token} user={user} onRequireAuth={onRequireAuth} />
                     </div>
                 )}
 
                 {/* 评论管理面板 */}
                 {canManageComments && (
-                    <div style={{ marginTop: 18, background: '#fff', padding: 12, borderRadius: 8 }}>
+                    <div style={panelStyle}>
                         <AdminComments backendUrl={backendUrl} token={token} user={user} onRequireAuth={onRequireAuth} />
                     </div>
                 )}

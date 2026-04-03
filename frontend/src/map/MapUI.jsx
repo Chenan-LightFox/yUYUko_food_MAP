@@ -3,6 +3,7 @@ import Tooltip from '../components/Tooltip';
 import Button from '../components/Button';
 import ManagePanel from './ManagePanel';
 import AddForm from './AddForm';
+import useDarkMode from '../hooks/useDarkMode';
 
 export default function MapUI(props) {
     const {
@@ -44,6 +45,7 @@ export default function MapUI(props) {
 
     const [searchOpen, setSearchOpen] = useState(false);
     const inputRef = useRef(null);
+    const dark = useDarkMode();
 
     useEffect(() => {
         if (!searchOpen) return;
@@ -118,8 +120,9 @@ export default function MapUI(props) {
                             boxSizing: 'border-box',
                             padding: '6px 12px',
                             borderRadius: 22,
-                            border: `2px solid ${customThemeColor}`,
-                            background: '#fff',
+                            border: dark ? '2px solid rgba(255,255,255,0.06)' : `2px solid ${customThemeColor}`,
+                            background: dark ? '#0b1220' : '#fff',
+                            color: dark ? '#e5e7eb' : 'inherit',
                             outline: 'none',
                             transformOrigin: 'right center',
                             transform: searchOpen ? 'scaleX(1)' : 'scaleX(0)',
@@ -242,25 +245,25 @@ export default function MapUI(props) {
                         pointerEvents: "auto"
                     }}
                 >
-                    <div style={{ background: "#fff", padding: 10, borderRadius: 6, boxShadow: "0 2px 12px rgba(0,0,0,0.25)", minWidth: 200 }}>
+                    <div style={{ background: dark ? '#0b1220' : '#fff', padding: 10, borderRadius: 6, boxShadow: dark ? "0 6px 24px rgba(0,0,0,0.6)" : "0 2px 12px rgba(0,0,0,0.25)", minWidth: 200 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <strong style={{ fontSize: 14 }}>{selectedPlace.name}</strong>
-                            <Button onClick={closePopup} style={{ padding: "2px 8px", borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", fontSize: 18, lineHeight: 1 }} title="关闭">×</Button>
+                            <strong style={{ fontSize: 14, color: dark ? '#e5e7eb' : undefined }}>{selectedPlace.name}</strong>
+                            <Button onClick={closePopup} style={{ padding: "2px 8px", borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", fontSize: 18, lineHeight: 1, color: dark ? '#e5e7eb' : undefined }} title="关闭">×</Button>
                         </div>
-                        <div style={{ marginTop: 6, fontSize: 13 }}>{selectedPlace.description || ""}</div>
-                        <div style={{ marginTop: 6, color: "#666", fontSize: 12 }}>分类: {selectedPlace.category || "-"}</div>
+                        <div style={{ marginTop: 6, fontSize: 13, color: dark ? '#e5e7eb' : undefined }}>{selectedPlace.description || ""}</div>
+                        <div style={{ marginTop: 6, color: dark ? '#9ca3af' : '#666', fontSize: 12 }}>分类: {selectedPlace.category || "-"}</div>
 
-                        <div style={{ marginTop: 8, color: "#888", fontSize: 12 }}>
+                        <div style={{ marginTop: 8, color: dark ? '#9ca3af' : '#888', fontSize: 12 }}>
                             最近修改：{getLastModifierText(selectedPlace)}
                         </div>
 
                         <div style={{ marginTop: 8, textAlign: "right" }}>
                             <Tooltip text="在这里留下你的评论">
-                                <Button onClick={openCommentPanel}>评论</Button>
+                                <Button onClick={openCommentPanel} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: dark ? '#e5e7eb' : undefined, padding: '6px 10px', borderRadius: 4 }}>评论</Button>
                             </Tooltip>
                             <span style={{ padding: 4 }}></span>
                             <Tooltip text="管理此地点">
-                                <Button onClick={openManagePanel}>管理</Button>
+                                <Button onClick={openManagePanel} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: dark ? '#e5e7eb' : undefined, padding: '6px 10px', borderRadius: 4 }}>管理</Button>
                             </Tooltip>
                         </div>
                     </div>

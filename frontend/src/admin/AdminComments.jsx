@@ -133,7 +133,7 @@ export default function AdminComments({ backendUrl = null }) {
         <div style={{ marginTop: 12 }}>
             <h3>评论管理</h3>
             <div style={{ marginBottom: 8 }}>
-                <Button onClick={fetchComments} disabled={loading}>刷新</Button>
+                <Button themeAware onClick={fetchComments} disabled={loading}>刷新</Button>
             </div>
 
             {message && <div style={{ color: '#c33', marginBottom: 8 }}>{message}</div>}
@@ -167,7 +167,7 @@ export default function AdminComments({ backendUrl = null }) {
                                         </td>
                                         <td>{c.created_time || c.createdTime || '-'}</td>
                                         <td>
-                                            <Button onClick={() => deleteComment(c.id)} disabled={processing[c.id]} style={{ background: '#e02424', color: '#fff' }}>删除</Button>
+                                            <Button themeAware onClick={() => deleteComment(c.id)} disabled={processing[c.id]} style={{ background: '#e02424', color: '#fff' }}>删除</Button>
                                         </td>
                                     </tr>
                                 ))}

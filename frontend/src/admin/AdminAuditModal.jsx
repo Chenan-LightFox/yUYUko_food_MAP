@@ -39,7 +39,7 @@ export default function AdminAuditModal({ open, onClose, backendUrl, token }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 style={{ margin: 0 }}>管理员操作日志（最近 200 条）</h3>
                     <div>
-                        <Button onClick={onClose} style={{ border: 'none', background: 'transparent' }}>×</Button>
+                        <Button themeAware onClick={onClose} style={{ border: 'none', background: 'transparent' }}>×</Button>
                     </div>
                 </div>
                 <div style={{ marginTop: 8 }}>

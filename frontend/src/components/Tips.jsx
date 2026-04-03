@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import useDarkMode from '../hooks/useDarkMode';
 
 const TipsContext = createContext({ showTip: () => { }, hideTip: () => { } });
 
@@ -49,6 +50,8 @@ export function TipsProvider({ children }) {
         }
     }, [visible, tip]);
 
+    const dark = useDarkMode();
+
     const overlayStyle = {
         position: 'fixed',
         left: 0,
@@ -66,12 +69,12 @@ export function TipsProvider({ children }) {
         pointerEvents: 'auto',
         minWidth: 200,
         maxWidth: '80%',
-        background: 'rgba(255, 255, 255, 0.85)',
-        color: '#3f3f3f',
+        background: dark ? 'rgba(17,24,39,0.92)' : 'rgba(255, 255, 255, 0.85)',
+        color: dark ? '#e5e7eb' : '#3f3f3f',
         padding: '12px 16px',
         borderRadius: 8,
         textAlign: 'center',
-        boxShadow: '0 6px 20px rgba(0,0,0,0.25)',
+        boxShadow: dark ? '0 6px 20px rgba(0,0,0,0.6)' : '0 6px 20px rgba(0,0,0,0.25)',
         position: 'relative'
     };
 
@@ -90,7 +93,7 @@ export function TipsProvider({ children }) {
         transform: 'translateY(-50%)',
         border: 'none',
         background: 'transparent',
-        color: '#3f3f3f',
+        color: dark ? '#e5e7eb' : '#3f3f3f',
         fontSize: 18,
         cursor: 'pointer',
         padding: 0,

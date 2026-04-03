@@ -11,6 +11,8 @@ import AuthModal from "./components/AuthModal";
 import { AuthProvider } from "./AuthContext";
 import BanNotice from "./components/BanNotice";
 import { TipsProvider } from "./components/Tips";
+import { applyDarkMode } from "./utils/theme";
+import useDarkMode from './hooks/useDarkMode';
 
 function normalizeUrl(url) {
     return String(url).replace(/\/+$/, "");
@@ -93,10 +95,42 @@ export default function App() {
     }, [token, clearAuthState, goPath]);
 
     useEffect(() => {
+        // On mount, apply localStorage fallback theme if present
+        try {
+            const raw = localStorage.getItem('map_settings');
+            if (raw) {
+                const ms = JSON.parse(raw);
+                if (ms && typeof ms.dark_mode !== 'undefined') applyDarkMode(!!ms.dark_mode);
+            }
+        } catch (e) { }
+
         const onPopstate = () => setPathname(currentPathname());
         window.addEventListener("popstate", onPopstate);
         return () => window.removeEventListener("popstate", onPopstate);
     }, []);
+
+    // Apply dark mode when user or their map_settings change
+    useEffect(() => {
+        try {
+            if (user && user.map_settings && typeof user.map_settings.dark_mode !== 'undefined') {
+                applyDarkMode(!!user.map_settings.dark_mode);
+                return;
+            }
+
+            // fallback to localStorage when no user-specific setting
+            const raw = localStorage.getItem('map_settings');
+            if (raw) {
+                const ms = JSON.parse(raw);
+                if (ms && typeof ms.dark_mode !== 'undefined') {
+                    applyDarkMode(!!ms.dark_mode);
+                    return;
+                }
+            }
+
+            // default: remove dark mode
+            applyDarkMode(false);
+        } catch (e) { /* ignore */ }
+    }, [user]);
 
     useEffect(() => {
         if (typeof document === "undefined" || typeof window === "undefined") return;
@@ -215,6 +249,9 @@ export default function App() {
         onRequireAuth: handleRequireAuth
     };
 
+    const dark = useDarkMode();
+    const placeholderStyle = { minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center", color: dark ? '#e5e7eb' : 'inherit', background: dark ? '#0b1220' : undefined };
+
     return (
         <AuthProvider value={authValue}>
             <TipsProvider>
@@ -240,7 +277,7 @@ export default function App() {
                                 onRequireAuth={handleRequireAuth}
                             />
                         ) : (
-                            <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <div style={placeholderStyle}>
                                 正在验证登录状态...
                             </div>
                         )
@@ -260,7 +297,7 @@ export default function App() {
                                 onOpenThemes={() => goPath('/settings/themes')}
                             />
                         ) : (
-                            <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <div style={placeholderStyle}>
                                 正在验证登录状态...
                             </div>
                         )
@@ -276,7 +313,7 @@ export default function App() {
                                 onUpdateUser={handleLoginSuccess}
                             />
                         ) : (
-                            <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <div style={placeholderStyle}>
                                 正在验证登录状态...
                             </div>
                         )
@@ -292,7 +329,7 @@ export default function App() {
                                 onUpdateUser={handleLoginSuccess}
                             />
                         ) : (
-                            <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <div style={placeholderStyle}>
                                 正在验证登录状态...
                             </div>
                         )
@@ -308,7 +345,7 @@ export default function App() {
                                 onUpdateUser={handleLoginSuccess}
                             />
                         ) : (
-                            <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <div style={placeholderStyle}>
                                 正在验证登录状态...
                             </div>
                         )

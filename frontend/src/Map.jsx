@@ -8,6 +8,7 @@ import CommentPanel from './map/CommentPanel';
 import { useTips } from "./components/Tips";
 import Tooltip from './components/Tooltip';
 import Button from './components/Button';
+import useDarkMode from './hooks/useDarkMode';
 
 const DEFAULT_CENTER = MapUtils.DEFAULT_CENTER;
 const DEFAULT_ZOOM = MapUtils.DEFAULT_ZOOM;
@@ -77,6 +78,29 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     const [manageMessage, setManageMessage] = useState("");
 
     const customThemeColor = '#002fa7';
+
+    // Helper: try multiple AMap APIs to set a map style string (robust across versions)
+    const trySetAmapStyle = (map, styleStr) => {
+        if (!map) return false;
+        try {
+            if (typeof map.setMapStyle === 'function') {
+                try { map.setMapStyle(styleStr); return true; } catch (e) { /* ignore */ }
+                try { map.setMapStyle({ style: styleStr }); return true; } catch (e) { /* ignore */ }
+            }
+            if (typeof map.setStyle === 'function') {
+                try { map.setStyle(styleStr); return true; } catch (e) { /* ignore */ }
+            }
+            if (typeof map.setOptions === 'function') {
+                try { map.setOptions({ mapStyle: styleStr }); return true; } catch (e) { /* ignore */ }
+                try { map.setOptions({ style: styleStr }); return true; } catch (e) { /* ignore */ }
+            }
+        } catch (e) {
+            // ignore
+        }
+        return false;
+    };
+
+    const dark = useDarkMode();
 
     const tipText = mapReady ? "点击查找地点" : "地图尚未就绪，稍候再试";
     const locationTipText = !mapReady
@@ -212,6 +236,13 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 center: savedView ? [savedView.lng, savedView.lat] : DEFAULT_CENTER,
                 zoom: savedView ? savedView.zoom : DEFAULT_ZOOM
             });
+            // Apply initial dark style if page currently in dark mode
+            try {
+                const pageDark = (typeof document !== 'undefined' && document.documentElement && document.documentElement.getAttribute('data-theme') === 'dark');
+                if (pageDark) {
+                    trySetAmapStyle(mapRef.current, 'amap://styles/dark');
+                }
+            } catch (e) { /* ignore */ }
             lastSavedViewRef.current = savedView;
 
             handleMapClick = (e) => {
@@ -314,6 +345,22 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
             geolocationRef.current = null;
         };
     }, []);
+
+    // Watch for dark mode changes and update AMap style accordingly (no re-init)
+    useEffect(() => {
+        if (!mapRef.current || typeof window === 'undefined' || !window.AMap) return;
+        const map = mapRef.current;
+        if (dark) {
+            // try to set official dark style
+            trySetAmapStyle(map, 'amap://styles/dark');
+        } else {
+            // try several fallbacks to restore default/light style
+            const candidates = ['amap://styles/light', 'amap://styles/default', 'amap://styles/normal', ''];
+            for (const s of candidates) {
+                if (trySetAmapStyle(map, s)) break;
+            }
+        }
+    }, [dark]);
 
     const loadPlaces = async () => {
         try {

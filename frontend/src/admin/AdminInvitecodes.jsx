@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import { useAuth } from "../AuthContext";
+import useDarkMode from "../hooks/useDarkMode";
 
 function resolveBackendUrl() {
     if (typeof window === "undefined") return "http://localhost:3000";
@@ -39,6 +40,7 @@ export default function AdminInvitecode({ backendUrl = null }) {
     const [lastCreatedCode, setLastCreatedCode] = useState("");
     const [processing, setProcessing] = useState({});
     const fetchIdRef = useRef(0);
+    const dark = useDarkMode();
 
     const canManage = user && user.admin_level;
 
@@ -221,22 +223,22 @@ export default function AdminInvitecode({ backendUrl = null }) {
         <div style={{ marginTop: 12 }}>
             <h3>邀请码管理</h3>
             <div style={{ marginBottom: 8 }}>
-                <Button onClick={fetchInvites} disabled={loading}>刷新</Button>
+                <Button themeAware onClick={fetchInvites} disabled={loading}>刷新</Button>
             </div>
 
             {message && <div style={{ color: '#c33', marginBottom: 8 }}>{message}</div>}
 
-            <div style={{ marginBottom: 12, padding: 8, border: '1px solid #eee', borderRadius: 6 }}>
+            <div style={{ marginBottom: 12, padding: 8, border: dark ? '1px solid #1f2937' : '1px solid #eee', borderRadius: 6, background: dark ? '#0b1220' : undefined }}>
                 <div style={{ marginBottom: 8 }}><strong>创建新邀请码</strong></div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <label style={{ marginRight: 8 }}>可用次数：</label>
-                    <input type="number" value={maxUses} onChange={e => setMaxUses(Number(e.target.value))} min={1} style={{ width: 120, marginRight: 8, padding: 6 }} />
-                    <Button onClick={() => createInvite()} disabled={creating}>生成并创建</Button>
+                    <label style={{ marginRight: 8, color: dark ? '#9ca3af' : 'inherit' }}>可用次数：</label>
+                    <input type="number" value={maxUses} onChange={e => setMaxUses(Number(e.target.value))} min={1} style={{ width: 120, marginRight: 8, padding: 6, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }} />
+                    <Button themeAware onClick={() => createInvite()} disabled={creating}>生成并创建</Button>
                 </div>
                 {lastCreatedCode && (
                     <div style={{ marginTop: 8, display: 'flex', alignItems: 'center' }}>
-                        <input readOnly value={lastCreatedCode} style={{ flex: 1, marginRight: 8, padding: 6 }} />
-                        <Button onClick={() => copyToClipboard(lastCreatedCode)}>复制</Button>
+                        <input readOnly value={lastCreatedCode} style={{ flex: 1, marginRight: 8, padding: 6, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }} />
+                        <Button themeAware onClick={() => copyToClipboard(lastCreatedCode)}>复制</Button>
                     </div>
                 )}
             </div>
@@ -268,7 +270,7 @@ export default function AdminInvitecode({ backendUrl = null }) {
                                         <td>{inv.current_uses != null ? inv.current_uses : (inv.currentUses || 0)}</td>
                                         <td>{inv.created_time || inv.createdTime || "-"}</td>
                                         <td>
-                                            <Button onClick={() => deleteInvite(inv.id)} disabled={processing[inv.id]} style={{ background: '#e02424', color: '#fff' }}>删除</Button>
+                                            <Button themeAware onClick={() => deleteInvite(inv.id)} disabled={processing[inv.id]} style={{ background: '#e02424', color: '#fff' }}>删除</Button>
                                         </td>
                                     </tr>
                                 ))}

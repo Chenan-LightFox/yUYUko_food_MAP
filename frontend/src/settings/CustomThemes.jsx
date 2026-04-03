@@ -2,11 +2,14 @@ import React, { useEffect, useState } from 'react';
 import PageTemplate from '../components/PageTemplate';
 import Button from '../components/Button';
 import { useTips } from '../components/Tips';
+import { applyDarkMode } from '../utils/theme';
+import useDarkMode from '../hooks/useDarkMode';
 
 export default function CustomThemes({ user, onBack, backendUrl, token, onUpdateUser }) {
     const [darkMode, setDarkMode] = useState(false);
     const [loading, setLoading] = useState(false);
     const showTip = useTips();
+    const dark = useDarkMode();
 
     useEffect(() => {
         let settings = null;
@@ -73,6 +76,8 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
     const handleToggle = (e) => {
         const val = !!e.target.checked;
         setDarkMode(val);
+        // apply immediately to UI so user sees feedback even when not logged in yet
+        try { applyDarkMode(val); } catch (ex) { /* ignore */ }
         persistDarkMode(val);
     };
 
@@ -81,8 +86,8 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                        <div style={{ fontSize: 16, fontWeight: 600 }}>暗黑模式</div>
-                        <div style={{ color: '#6b7280', fontSize: 13 }}>开启后界面将使用暗色主题</div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: dark ? '#e5e7eb' : 'inherit' }}>暗黑模式</div>
+                        <div style={{ color: dark ? '#9ca3af' : '#6b7280', fontSize: 13 }}>开启后界面将使用暗色主题</div>
                     </div>
                     <div>
                         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 12, cursor: loading ? 'not-allowed' : 'pointer' }}>
@@ -113,7 +118,7 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                                     transition: 'left .18s'
                                 }} />
                             </div>
-                            <span style={{ color: '#6b7280' }}>{darkMode ? '已启用' : '未启用'}</span>
+                            <span style={{ color: dark ? '#e5e7eb' : '#6b7280' }}>{darkMode ? '已启用' : '未启用'}</span>
                         </label>
                     </div>
                 </div>

@@ -133,7 +133,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
         <div style={{ marginTop: 12 }}>
             <h3>普通用户管理</h3>
             <div style={{ marginBottom: 8 }}>
-                <Button onClick={fetchUsers} disabled={loading}>刷新</Button>
+                <Button themeAware onClick={fetchUsers} disabled={loading}>刷新</Button>
             </div>
 
             {message && <div style={{ color: '#c33', marginBottom: 8 }}>{message}</div>}
@@ -161,7 +161,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                                         <td>{u.username}</td>
                                         <td>{u.avatar || '-'}</td>
                                         <td>
-                                            <Button onClick={() => deleteUser(u.id)} disabled={processing[u.id]} style={{ background: '#e02424', color: '#ffffff' }}>删除</Button>
+                                            <Button themeAware onClick={() => deleteUser(u.id)} disabled={processing[u.id]} style={{ background: '#e02424', color: '#ffffff' }}>删除</Button>
                                         </td>
                                     </tr>
                                 ))}

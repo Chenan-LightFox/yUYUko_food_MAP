@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import Button from '../components/Button';
 import { useTips } from '../components/Tips';
+import useDarkMode from '../hooks/useDarkMode';
 
 export default function AddForm({ defaultPos, onCancel, onSubmit }) {
     const [name, setName] = useState("");
     const [category, setCategory] = useState("");
     const [description, setDescription] = useState("");
     const showTip = useTips();
+    const dark = useDarkMode();
 
     const handle = () => {
         if (!name) { showTip("请输入名称"); return; }
@@ -21,20 +23,20 @@ export default function AddForm({ defaultPos, onCancel, onSubmit }) {
     };
 
     return (
-        <div style={{ width: 320 }}>
-            <div><strong>经纬度：</strong>{defaultPos[1].toFixed(6)}, {defaultPos[0].toFixed(6)}</div>
+        <div style={{ width: 320, background: dark ? '#0b1220' : '#fff', padding: 12, borderRadius: 6, boxShadow: dark ? "0 6px 24px rgba(0,0,0,0.6)" : "0 4px 18px rgba(0,0,0,0.35)" }}>
+            <div><strong style={{ color: dark ? '#e5e7eb' : undefined }}>经纬度：</strong><span style={{ color: dark ? '#e5e7eb' : undefined }}>{defaultPos[1].toFixed(6)}, {defaultPos[0].toFixed(6)}</span></div>
             <div style={{ marginTop: 8 }}>
-                <input placeholder="店名" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%" }} />
+                <input placeholder="店名" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", border: dark ? '1px solid #334155' : undefined, background: dark ? '#07101a' : undefined, color: dark ? '#e5e7eb' : undefined }} />
             </div>
             <div style={{ marginTop: 8 }}>
-                <input placeholder="分类（例如：火锅）" value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: "100%" }} />
+                <input placeholder="分类（例如：火锅）" value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: "100%", border: dark ? '1px solid #334155' : undefined, background: dark ? '#07101a' : undefined, color: dark ? '#e5e7eb' : undefined }} />
             </div>
             <div style={{ marginTop: 8 }}>
-                <textarea placeholder="描述" value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: "100%" }} />
+                <textarea placeholder="描述" value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: "100%", border: dark ? '1px solid #334155' : undefined, background: dark ? '#07101a' : undefined, color: dark ? '#e5e7eb' : undefined }} />
             </div>
             <div style={{ marginTop: 8, textAlign: "right" }}>
-                <Button onClick={onCancel} style={{ marginRight: 8 }}>取消</Button>
-                <Button onClick={handle}>提交</Button>
+                <Button themeAware onClick={onCancel} style={{ marginRight: 8 }}>取消</Button>
+                <Button themeAware onClick={handle}>提交</Button>
             </div>
         </div>
     );

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import PageTemplate from '../components/PageTemplate';
 import Button from '../components/Button';
 import { useTips } from '../components/Tips';
+import useDarkMode from '../hooks/useDarkMode';
 
 export default function EditPassword({ user, onBack, backendUrl, token, onUpdateUser }) {
     const [currentPwd, setCurrentPwd] = useState('');
@@ -9,6 +10,7 @@ export default function EditPassword({ user, onBack, backendUrl, token, onUpdate
     const [confirmPwd, setConfirmPwd] = useState('');
     const [loading, setLoading] = useState(false);
     const showTip = useTips();
+    const dark = useDarkMode();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -69,25 +71,25 @@ export default function EditPassword({ user, onBack, backendUrl, token, onUpdate
         <PageTemplate breadcrumb={[{ label: '设置', onClick: onBack }, { label: '修改密码' }]}>
             <form onSubmit={handleSubmit}>
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>当前密码</div>
-                    <input type="password" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)} style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4, border: '1px solid #d1d5db' }} />
+                    <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>当前密码</div>
+                    <input type="password" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)} style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }} />
                 </label>
 
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>新密码</div>
-                    <input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4, border: '1px solid #d1d5db' }} />
+                    <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>新密码</div>
+                    <input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }} />
                 </label>
 
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>确认新密码</div>
-                    <input type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4, border: '1px solid #d1d5db' }} />
+                    <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>确认新密码</div>
+                    <input type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }} />
                 </label>
 
 
 
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <Button type="submit" disabled={loading} style={{ padding: '8px 12px' }}>{loading ? '保存中...' : '保存'}</Button>
-                    <Button type="button" onClick={() => { setCurrentPwd(''); setNewPwd(''); setConfirmPwd(''); }} style={{ padding: '8px 12px' }}>取消</Button>
+                    <Button themeAware type="submit" disabled={loading} style={{ padding: '8px 12px' }}>{loading ? '保存中...' : '保存'}</Button>
+                    <Button themeAware type="button" onClick={() => { setCurrentPwd(''); setNewPwd(''); setConfirmPwd(''); }} style={{ padding: '8px 12px' }}>取消</Button>
                 </div>
             </form>
         </PageTemplate>

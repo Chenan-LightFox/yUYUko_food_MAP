@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Button from './Button';
 import Tooltip from './Tooltip';
 import defaultAvatar from '../img/default.png';
+import useDarkMode from '../hooks/useDarkMode';
 
 export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onGoHome, pathname }) {
     const [open, setOpen] = useState(false);
@@ -9,6 +10,9 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
     const menuRef = useRef(null);
     const closeTimerRef = useRef(null);
     const customThemeColor = '#002fa7';
+
+    const dark = useDarkMode();
+    const menuTextColor = dark ? '#e5e7eb' : 'inherit';
 
     const isTouchDevice = typeof window !== 'undefined' && (('ontouchstart' in window) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0));
 
@@ -131,9 +135,9 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: 'pointer',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                    boxShadow: dark ? '0 1px 3px rgba(0,0,0,0.6)' : '0 1px 3px rgba(0,0,0,0.15)',
                     overflow: 'hidden',
-                    border: '3px solid' + customThemeColor,
+                    border: `3px solid ${customThemeColor}`,
                     boxSizing: 'border-box'
                 }}
             >
@@ -161,50 +165,51 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
                         left: 12,
                         top: 64,
                         minWidth: 200,
-                        background: '#fff',
+                        background: dark ? '#0b1220' : '#fff',
                         borderRadius: 8,
-                        boxShadow: '0 6px 24px rgba(0,0,0,0.15)',
+                        boxShadow: dark ? '0 6px 24px rgba(0,0,0,0.6)' : '0 6px 24px rgba(0,0,0,0.15)',
                         padding: 12,
-                        border: '1px solid rgba(16,24,40,0.06)'
+                        border: dark ? '1px solid #1f2937' : '1px solid rgba(16,24,40,0.06)',
+                        color: dark ? '#e5e7eb' : 'inherit'
                     }}
                 >
                     {isAuth && user ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <div style={{ fontSize: 20, fontWeight: 700 }}>东方饭联地图</div>
+                            <div style={{ fontSize: 20, fontWeight: 700 }}>{'东方饭联地图'}</div>
 
                             <div style={{ fontSize: 14 }}>
                                 <Tooltip text={`用户ID：${user.id}`} placement="top">{user.username}</Tooltip>
                             </div>
-                            <div style={{ fontSize: 12, color: '#666' }}>{user.admin_level ? `管理员：${user.admin_level}` : '普通用户'}</div>
+                            <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666' }}>{user.admin_level ? `管理员：${user.admin_level}` : '普通用户'}</div>
 
-                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: '#a2a2a2', margin: 0 }} />
+                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                                 {(isAdmin || isOnAdmin) && (
-                                    <Button variant="menu" full onClick={() => { setOpen(false); if (isOnAdmin) { onGoHome && onGoHome(); } else { onOpenAdmin && onOpenAdmin(); } }}>
+                                    <Button variant="menu" full onClick={() => { setOpen(false); if (isOnAdmin) { onGoHome && onGoHome(); } else { onOpenAdmin && onOpenAdmin(); } }} style={{ color: menuTextColor }}>
                                         {isOnAdmin ? '返回地图' : '管理后台'}
                                     </Button>
                                 )}
                                 {(isAdmin || isOnAdmin) && (
-                                    <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: '#a2a2a2', margin: 0 }} />
+                                    <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
                                 )}
 
-                                <Button variant="menu" full onClick={() => { setOpen(false); if (isOnSettings) { onGoHome && onGoHome(); } else { onOpenSettings && onOpenSettings(); } }}>
+                                <Button variant="menu" full onClick={() => { setOpen(false); if (isOnSettings) { onGoHome && onGoHome(); } else { onOpenSettings && onOpenSettings(); } }} style={{ color: menuTextColor }}>
                                     {isOnSettings ? '返回地图' : '设置'}
                                 </Button>
 
-                                <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: '#a2a2a2', margin: 0 }} />
-                                <Button variant="menu" full onClick={() => { setOpen(false); onLogout && onLogout(); }} style={{ color: '#b00020' }}>
+                                <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
+                                <Button variant="menu" full onClick={() => { setOpen(false); onLogout && onLogout(); }} style={{ color: dark ? '#ff8a93' : '#b00020' }}>
                                     注销
                                 </Button>
                             </div>
-                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: '#a2a2a2', margin: 0 }} />
+                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: '#a2a2a2', margin: 0 }} />
+                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
                             <Button variant="menu" full onClick={() => { setOpen(false); onOpenAuth && onOpenAuth(); }}>登录 / 注册</Button>
-                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: '#a2a2a2', margin: 0 }} />
+                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
                         </div>
                     )}
                 </div>
