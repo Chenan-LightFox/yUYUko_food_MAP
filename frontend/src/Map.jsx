@@ -6,11 +6,33 @@ import { renderMarkers } from './map/markers';
 import MapUI from './map/MapUI';
 import CommentPanel from './map/CommentPanel';
 import { useTips } from "./components/Tips";
+import Tooltip from './components/Tooltip';
+import Button from './components/Button';
 
 const DEFAULT_CENTER = MapUtils.DEFAULT_CENTER;
 const DEFAULT_ZOOM = MapUtils.DEFAULT_ZOOM;
+const { normalizeLngLat, readSavedMapView, shouldPersistMapView, MAP_VIEW_STORAGE_KEY, MAP_VIEW_SAVE_DEBOUNCE_MS, LOCATE_ME_MIN_ZOOM, canUseLocationInCurrentContext, getLocationErrorMessage } = MapUtils;
 
 
+
+function buildInfoWindowContent(place) {
+    const root = document.createElement("div");
+    root.style.minWidth = "160px";
+
+    const title = document.createElement("strong");
+    title.textContent = String(place?.name || "");
+    root.appendChild(title);
+
+    const description = document.createElement("div");
+    description.textContent = String(place?.description || "");
+    root.appendChild(description);
+
+    const category = document.createElement("div");
+    category.textContent = `分类: ${String(place?.category || "-")}`;
+    root.appendChild(category);
+
+    return root;
+}
 
 export default function MapView({ backendUrl, token, isAuthenticated, onRequireAuth }) {
     const containerRef = useRef(null);
