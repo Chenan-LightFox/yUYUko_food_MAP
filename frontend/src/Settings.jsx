@@ -2,7 +2,7 @@ import React from 'react';
 import Button from './components/Button';
 import Tooltip from './components/Tooltip';
 
-export default function Settings({ user, onBack, onOpenEditUsername, onOpenEditPassword, onOpenPersonalize }) {
+export default function Settings({ user, onBack, onOpenEditUsername, onOpenEditPassword, onOpenPersonalize, onOpenThemes }) {
     return (
         <div style={{ minHeight: 'var(--app-height, 100vh)', background: '#f6f7f9', padding: 20, boxSizing: 'border-box' }}>
             <div style={{ maxWidth: 960, margin: '0 auto' }}>
@@ -42,6 +42,19 @@ export default function Settings({ user, onBack, onOpenEditUsername, onOpenEditP
                     <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: '#a2a2a2', margin: 0 }} />
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 12 }}>
+                        <div><strong>个性化主题</strong></div>
+                        <div>
+                            <Tooltip text="个性化主题" placement="top">
+                                <Button onClick={onOpenThemes} style={{ padding: '8px 12px', border: 0, alignItems: 'center', display: 'inline-flex', gap: 4 }}>
+                                    <span className="material-symbols-outlined">chevron_right</span>
+                                </Button>
+                            </Tooltip>
+                        </div>
+                    </div>
+
+                    <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: '#a2a2a2', margin: 0 }} />
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
                         <div><strong>个性化地图</strong></div>
                         <div>
                             <Tooltip text="个性化地图" placement="top">

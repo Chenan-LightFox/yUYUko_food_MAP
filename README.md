@@ -53,4 +53,6 @@
 - AdminDashboard.js: 美化管理员后台界面设计，完善操作反馈
 - Map.jsx: 修改为自己的Marker图标
 - Settings.jsx: 完善页面
+- CustomThemes.jsx: 完善页面
+- 改写全局各种面板，以适配暗黑模式
 - 大家找找bug（
