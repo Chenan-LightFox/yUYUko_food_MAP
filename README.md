@@ -1,8 +1,6 @@
 # yUYUko_food_MAP
 这是东方饭联地图的网页端。
 
-目前还是一片工地（
-
 ---
 
 **现可以登录`8.210.201.2/index.html`进行测试！**
@@ -51,24 +49,7 @@
 
 ---
 
-**管理员后台访问（第一阶段）**
-
-- 独立后台入口路径：`/admin`
-- 访问前提：用户已登录，且 `admin_level` 不为空（管理员账号）
-- 当前能力范围：仅展示当前账号管理员等级与可见权限，不包含完整管理 CRUD 面板
-- 选择 `/admin` 的原因：语义清晰，便于后续 HTTPS 同源反代与权限入口统一
-
-若部署环境需要直接访问 `/admin`，服务端需配置 SPA 回退到 `index.html`，例如 Nginx：
-
-```nginx
-location / {
-    try_files $uri $uri/ /index.html;
-}
-```
-
----
-
 **TODO list:**
-- admins.js: 添加操作日志模块
-- AdminDashboard.js: 美化管理员后台界面设计，完善权限展示与操作反馈
+- AdminDashboard.js: 美化管理员后台界面设计，完善操作反馈
 - Map.jsx: 修改为自己的Marker图标
+- 大家找找bug（
