@@ -46,27 +46,22 @@ export default function AdminPlaces({ backendUrl = null }) {
         setMessage("");
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token; // capture current token
-        console.debug('[AdminPlaces] fetchRequests using token:', authToken);
         try {
             const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
             let res = await fetch(`${base}/place-requests`, { headers });
 
             // If token changed since we started, ignore this response
             if (thisFetchId !== fetchIdRef.current) {
-                console.debug('[AdminPlaces] Ignoring stale fetch response');
                 return;
             }
 
             // If 401 and token changed since request started, retry once with latest token
             if (res.status === 401) {
                 const latest = token || getLatestStoredToken();
-                console.debug('[AdminPlaces] fetch received 401. authToken:', authToken, 'latest:', latest);
                 if (latest && latest !== authToken) {
-                    console.debug('[AdminPlaces] Received 401, retrying with latest token');
                     const retryHeaders = { Authorization: `Bearer ${latest}` };
                     res = await fetch(`${base}/place-requests`, { headers: retryHeaders });
                     if (thisFetchId !== fetchIdRef.current) {
-                        console.debug('[AdminPlaces] Ignoring stale retry response');
                         return;
                     }
                 }
@@ -76,13 +71,12 @@ export default function AdminPlaces({ backendUrl = null }) {
                 // Log full response for debugging
                 let txt = "";
                 try { txt = await res.text(); } catch (e) { txt = "<failed to read body>"; }
-                console.error('[AdminPlaces] fetchRequests failed', { status: res.status, body: txt });
                 if (res.status === 401) {
                     // show red error message and open auth modal
                     handleUnauthorized();
                     return;
                 }
-                const preview = typeof txt === 'string' ? (txt.length > 240 ? txt.slice(0,240) + '...(truncated)' : txt) : String(txt);
+                const preview = typeof txt === 'string' ? (txt.length > 240 ? txt.slice(0, 240) + '...(truncated)' : txt) : String(txt);
                 throw new Error(`服务器错误 ${res.status} ${preview}`);
             }
             const data = await res.json();
@@ -106,7 +100,6 @@ export default function AdminPlaces({ backendUrl = null }) {
         const thisFetchId = ++fetchIdRef.current; // bump to mark new action
         try {
             const authToken = token;
-            console.debug('[AdminPlaces] review using token:', authToken);
             const headers = {
                 'Content-Type': 'application/json',
                 ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
@@ -118,16 +111,13 @@ export default function AdminPlaces({ backendUrl = null }) {
             });
 
             if (thisFetchId !== fetchIdRef.current) {
-                console.debug('[AdminPlaces] Ignoring stale review response');
                 return;
             }
 
             // Retry once with latest token if 401 and token changed
             if (res.status === 401) {
                 const latest = token || getLatestStoredToken();
-                console.debug('[AdminPlaces] review received 401. authToken:', authToken, 'latest:', latest);
                 if (latest && latest !== authToken) {
-                    console.debug('[AdminPlaces] Review received 401, retrying with latest token');
                     const retryHeaders = {
                         'Content-Type': 'application/json',
                         Authorization: `Bearer ${latest}`
@@ -138,7 +128,6 @@ export default function AdminPlaces({ backendUrl = null }) {
                         body: JSON.stringify({ action })
                     });
                     if (thisFetchId !== fetchIdRef.current) {
-                        console.debug('[AdminPlaces] Ignoring stale review retry response');
                         return;
                     }
                 }
@@ -148,9 +137,7 @@ export default function AdminPlaces({ backendUrl = null }) {
             if (!res.ok) {
                 let txt = "";
                 try { txt = JSON.stringify(data); } catch (e) { txt = String(data); }
-                console.error('[AdminPlaces] review failed', { status: res.status, body: txt });
                 if (res.status === 401) {
-                    // show red error message and open auth modal
                     handleUnauthorized();
                     return;
                 }

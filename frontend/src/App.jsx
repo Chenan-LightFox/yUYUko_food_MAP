@@ -3,7 +3,9 @@ import MapView from "./Map";
 import AdminDashboard from "./AdminDashboard";
 import AuthPanel from "./components/AuthPanel";
 import AuthModal from "./components/AuthModal";
-import { AuthProvider, useAuth } from "./AuthContext";
+import { AuthProvider } from "./AuthContext";
+import BanNotice from "./components/BanNotice";
+import { TipsProvider } from "./components/Tips";
 
 function normalizeUrl(url) {
     return String(url).replace(/\/+$/, "");
@@ -33,37 +35,7 @@ function currentPathname() {
     return window.location.pathname || "/";
 }
 
-function BanNotice() {
-    const { user } = useAuth();
-    if (!user || !user.is_banned) return null;
-    const reason = user.ban_reason || '无';
-    const expires = user.ban_expires ? (new Date(user.ban_expires)).toLocaleString() : '永久';
-    const style = {
-        position: 'absolute',
-        top: 12,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '55%',
-        maxWidth: '960px',
-        minWidth: '280px',
-        zIndex: 9999,
-        padding: '12px 16px',
-        borderRadius: 8,
-        background: '#fff6f6',
-        border: '1px solid #ffd6d6',
-        color: '#8b0000',
-        textAlign: 'center',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
-    };
 
-    return (
-        <div style={style}>
-            <div style={{ fontWeight: 700 }}>账号已被封禁</div>
-            <div style={{ fontSize: 13, marginTop: 6 }}>原因：{reason}；到期：{expires}</div>
-            <div style={{ fontSize: 13, marginTop: 6 }}>被封禁的账号只能查看内容，无法进行发帖/修改等操作。</div>
-        </div>
-    );
-}
 
 export default function App() {
     const [pathname, setPathname] = useState(currentPathname());
@@ -234,51 +206,53 @@ export default function App() {
 
     return (
         <AuthProvider value={authValue}>
-            <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
-                <BanNotice />
-                {!showAdminPage && (
-                    <MapView
-                        backendUrl={BACKEND_URL}
-                        token={token}
-                        isAuthenticated={isAuth}
-                        onRequireAuth={() => setShowAuth(true)}
-                    />
-                )}
-
-                {showAdminPage && (
-                    user ? (
-                        <AdminDashboard
-                            user={user}
-                            token={token}
+            <TipsProvider>
+                <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
+                    <BanNotice />
+                    {!showAdminPage && (
+                        <MapView
                             backendUrl={BACKEND_URL}
-                            onBackHome={() => goPath("/")}
-                            onLogout={handleLogout}
-                            onRequireAuth={handleRequireAuth}
+                            token={token}
+                            isAuthenticated={isAuth}
+                            onRequireAuth={() => setShowAuth(true)}
                         />
-                    ) : (
-                        <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            正在验证登录状态...
-                        </div>
-                    )
-                )}
+                    )}
 
-                <AuthPanel
-                    user={user}
-                    isAuth={isAuth}
-                    isAdmin={isAdmin}
-                    onLogout={handleLogout}
-                    onOpenAuth={() => setShowAuth(true)}
-                    onOpenAdmin={() => goPath("/admin")}
-                />
+                    {showAdminPage && (
+                        user ? (
+                            <AdminDashboard
+                                user={user}
+                                token={token}
+                                backendUrl={BACKEND_URL}
+                                onBackHome={() => goPath("/")}
+                                onLogout={handleLogout}
+                                onRequireAuth={handleRequireAuth}
+                            />
+                        ) : (
+                            <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                正在验证登录状态...
+                            </div>
+                        )
+                    )}
 
-                {showAuth && (
-                    <AuthModal
-                        backendUrl={BACKEND_URL}
-                        onLoginSuccess={(u, t) => { handleLoginSuccess(u, t); }}
-                        onClose={() => setShowAuth(false)}
+                    <AuthPanel
+                        user={user}
+                        isAuth={isAuth}
+                        isAdmin={isAdmin}
+                        onLogout={handleLogout}
+                        onOpenAuth={() => setShowAuth(true)}
+                        onOpenAdmin={() => goPath("/admin")}
                     />
-                )}
-            </div>
+
+                    {showAuth && (
+                        <AuthModal
+                            backendUrl={BACKEND_URL}
+                            onLoginSuccess={(u, t) => { handleLoginSuccess(u, t); }}
+                            onClose={() => setShowAuth(false)}
+                        />
+                    )}
+                </div>
+            </TipsProvider>
         </AuthProvider>
     );
 }

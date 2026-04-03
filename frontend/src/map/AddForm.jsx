@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import Button from '../components/Button';
+import { useTips } from '../components/Tips';
 
 export default function AddForm({ defaultPos, onCancel, onSubmit }) {
     const [name, setName] = useState("");
     const [category, setCategory] = useState("");
     const [description, setDescription] = useState("");
+    const showTip = useTips();
 
     const handle = () => {
-        if (!name) return alert("请输入名称");
+        if (!name) { showTip("请输入名称"); return; }
         const payload = {
             name,
             category,

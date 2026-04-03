@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useAuth } from "./AuthContext";
 import * as MapUtils from './map/utils';
 import * as Api from './map/api';
 import { renderMarkers } from './map/markers';
 import MapUI from './map/MapUI';
 import CommentPanel from './map/CommentPanel';
+import { useTips } from "./components/Tips";
 
 const DEFAULT_CENTER = MapUtils.DEFAULT_CENTER;
 const DEFAULT_ZOOM = MapUtils.DEFAULT_ZOOM;
@@ -29,6 +31,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 	const [locating, setLocating] = useState(false);
 	const [locationError, setLocationError] = useState("");
 	const [currentUser, setCurrentUser] = useState(null);
+	const { setUser: setAuthUser } = useAuth();
 	const [fetchingUser, setFetchingUser] = useState(false);
 	const [selectedPlace, setSelectedPlace] = useState(null);
 	const [popupPoint, setPopupPoint] = useState(null);
@@ -41,6 +44,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 	const selectedPlaceRef = useRef(null);
 	const hasToken = !!token;
 	const authPending = hasToken && !isAuthenticated;
+	const showTip = useTips();
 	// disallow write actions for banned users
 	const isBanned = !!(currentUser && currentUser.is_banned);
 	const canWrite = hasToken && isAuthenticated && !isBanned;
@@ -94,7 +98,14 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 			setFetchingUser(true);
 			try {
 				const user = await Api.fetchCurrentUser(backendUrl, token);
-				if (active && user) setCurrentUser(user);
+				if (active && user) {
+					setCurrentUser(user);
+					try {
+						if (typeof setAuthUser === 'function') setAuthUser(user);
+					} catch (err) {
+						// ignore
+					}
+				}
 			} catch (e) {
 				console.warn("获取当前用户失败", e);
 			} finally {
@@ -409,7 +420,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 			return;
 		}
 		if (isBanned) {
-			alert('您的账号已被封禁，无法提交地点。');
+			showTip('您的账号已被封禁，无法提交地点。');
 			return;
 		}
 
@@ -423,7 +434,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 			setAddMode(false);
 		} catch (e) {
 			console.error("提交地点失败", e);
-			alert("提交失败: " + (e.message || e));
+			showTip("提交失败: " + (e.message || e));
 		}
 	};
 
@@ -473,6 +484,10 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 	const handleToggleAddMode = () => {
 		if (!mapReady || authPending) return;
 		if (!canWrite) {
+			if (isBanned) {
+				showTip('您的账号已被封禁，无法添加地点');
+				return;
+			}
 			onRequireAuth && onRequireAuth();
 			return;
 		}
@@ -503,7 +518,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 		if (!MapUtils.canUseLocationInCurrentContext()) {
 			const message = "定位功能仅在 HTTPS 或 localhost 环境下可用。";
 			setLocationError(message);
-			alert(message);
+			showTip(message);
 			return;
 		}
 
@@ -543,7 +558,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 			const message = MapUtils.getLocationErrorMessage(error);
 			setLocationError(message);
 			console.error("定位失败", error);
-			alert(message);
+			showTip(message);
 		} finally {
 			setLocating(false);
 		}
@@ -574,7 +589,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 			return;
 		}
 		if (isBanned) {
-			alert('您的账号已被封禁，无法进行管理操作');
+			showTip('您的账号已被封禁，无法进行管理操作');
 			return;
 		}
 		if (!currentUser && !fetchingUser) {
@@ -605,7 +620,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 	const handleDirectDelete = async () => {
 		if (!selectedPlace) return;
 		if (!token) { onRequireAuth && onRequireAuth(); return; }
-		if (isBanned) { alert('您的账号已被封禁，无法删除地点'); return; }
+		if (isBanned) { showTip('您的账号已被封禁，无法删除地点'); return; }
 		if (!window.confirm("确认删除此地点？此操作不可恢复。")) return;
 		setManageSubmitting(true);
 		try {
@@ -626,7 +641,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 	const handleDirectUpdate = async () => {
 		if (!selectedPlace) return;
 		if (!token) { onRequireAuth && onRequireAuth(); return; }
-		if (isBanned) { alert('您的账号已被封禁，无法更新地点'); return; }
+		if (isBanned) { showTip('您的账号已被封禁，无法更新地点'); return; }
 		setManageSubmitting(true);
 		try {
 			const payload = {
@@ -651,7 +666,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 	const handleSubmitModifyRequest = async () => {
 		if (!selectedPlace) return;
 		if (!token) { onRequireAuth && onRequireAuth(); return; }
-		if (isBanned) { alert('您的账号已被封禁，无法提交修改申请'); return; }
+		if (isBanned) { showTip('您的账号已被封禁，无法提交修改申请'); return; }
 		setManageSubmitting(true);
 		try {
 			const payload = {
@@ -681,7 +696,10 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 			onRequireAuth && onRequireAuth();
 			return;
 		}
-		// allow viewing comments for banned users, but prevent posting
+		// 当用户被封禁时显示提示（仍允许查看评论，但不能发布）
+		if (isBanned) {
+			showTip('您的账号已被封禁，无法发表评论');
+		}
 		setCommentOpen(true);
 		await fetchComments();
 	};
