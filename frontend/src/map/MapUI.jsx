@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Tooltip from '../components/Tooltip';
 import Button from '../components/Button';
 import ManagePanel from './ManagePanel';
@@ -42,13 +42,58 @@ export default function MapUI(props) {
         onAddSubmit
     } = props;
 
+    const [searchOpen, setSearchOpen] = useState(false);
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        if (!searchOpen) return;
+        const onKey = (e) => {
+            if (e.key === 'Escape') setSearchOpen(false);
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [searchOpen]);
+
+    const hexToRgba = (hex, a = 1) => {
+        try {
+            let h = (hex || '').replace('#', '');
+            if (h.length === 3) h = h.split('').map(c => c + c).join('');
+            const bigint = parseInt(h, 16);
+            const r = (bigint >> 16) & 255;
+            const g = (bigint >> 8) & 255;
+            const b = bigint & 255;
+            return `rgba(${r},${g},${b},${a})`;
+        } catch (e) {
+            return `rgba(0,0,0,${a})`;
+        }
+    };
+
+    const handleSearchButtonClick = () => {
+        if (!searchOpen) {
+            setSearchOpen(true);
+            setTimeout(() => inputRef.current && inputRef.current.focus(), 180);
+            return;
+        }
+        if (!searchTerm || !searchTerm.trim()) {
+            setSearchOpen(false);
+            return;
+        }
+        searchServer({ q: searchTerm });
+    };
+
     return (
         <>
             <div ref={containerRef} id="map" style={{ width: "100%", height: "100%", position: "relative" }}></div>
 
             <div style={{ position: "absolute", right: 8, top: 8, zIndex: 2000 }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {/* 灰色遮罩，弹出搜索框时显示（位于控件下面） */}
+                {searchOpen && (
+                    <div onClick={() => setSearchOpen(false)} style={{ position: 'fixed', left: 0, top: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.2)', zIndex: 1995 }} />
+                )}
+
+                <div style={{ position: 'relative', width: 320, height: 44, zIndex: 2001 }}>
                     <input
+                        ref={inputRef}
                         placeholder="搜索关键词（例如：火锅/店名）"
                         value={searchTerm}
                         onChange={(e) => {
@@ -58,36 +103,65 @@ export default function MapUI(props) {
                                 clearSearch();
                             }
                         }}
-                        style={{ width: 220, padding: "6px 8px" }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (searchTerm && searchTerm.trim()) searchServer({ q: searchTerm });
+                            }
+                        }}
                         disabled={!mapReady || searching}
+                        style={{
+                            position: 'absolute',
+                            right: 52,
+                            top: 0,
+                            height: 44,
+                            boxSizing: 'border-box',
+                            padding: '6px 12px',
+                            borderRadius: 22,
+                            border: `2px solid ${customThemeColor}`,
+                            background: '#fff',
+                            outline: 'none',
+                            transformOrigin: 'right center',
+                            transform: searchOpen ? 'scaleX(1)' : 'scaleX(0)',
+                            transition: 'transform 240ms cubic-bezier(.2,.8,.2,1), opacity 180ms ease, box-shadow 200ms ease',
+                            opacity: searchOpen ? 1 : 0,
+                            width: 220,
+                            pointerEvents: searchOpen ? 'auto' : 'none',
+                            boxShadow: searchOpen ? `0 4px 12px ${hexToRgba(customThemeColor, 0.2)}, 0 0 8px ${hexToRgba(customThemeColor, 0.25)}` : 'none',
+                            zIndex: 2002
+                        }}
                     />
-                    <Tooltip text={tipText}>
-                        <Button
-                            onClick={() => searchServer({ q: searchTerm })}
-                            disabled={!mapReady || searching || !searchTerm}
-                            style={{
-                                width: 44,
-                                height: 44,
-                                padding: 0,
-                                borderRadius: '50%',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: customThemeColor,
-                                color: '#fff',
-                                border: 'none',
-                                boxShadow: '0 4px 12px rgba(0,47,167,0.2)',
-                                cursor: (!mapReady || authPending) ? 'not-allowed' : 'pointer',
-                                opacity: (!mapReady || authPending) ? 0.6 : 1
-                            }}
-                        >
-                            {searching ? (
-                                <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 36 }}>progress_activity</span>
-                            ) : (
-                                <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 32 }}>search</span>
-                            )}
-                        </Button>
-                    </Tooltip>
+
+                    <div style={{ position: 'absolute', right: 0, top: 0 }}>
+                        <Tooltip text={tipText}>
+                            <Button
+                                onClick={handleSearchButtonClick}
+                                disabled={!mapReady || searching}
+                                style={{
+                                    width: 44,
+                                    height: 44,
+                                    padding: 0,
+                                    borderRadius: '50%',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: customThemeColor,
+                                    color: '#fff',
+                                    border: 'none',
+                                    boxShadow: '0 4px 12px rgba(0,47,167,0.2)',
+                                    transition: 'background 180ms ease, transform 220ms ease',
+                                    cursor: (!mapReady || authPending) ? 'not-allowed' : 'pointer',
+                                    opacity: (!mapReady || authPending) ? 0.6 : 1
+                                }}
+                            >
+                                {searching ? (
+                                    <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 36 }}>progress_activity</span>
+                                ) : (
+                                    <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 32 }}>search</span>
+                                )}
+                            </Button>
+                        </Tooltip>
+                    </div>
                 </div>
             </div>
 
