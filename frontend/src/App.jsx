@@ -3,6 +3,7 @@ import MapView from "./Map";
 import AdminDashboard from "./AdminDashboard";
 import Settings from "./Settings";
 import EditUsername from "./settings/EditUsername";
+import EditPassword from "./settings/EditPassword";
 import AuthPanel from "./components/AuthPanel";
 import AuthModal from "./components/AuthModal";
 import { AuthProvider } from "./AuthContext";
@@ -199,6 +200,7 @@ export default function App() {
     const showAdminPage = pathname === "/admin" && !!token;
     const showSettingsBase = pathname === "/settings";
     const showSettingsEdit = pathname === "/settings/username";
+    const showSettingsPassword = pathname === "/settings/password";
     const showSettingsAny = typeof pathname === 'string' && pathname.startsWith("/settings");
 
     const authValue = {
@@ -249,6 +251,23 @@ export default function App() {
                                 token={token}
                                 onUpdateUser={handleLoginSuccess}
                                 onOpenEditUsername={() => goPath('/settings/username')}
+                                onOpenEditPassword={() => goPath('/settings/password')}
+                            />
+                        ) : (
+                            <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                正在验证登录状态...
+                            </div>
+                        )
+                    )}
+
+                    {showSettingsPassword && (
+                        user ? (
+                            <EditPassword
+                                user={user}
+                                onBack={() => goPath('/settings')}
+                                backendUrl={BACKEND_URL}
+                                token={token}
+                                onUpdateUser={handleLoginSuccess}
                             />
                         ) : (
                             <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>

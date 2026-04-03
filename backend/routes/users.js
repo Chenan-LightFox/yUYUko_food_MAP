@@ -128,6 +128,37 @@ router.patch('/me', requireAuth, (req, res) => {
     });
 });
 
+// 修改当前用户密码，需要提供当前密码和新密码
+router.patch('/me/password', requireAuth, (req, res) => {
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: '缺少字段' });
+    if (typeof newPassword !== 'string' || newPassword.length < 6) return res.status(400).json({ error: '新密码长度至少 6 位' });
+
+    // 读取当前存储的密码（已加密）
+    db.get('SELECT password FROM User WHERE id = ?', [req.user.id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: '用户不存在' });
+
+        const currentHash = hashPassword(currentPassword);
+        if (row.password !== currentHash) return res.status(401).json({ error: '当前密码错误' });
+
+        const newHash = hashPassword(newPassword);
+        db.run('UPDATE User SET password = ? WHERE id = ?', [newHash, req.user.id], function (e) {
+            if (e) return res.status(500).json({ error: e.message });
+
+            // 生成新的 token 并刷新 redis session
+            const token = jwt.sign({ id: req.user.id, username: req.user.username }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+            redis.set(`session:${req.user.id}`, token, 'EX', JWT_EXPIRES_IN, (redisErr) => {
+                if (redisErr) console.error('Failed to update redis session after password change:', redisErr && redisErr.message);
+                db.get('SELECT id, username, admin_level FROM User WHERE id = ?', [req.user.id], (err2, updated) => {
+                    if (err2) return res.status(500).json({ error: err2.message });
+                    return res.json({ user: updated, token });
+                });
+            });
+        });
+    });
+});
+
 // 退出登录，清理当前会话
 router.post('/logout', requireAuth, async (req, res) => {
     try {

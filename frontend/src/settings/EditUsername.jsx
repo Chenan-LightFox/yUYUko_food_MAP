@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import PageTemplate from '../components/PageTemplate';
 import Button from '../components/Button';
+import { useTips } from '../components/Tips';
 
 export default function EditUsername({ user, onBack, backendUrl, token, onUpdateUser }) {
     const [username, setUsername] = useState(user ? user.username : '');
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [success, setSuccess] = useState(null);
+    const showTip = useTips();
 
     useEffect(() => {
         setUsername(user ? user.username : '');
@@ -14,11 +14,9 @@ export default function EditUsername({ user, onBack, backendUrl, token, onUpdate
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError(null);
-        setSuccess(null);
         const newName = (username || '').trim();
-        if (!newName) return setError('用户名不能为空');
-        if (!backendUrl || !token) return setError('未提供后端地址或未登录');
+        if (!newName) { showTip('用户名不能为空'); return; }
+        if (!backendUrl || !token) { showTip('未提供后端地址或未登录'); return; }
         setLoading(true);
         try {
             const res = await fetch(`${backendUrl}/users/me`, {
@@ -26,19 +24,25 @@ export default function EditUsername({ user, onBack, backendUrl, token, onUpdate
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ username: newName })
             });
-            const data = await res.json();
+
+            const text = await res.text();
+            let data = null;
+            try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+
             if (!res.ok) {
-                setError(data && data.error ? data.error : '更新失败');
+                const errMsg = (data && data.error) ? data.error : (text ? (text.trim().startsWith('<') ? `服务器返回错误（HTTP ${res.status}）` : text) : '更新失败');
+                showTip(typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg));
                 setLoading(false);
                 return;
             }
+
             // update app state with returned user and token
             if (onUpdateUser && data && data.user && data.token) {
                 onUpdateUser(data.user, data.token);
             }
-            setSuccess('用户名已更新');
+            showTip('用户名已更新');
         } catch (ex) {
-            setError(ex.message || '请求失败');
+            showTip(ex.message || '请求失败');
         } finally {
             setLoading(false);
         }
@@ -58,12 +62,11 @@ export default function EditUsername({ user, onBack, backendUrl, token, onUpdate
                     />
                 </label>
 
-                {error && <div style={{ color: '#b00020', marginBottom: 8 }}>{error}</div>}
-                {success && <div style={{ color: '#0b8a0b', marginBottom: 8 }}>{success}</div>}
+
 
                 <div style={{ display: 'flex', gap: 8 }}>
                     <Button type="submit" disabled={loading} style={{ padding: '8px 12px' }}>{loading ? '保存中...' : '保存'}</Button>
-                    <Button type="button" onClick={() => { setUsername(user ? user.username : ''); setError(null); setSuccess(null); }} style={{ padding: '8px 12px' }}>取消</Button>
+                    <Button type="button" onClick={() => { setUsername(user ? user.username : ''); }} style={{ padding: '8px 12px' }}>取消</Button>
                 </div>
             </form>
         </PageTemplate>
