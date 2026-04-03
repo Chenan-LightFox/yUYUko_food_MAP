@@ -1,0 +1,282 @@
+import React, { useEffect, useState, useRef } from "react";
+import Button from "../components/Button";
+import { useAuth } from "../AuthContext";
+
+function resolveBackendUrl() {
+    if (typeof window === "undefined") return "http://localhost:3000";
+    const { protocol, hostname } = window.location;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+        return "http://localhost:3000";
+    }
+    return `${protocol}//${hostname}:3000`;
+}
+
+function getLatestStoredToken() {
+    try { return localStorage.getItem('token'); } catch (e) { return null; }
+}
+
+function randomString(len) {
+    // Secure random alphanumeric string
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+        const arr = new Uint8Array(len);
+        window.crypto.getRandomValues(arr);
+        return Array.from(arr).map(v => chars[v % chars.length]).join('');
+    }
+    let s = '';
+    for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    return s;
+}
+
+export default function AdminInvitecode({ backendUrl = null }) {
+    const base = backendUrl || resolveBackendUrl();
+    const { token, user, onRequireAuth } = useAuth();
+    const [invites, setInvites] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState("");
+    const [creating, setCreating] = useState(false);
+    const [maxUses, setMaxUses] = useState(1);
+    const [lastCreatedCode, setLastCreatedCode] = useState("");
+    const [processing, setProcessing] = useState({});
+    const fetchIdRef = useRef(0);
+
+    const canManage = user && user.admin_level;
+
+    useEffect(() => {
+        if (!canManage) return;
+        fetchInvites();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [canManage, token]);
+
+    const handleUnauthorized = () => {
+        setInvites([]);
+        const authMsg = '未登录或授权已失效，请重新登录';
+        setMessage(authMsg);
+        if (onRequireAuth) onRequireAuth();
+    };
+
+    const fetchInvites = async () => {
+        setLoading(true);
+        setMessage("");
+        const thisFetchId = ++fetchIdRef.current;
+        const authToken = token;
+        try {
+            const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+            let res = await fetch(`${base}/admin/invites`, { headers });
+
+            if (thisFetchId !== fetchIdRef.current) return;
+
+            if (res.status === 401) {
+                const latest = token || getLatestStoredToken();
+                if (latest && latest !== authToken) {
+                    const retryHeaders = { Authorization: `Bearer ${latest}` };
+                    res = await fetch(`${base}/admin/invites`, { headers: retryHeaders });
+                    if (thisFetchId !== fetchIdRef.current) return;
+                }
+            }
+
+            if (!res.ok) {
+                const txt = await res.text().catch(() => "");
+                if (res.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
+                if (res.status === 403) {
+                    setMessage('权限不足，无法获取邀请码列表');
+                    return;
+                }
+                throw new Error(`服务器错误 ${res.status} ${txt}`);
+            }
+
+            const data = await res.json().catch(() => []);
+            setInvites(data || []);
+        } catch (e) {
+            console.error('加载邀请码失败', e);
+            if (e && String(e.message || '').toLowerCase().includes('未登录')) {
+                // handled
+            } else {
+                setMessage('加载失败: ' + (e.message || e));
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const createInvite = async (codeArg = null) => {
+        setMessage("");
+        // generate code if not provided
+        const code = codeArg || randomString(24 + Math.floor(Math.random() * 9)); // 24-32
+        setCreating(true);
+        const thisFetchId = ++fetchIdRef.current;
+        const authToken = token;
+        try {
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+            };
+            let res = await fetch(`${base}/admin/invites`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ code, max_uses: Number(maxUses) || 1 })
+            });
+
+            if (thisFetchId !== fetchIdRef.current) return;
+
+            if (res.status === 401) {
+                const latest = token || getLatestStoredToken();
+                if (latest && latest !== authToken) {
+                    const retryHeaders = {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${latest}`
+                    };
+                    res = await fetch(`${base}/admin/invites`, { method: 'POST', headers: retryHeaders, body: JSON.stringify({ code, max_uses: Number(maxUses) || 1 }) });
+                    if (thisFetchId !== fetchIdRef.current) return;
+                }
+            }
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                if (res.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
+                throw new Error(data.error || `创建失败 ${res.status}`);
+            }
+
+            setMessage('创建成功，请复制以下邀请码文本（只会显示一次）');
+            setLastCreatedCode(code);
+            setMaxUses(1);
+            await fetchInvites();
+        } catch (e) {
+            console.error('createInvite failed', e);
+            setMessage('创建失败：' + (e.message || e));
+            setLastCreatedCode("");
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const deleteInvite = async (id) => {
+        if (!window.confirm('确认删除此邀请码？')) return;
+        setMessage("");
+        setProcessing(p => ({ ...p, [id]: true }));
+        const thisFetchId = ++fetchIdRef.current;
+        const authToken = token;
+        try {
+            const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+            let res = await fetch(`${base}/admin/invites/${id}`, { method: 'DELETE', headers });
+
+            if (thisFetchId !== fetchIdRef.current) return;
+
+            if (res.status === 401) {
+                const latest = token || getLatestStoredToken();
+                if (latest && latest !== authToken) {
+                    const retryHeaders = { Authorization: `Bearer ${latest}` };
+                    res = await fetch(`${base}/admin/invites/${id}`, { method: 'DELETE', headers: retryHeaders });
+                    if (thisFetchId !== fetchIdRef.current) return;
+                }
+            }
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                if (res.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
+                throw new Error(data.error || `删除失败 ${res.status}`);
+            }
+
+            setMessage('已删除');
+            setInvites(list => list.filter(i => i.id !== id));
+        } catch (e) {
+            console.error('deleteInvite failed', e);
+            setMessage('删除失败：' + (e.message || e));
+        } finally {
+            setProcessing(p => ({ ...p, [id]: false }));
+        }
+    };
+
+    const copyToClipboard = (text) => {
+        try {
+            if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text);
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+            setMessage('已复制到剪贴板');
+        } catch (e) {
+            console.warn('copy failed', e);
+            setMessage('复制失败');
+        }
+    };
+
+    if (!canManage) return <div style={{ color: '#b00020' }}>您的账号无权访问此面板。</div>;
+
+    return (
+        <div style={{ marginTop: 12 }}>
+            <h3>邀请码管理</h3>
+            <div style={{ marginBottom: 8 }}>
+                <Button onClick={fetchInvites} disabled={loading}>刷新</Button>
+            </div>
+
+            {message && <div style={{ color: '#c33', marginBottom: 8 }}>{message}</div>}
+
+            <div style={{ marginBottom: 12, padding: 8, border: '1px solid #eee', borderRadius: 6 }}>
+                <div style={{ marginBottom: 8 }}><strong>创建新邀请码</strong></div>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <label style={{ marginRight: 8 }}>可用次数：</label>
+                    <input type="number" value={maxUses} onChange={e => setMaxUses(Number(e.target.value))} min={1} style={{ width: 120, marginRight: 8, padding: 6 }} />
+                    <Button onClick={() => createInvite()} disabled={creating}>生成并创建</Button>
+                </div>
+                {lastCreatedCode && (
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center' }}>
+                        <input readOnly value={lastCreatedCode} style={{ flex: 1, marginRight: 8, padding: 6 }} />
+                        <Button onClick={() => copyToClipboard(lastCreatedCode)}>复制</Button>
+                    </div>
+                )}
+            </div>
+
+            {loading ? (
+                <div>加载中…</div>
+            ) : (
+                <div>
+                    {invites.length === 0 ? (
+                        <div>当前没有邀请码记录。</div>
+                    ) : (
+                        <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%' }}>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Code (hashed)</th>
+                                    <th>Max Uses</th>
+                                    <th>Current Uses</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {invites.map(inv => (
+                                    <tr key={inv.id}>
+                                        <td>{inv.id}</td>
+                                        <td style={{ maxWidth: 320, wordBreak: 'break-all' }}>{inv.code || inv.hashed || "-"}</td>
+                                        <td>{inv.max_uses != null ? inv.max_uses : (inv.maxUses || "-")}</td>
+                                        <td>{inv.current_uses != null ? inv.current_uses : (inv.currentUses || 0)}</td>
+                                        <td>{inv.created_time || inv.createdTime || "-"}</td>
+                                        <td>
+                                            <Button onClick={() => deleteInvite(inv.id)} disabled={processing[inv.id]} style={{ background: '#e02424', color: '#fff' }}>删除</Button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}

@@ -1,8 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
 import MapView from "./Map";
 import AdminDashboard from "./AdminDashboard";
+import Settings from "./Settings";
 import AuthPanel from "./components/AuthPanel";
 import AuthModal from "./components/AuthModal";
+import { AuthProvider } from "./AuthContext";
+import BanNotice from "./components/BanNotice";
+import { TipsProvider } from "./components/Tips";
 
 function normalizeUrl(url) {
     return String(url).replace(/\/+$/, "");
@@ -32,6 +36,8 @@ function currentPathname() {
     return window.location.pathname || "/";
 }
 
+
+
 export default function App() {
     const [pathname, setPathname] = useState(currentPathname());
     const [user, setUser] = useState(null);
@@ -51,16 +57,21 @@ export default function App() {
     const clearAuthState = useCallback(() => {
         setUser(null);
         setToken(null);
-        localStorage.removeItem("token");
+        try { localStorage.removeItem("token"); } catch (e) { }
         setShowAuth(true);
     }, []);
 
     const handleLoginSuccess = (u, t) => {
         setUser(u);
         setToken(t);
-        localStorage.setItem("token", t);
+        try { localStorage.setItem("token", t); } catch (e) { }
         setShowAuth(false);
     };
+
+    const handleRequireAuth = useCallback(() => {
+        // Open login modal but do not navigate away from current path so user can login in-place
+        setShowAuth(true);
+    }, []);
 
     const handleLogout = useCallback(async () => {
         if (token) {
@@ -110,86 +121,153 @@ export default function App() {
         };
     }, []);
 
+    // Sync token across tabs and refresh user when token changes
     useEffect(() => {
-        // 如果有 token 但没有 user，就向后端请求 /users/me 获取用户信息
-        if (!token || user) return;
+        const onStorage = (e) => {
+            if (!e) return;
+            if (e.key === 'token') {
+                const newToken = e.newValue;
+                setToken(newToken);
+                if (!newToken) {
+                    // logged out in another tab
+                    setUser(null);
+                    setShowAuth(true);
+                    if (pathname === '/admin') goPath('/');
+                    return;
+                }
+                // fetch /users/me to refresh user info
+                (async () => {
+                    try {
+                        const res = await fetch(`${BACKEND_URL}/users/me`, { headers: { Authorization: `Bearer ${newToken}` } });
+                        if (!res.ok) {
+                            setUser(null);
+                            setShowAuth(true);
+                            return;
+                        }
+                        const data = await res.json();
+                        if (data && data.user) setUser(data.user);
+                    } catch (err) {
+                        console.warn('Failed to refresh user after storage token change', err);
+                        setUser(null);
+                        setShowAuth(true);
+                    }
+                })();
+            }
+        };
+        window.addEventListener('storage', onStorage);
+        return () => window.removeEventListener('storage', onStorage);
+    }, [goPath, pathname]);
 
+    useEffect(() => {
+        // If we get a token but no user (e.g., on page load), try to fetch /users/me
+        if (!token || user) return;
         (async () => {
-            const url = `${BACKEND_URL}/users/me`;
             try {
-                const res = await fetch(url, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const res = await fetch(`${BACKEND_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` } });
                 if (!res.ok) {
+                    // invalid token, clear
                     clearAuthState();
                     return;
                 }
                 const data = await res.json();
                 if (data && data.user) setUser(data.user);
             } catch (e) {
-                console.error("Failed to fetch /users/me", { url, error: e });
+                console.error("Failed to fetch /users/me", { url: `${BACKEND_URL}/users/me`, error: e });
+                clearAuthState();
             }
         })();
     }, [token, user, clearAuthState]);
 
     useEffect(() => {
-        // 限定本阶段只支持两个页面路径
-        if (pathname !== "/" && pathname !== "/admin") {
+        // 限定本阶段只支持若干页面路径（允许 /, /admin, /settings）
+        if (pathname !== "/" && pathname !== "/admin" && pathname !== "/settings") {
             goPath("/");
         }
     }, [pathname, goPath]);
 
     useEffect(() => {
-        // 未登录访问 /admin 时，回首页并拉起登录框
-        if (pathname === "/admin" && !token) {
+        // 未登录访问 /admin 或 /settings 时，弹出登录对话框但不强制跳回首页，以便用户在页面内登录
+        if ((pathname === "/admin" || pathname === "/settings") && !token) {
             setShowAuth(true);
-            goPath("/");
+            // do not navigate away; allow login modal to appear over these pages
         }
-    }, [pathname, token, goPath]);
+    }, [pathname, token]);
 
     const isAuth = !!token && !!user;
     const isAdmin = !!(user && user.admin_level);
     const showAdminPage = pathname === "/admin" && !!token;
+    const showSettingsPage = pathname === "/settings";
+
+    const authValue = {
+        token,
+        setToken: (t) => { setToken(t); try { localStorage.setItem('token', t); } catch (e) { } },
+        user,
+        setUser,
+        onRequireAuth: handleRequireAuth
+    };
 
     return (
-        <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
-            {!showAdminPage && (
-                <MapView
-                    backendUrl={BACKEND_URL}
-                    token={token}
-                    isAuthenticated={isAuth}
-                    onRequireAuth={() => setShowAuth(true)}
-                />
-            )}
+        <AuthProvider value={authValue}>
+            <TipsProvider>
+                <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
+                    <BanNotice />
+                    {!showAdminPage && !showSettingsPage && (
+                        <MapView
+                            backendUrl={BACKEND_URL}
+                            token={token}
+                            isAuthenticated={isAuth}
+                            onRequireAuth={() => setShowAuth(true)}
+                        />
+                    )}
 
-            {showAdminPage && (
-                user ? (
-                    <AdminDashboard user={user} onBackHome={() => goPath("/")} onLogout={handleLogout} />
-                ) : (
-                    <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        正在验证登录状态...
-                    </div>
-                )
-            )}
+                    {showAdminPage && (
+                        user ? (
+                            <AdminDashboard
+                                user={user}
+                                token={token}
+                                backendUrl={BACKEND_URL}
+                                onBackHome={() => goPath("/")}
+                                onLogout={handleLogout}
+                                onRequireAuth={handleRequireAuth}
+                            />
+                        ) : (
+                            <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                正在验证登录状态...
+                            </div>
+                        )
+                    )}
 
-            {pathname === "/" && (
-                <AuthPanel
-                    user={user}
-                    isAuth={isAuth}
-                    isAdmin={isAdmin}
-                    onLogout={handleLogout}
-                    onOpenAuth={() => setShowAuth(true)}
-                    onOpenAdmin={() => goPath("/admin")}
-                />
-            )}
+                    {showSettingsPage && (
+                        user ? (
+                            <Settings user={user} onBack={() => goPath("/")} />
+                        ) : (
+                            <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                正在验证登录状态...
+                            </div>
+                        )
+                    )}
 
-            {showAuth && (
-                <AuthModal
-                    backendUrl={BACKEND_URL}
-                    onLoginSuccess={handleLoginSuccess}
-                    onClose={() => setShowAuth(false)}
-                />
-            )}
-        </div>
+                    <AuthPanel
+                        user={user}
+                        isAuth={isAuth}
+                        isAdmin={isAdmin}
+                        onLogout={handleLogout}
+                        onOpenAuth={() => setShowAuth(true)}
+                        onOpenAdmin={() => goPath("/admin")}
+                        onOpenSettings={() => goPath("/settings")}
+                        onGoHome={() => goPath("/")}
+                        pathname={pathname}
+                    />
+
+                    {showAuth && (
+                        <AuthModal
+                            backendUrl={BACKEND_URL}
+                            onLoginSuccess={(u, t) => { handleLoginSuccess(u, t); }}
+                            onClose={() => setShowAuth(false)}
+                        />
+                    )}
+                </div>
+            </TipsProvider>
+        </AuthProvider>
     );
 }

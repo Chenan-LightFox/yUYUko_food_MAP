@@ -126,6 +126,57 @@ router.post("/", requireAuth, (req, res) => {
     });
 });
 
+// 在 places 路由下兼容的：为 place 提交修改申请（兼容前端或旧接口 POST /places/:id/requests）
+router.post("/:id/requests", requireAuth, (req, res) => {
+    const place_id = req.params.id;
+    const { proposed, note } = req.body;
+    const requester_id = req.user && req.user.id;
+    if (!place_id || !proposed || typeof proposed !== "object") return res.status(400).json({ error: "缺少参数或 proposed 格式错误" });
+
+    const proposedStr = JSON.stringify(proposed);
+    db.run(`INSERT INTO PlaceRequest (place_id, requester_id, proposed, note) VALUES (?, ?, ?, ?)`, [place_id, requester_id, proposedStr, note || ""], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        db.get("SELECT * FROM PlaceRequest WHERE id = ?", [this.lastID], (e, row) => {
+            if (e) return res.status(500).json({ error: e.message });
+            res.status(201).json(row);
+        });
+    });
+});
+
+// 更新地点（创建者或管理员）
+router.put("/:id", requireAuth, (req, res) => {
+    const id = req.params.id;
+    const { name, description, category, latitude, longitude } = req.body;
+    db.get("SELECT * FROM Place WHERE id = ?", [id], (err, place) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!place) return res.status(404).json({ error: "地点不存在" });
+        const isCreator = String(place.creator_id) === String(req.user.id);
+        const canManagePlaces = hasPermission(req.user, "manage_places");
+        if (!isCreator && !canManagePlaces) return res.status(403).json({ error: "没有权限编辑" });
+
+        const fields = [];
+        const values = [];
+        if (name != null) { fields.push("name = ?"); values.push(name); }
+        if (description != null) { fields.push("description = ?"); values.push(description); }
+        if (category != null) { fields.push("category = ?"); values.push(category); }
+        if (latitude != null) { fields.push("latitude = ?"); values.push(latitude); }
+        if (longitude != null) { fields.push("longitude = ?"); values.push(longitude); }
+        if (fields.length === 0) return res.status(400).json({ error: "没有提供要更新的字段" });
+
+        // 更新 updated_time 和 updated_by
+        const sql = `UPDATE Place SET ${fields.join(', ')}, updated_time = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ?`;
+        values.push(req.user.id);
+        values.push(id);
+        db.run(sql, values, function (e) {
+            if (e) return res.status(500).json({ error: e.message });
+            db.get("SELECT * FROM Place WHERE id = ?", [id], (e2, row) => {
+                if (e2) return res.status(500).json({ error: e2.message });
+                res.json(row);
+            });
+        });
+    });
+});
+
 // 删除地点（仅创建者或管理员）
 router.delete("/:id", requireAuth, (req, res) => {
     const id = req.params.id;
