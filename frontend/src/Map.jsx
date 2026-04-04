@@ -100,6 +100,65 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         return false;
     };
 
+    // 更丰富的样式候选（按优先级），可以替换成你在高德控制台看到的样式 id
+    const AMAP_STYLE_CANDIDATES_DARK = [
+        'amap://styles/dark',
+        'amap://styles/darkblue',
+        'amap://styles/grey',
+        'amap://styles/night'
+    ];
+
+    const AMAP_STYLE_CANDIDATES_LIGHT = [
+        'amap://styles/light',
+        'amap://styles/normal',
+        'amap://styles/default'
+    ];
+
+    const trySetAnyAmapStyle = (map, candidates) => {
+        if (!map || !Array.isArray(candidates)) return null;
+        for (const s of candidates) {
+            try {
+                if (trySetAmapStyle(map, s)) return s;
+            } catch (e) {
+                // ignore and try next
+            }
+        }
+        return null;
+    };
+
+    // 从用户设置或 localStorage 中读取首选样式，优先返回用户指定的样式，再附加默认候选列表
+    const getPreferredCandidates = (isDark) => {
+        try {
+            let userStyle = null;
+            // Prefer a generic map_style if present (applies regardless of dark/light),
+            // then fall back to theme-specific map_style_dark / map_style_light.
+            if (currentUser && currentUser.map_settings) {
+                if (currentUser.map_settings.map_style) userStyle = currentUser.map_settings.map_style;
+                if (!userStyle) userStyle = currentUser.map_settings[isDark ? 'map_style_dark' : 'map_style_light'] || null;
+            }
+            if (!userStyle) {
+                try {
+                    const raw = window.localStorage.getItem('map_settings');
+                    if (raw) {
+                        const ms = JSON.parse(raw);
+                        if (ms) {
+                            if (ms.map_style) userStyle = ms.map_style;
+                            if (!userStyle && ms[isDark ? 'map_style_dark' : 'map_style_light']) userStyle = ms[isDark ? 'map_style_dark' : 'map_style_light'];
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
+            const base = isDark ? AMAP_STYLE_CANDIDATES_DARK : AMAP_STYLE_CANDIDATES_LIGHT;
+            if (userStyle) {
+                return [userStyle].concat(base.filter(s => s !== userStyle));
+            }
+            return base;
+        } catch (e) {
+            return isDark ? AMAP_STYLE_CANDIDATES_DARK : AMAP_STYLE_CANDIDATES_LIGHT;
+        }
+    };
+
     const dark = useDarkMode();
 
     const tipText = mapReady ? "点击查找地点" : "地图尚未就绪，稍候再试";
@@ -169,6 +228,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         let handleVisibilityChange = null;
         let handleUpdatePopup = null;
         let handleResize = null;
+        let handleMapStyleChange = null;
         let resizeObserver = null;
 
         const getCurrentMapView = () => {
@@ -236,12 +296,10 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 center: savedView ? [savedView.lng, savedView.lat] : DEFAULT_CENTER,
                 zoom: savedView ? savedView.zoom : DEFAULT_ZOOM
             });
-            // Apply initial dark style if page currently in dark mode
+            // Apply initial style according to page theme and user preference (if any)
             try {
                 const pageDark = (typeof document !== 'undefined' && document.documentElement && document.documentElement.getAttribute('data-theme') === 'dark');
-                if (pageDark) {
-                    trySetAmapStyle(mapRef.current, 'amap://styles/dark');
-                }
+                trySetAnyAmapStyle(mapRef.current, getPreferredCandidates(pageDark));
             } catch (e) { /* ignore */ }
             lastSavedViewRef.current = savedView;
 
@@ -292,6 +350,24 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
             window.addEventListener("pagehide", handlePageHide);
             document.addEventListener("visibilitychange", handleVisibilityChange);
 
+            // listen for explicit map style changes from settings UI
+            handleMapStyleChange = (e) => {
+                try {
+                    if (!mapRef.current) return;
+                    const detail = (e && e.detail) ? e.detail : null;
+                    const pageDark = (typeof document !== 'undefined' && document.documentElement && document.documentElement.getAttribute('data-theme') === 'dark');
+                    const preferred = getPreferredCandidates(pageDark);
+                    if (detail) {
+                        const want = detail.map_style || (pageDark ? (detail.map_style_dark || null) : (detail.map_style_light || null));
+                        const candidates = want ? [want].concat(preferred.filter(s => s !== want)) : preferred;
+                        trySetAnyAmapStyle(mapRef.current, candidates);
+                    } else {
+                        trySetAnyAmapStyle(mapRef.current, preferred);
+                    }
+                } catch (e) { /* ignore */ }
+            };
+            document.addEventListener('mapstylechange', handleMapStyleChange);
+
             setMapReady(true);
             loadPlaces();
         };
@@ -331,6 +407,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
             }
             if (handleResize) window.removeEventListener("resize", handleResize);
             if (resizeObserver) resizeObserver.disconnect();
+            try { document.removeEventListener('mapstylechange', handleMapStyleChange); } catch (e) { }
             if (userLocationMarkerRef.current) {
                 userLocationMarkerRef.current.setMap(null);
                 userLocationMarkerRef.current = null;
@@ -350,17 +427,12 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     useEffect(() => {
         if (!mapRef.current || typeof window === 'undefined' || !window.AMap) return;
         const map = mapRef.current;
-        if (dark) {
-            // try to set official dark style
-            trySetAmapStyle(map, 'amap://styles/dark');
-        } else {
-            // try several fallbacks to restore default/light style
-            const candidates = ['amap://styles/light', 'amap://styles/default', 'amap://styles/normal', ''];
-            for (const s of candidates) {
-                if (trySetAmapStyle(map, s)) break;
-            }
+        try {
+            trySetAnyAmapStyle(map, getPreferredCandidates(dark));
+        } catch (e) {
+            // ignore style apply errors
         }
-    }, [dark]);
+    }, [dark, currentUser]);
 
     const loadPlaces = async () => {
         try {

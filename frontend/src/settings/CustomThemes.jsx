@@ -5,8 +5,20 @@ import { useTips } from '../components/Tips';
 import { applyDarkMode } from '../utils/theme';
 import useDarkMode from '../hooks/useDarkMode';
 
+const STYLE_OPTIONS = [
+    { id: 'amap://styles/dark', name: '暗黑（默认）' },
+    { id: 'amap://styles/darkblue', name: '深蓝' },
+    { id: 'amap://styles/grey', name: '灰色' },
+    { id: 'amap://styles/night', name: '夜间（随昼夜变化）' },
+    { id: 'amap://styles/light', name: '浅色' },
+    { id: 'amap://styles/normal', name: '标准' },
+    { id: 'amap://styles/default', name: '默认' }
+];
+
 export default function CustomThemes({ user, onBack, backendUrl, token, onUpdateUser }) {
     const [darkMode, setDarkMode] = useState(false);
+    const [darkMapStyle, setDarkMapStyle] = useState('amap://styles/dark');
+    const [lightMapStyle, setLightMapStyle] = useState('amap://styles/normal');
     const [loading, setLoading] = useState(false);
     const showTip = useTips();
     const dark = useDarkMode();
@@ -24,7 +36,16 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
         if (settings && typeof settings.dark_mode !== 'undefined') {
             setDarkMode(!!settings.dark_mode);
         }
+        if (settings && typeof settings.map_style_dark !== 'undefined') {
+            setDarkMapStyle(settings.map_style_dark || 'amap://styles/dark');
+        }
+        if (settings && typeof settings.map_style_light !== 'undefined') {
+            setLightMapStyle(settings.map_style_light || 'amap://styles/normal');
+        }
     }, [user]);
+
+    const DARK_STYLE_IDS = ['amap://styles/dark', 'amap://styles/darkblue', 'amap://styles/grey', 'amap://styles/night'];
+    const LIGHT_STYLE_IDS = ['amap://styles/light', 'amap://styles/normal', 'amap://styles/default'];
 
     const persistDarkMode = async (value) => {
         setLoading(true);
@@ -33,6 +54,9 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
         })();
 
         const payload = { ...(existing || {}), dark_mode: !!value };
+
+        // ensure local copy so refresh recovers setting even if backend doesn't persist immediately
+        try { window.localStorage.setItem('map_settings', JSON.stringify(payload)); } catch (e) { /* ignore */ }
 
         try {
             if (backendUrl && token) {
@@ -66,6 +90,67 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                 setDarkMode(!!value);
                 showTip('已保存到本地（未登录）');
             }
+        } catch (e) {
+            showTip(e.message || '保存失败');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const persistMapStyle = async (which, value) => {
+        // which: 'map_style_dark' | 'map_style_light'
+        setLoading(true);
+        const existing = (user && user.map_settings) ? user.map_settings : (() => {
+            try { const raw = localStorage.getItem('map_settings'); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+        })();
+
+        const payload = { ...(existing || {}) };
+        payload[which] = value || '';
+        // mirror into a general map_style so selection for current theme survives refresh
+        try {
+            payload.map_style = value || payload.map_style || '';
+        } catch (e) { /* ignore */ }
+        // always write local copy so refresh recovers selection even if server-side isn't ready
+        try { window.localStorage.setItem('map_settings', JSON.stringify(payload)); } catch (e) { /* ignore */ }
+        try {
+            if (backendUrl && token) {
+                const res = await fetch(`${backendUrl}/users/me/settings`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ map_settings: payload })
+                });
+
+                const text = await res.text();
+                let data = null;
+                try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+
+                if (!res.ok) {
+                    const errMsg = (data && data.error) ? data.error : (text ? (text.trim().startsWith('<') ? `服务器返回错误（HTTP ${res.status}）` : text) : '保存失败');
+                    showTip(errMsg);
+                    setLoading(false);
+                    return;
+                }
+
+                if (data && data.user) {
+                    if (typeof onUpdateUser === 'function') onUpdateUser(data.user, token);
+                    try {
+                        const ms = data.user.map_settings || null;
+                        if (ms && typeof ms.map_style_dark !== 'undefined') setDarkMapStyle(ms.map_style_dark || '');
+                        if (ms && typeof ms.map_style_light !== 'undefined') setLightMapStyle(ms.map_style_light || '');
+                    } catch (e) { /* ignore */ }
+                    showTip('已保存设置');
+                }
+            } else {
+                localStorage.setItem('map_settings', JSON.stringify(payload));
+                if (which === 'map_style_dark') setDarkMapStyle(value || '');
+                if (which === 'map_style_light') setLightMapStyle(value || '');
+                showTip('已保存到本地（未登录）');
+            }
+            // dispatch event so map can pick up immediately
+            try {
+                const detail = { map_style: payload.map_style || '', map_style_dark: payload.map_style_dark || '', map_style_light: payload.map_style_light || '' };
+                document.dispatchEvent(new CustomEvent('mapstylechange', { detail }));
+            } catch (e) { /* ignore */ }
         } catch (e) {
             showTip(e.message || '保存失败');
         } finally {
@@ -121,6 +206,25 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                             <span style={{ color: dark ? '#e5e7eb' : '#6b7280' }}>{darkMode ? '已启用' : '未启用'}</span>
                         </label>
                     </div>
+                </div>
+            </div>
+            <div style={{ marginTop: 18 }}>
+                <div style={{ fontSize: 16, fontWeight: 600, color: dark ? '#e5e7eb' : 'inherit' }}>地图样式</div>
+                <div style={{ color: dark ? '#9ca3af' : '#6b7280', fontSize: 13, marginTop: 6 }}>为当前主题选择地图样式（选择后将保存到服务器或本地）。</div>
+
+                <div style={{ marginTop: 12, minWidth: 260 }}>
+                    <div style={{ fontSize: 13, color: dark ? '#e5e7eb' : 'inherit', marginBottom: 6 }}>{darkMode ? '暗色样式（当前）' : '亮色样式（当前）'}</div>
+                    {(() => {
+                        const options = STYLE_OPTIONS.filter(s => darkMode ? DARK_STYLE_IDS.includes(s.id) : LIGHT_STYLE_IDS.includes(s.id));
+                        const value = darkMode ? darkMapStyle : lightMapStyle;
+                        return (
+                            <select value={value} onChange={(e) => persistMapStyle(darkMode ? 'map_style_dark' : 'map_style_light', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: 6, border: dark ? '1px solid #334155' : undefined, background: dark ? '#07101a' : undefined, color: dark ? '#e5e7eb' : undefined }}>
+                                {options.map(s => (
+                                    <option key={s.id || s.name} value={s.id}>{s.name}</option>
+                                ))}
+                            </select>
+                        );
+                    })()}
                 </div>
             </div>
         </PageTemplate>
