@@ -52,6 +52,6 @@
 **TODO list:**
 - AdminDashboard.js: 美化管理员后台界面设计，完善操作反馈
 - Map.jsx: 修改为自己的Marker图标
-- Settings.jsx: 添加删除账户功能
 - CustomThemes.jsx: 添加用户自定义主题色功能
+- !bug: 切换账户时地图配色同步错误
 - 大家找找bug（

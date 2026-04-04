@@ -194,4 +194,26 @@ router.post('/logout', requireAuth, async (req, res) => {
     }
 });
 
+// 删除当前用户账号（本人操作），同时清理会话
+router.delete('/me', requireAuth, async (req, res) => {
+    const userId = req.user.id;
+    try {
+        // 清理 Redis 会话
+        try {
+            await redis.del(`session:${userId}`);
+        } catch (e) {
+            // 忽略 redis 删除错误，但记录日志
+            console.warn('Failed to delete redis session for user on account delete:', e && e.message);
+        }
+
+        // 删除用户记录
+        db.run('DELETE FROM User WHERE id = ?', [userId], function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            return res.json({ success: true });
+        });
+    } catch (e) {
+        return res.status(500).json({ error: '删除用户失败', detail: e.message });
+    }
+});
+
 module.exports = router;

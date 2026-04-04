@@ -291,6 +291,7 @@ export default function App() {
                                 backendUrl={BACKEND_URL}
                                 token={token}
                                 onUpdateUser={handleLoginSuccess}
+                                onLogout={handleLogout}
                                 onOpenEditUsername={() => goPath('/settings/username')}
                                 onOpenEditPassword={() => goPath('/settings/password')}
                                 onOpenPersonalize={() => goPath('/settings/personalize')}
