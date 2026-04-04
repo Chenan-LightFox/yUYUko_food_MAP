@@ -106,10 +106,6 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
 
         const payload = { ...(existing || {}) };
         payload[which] = value || '';
-        // mirror into a general map_style so selection for current theme survives refresh
-        try {
-            payload.map_style = value || payload.map_style || '';
-        } catch (e) { /* ignore */ }
         // always write local copy so refresh recovers selection even if server-side isn't ready
         try { window.localStorage.setItem('map_settings', JSON.stringify(payload)); } catch (e) { /* ignore */ }
         try {
@@ -148,7 +144,7 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
             }
             // dispatch event so map can pick up immediately
             try {
-                const detail = { map_style: payload.map_style || '', map_style_dark: payload.map_style_dark || '', map_style_light: payload.map_style_light || '' };
+                const detail = { map_style_dark: payload.map_style_dark || '', map_style_light: payload.map_style_light || '' };
                 document.dispatchEvent(new CustomEvent('mapstylechange', { detail }));
             } catch (e) { /* ignore */ }
         } catch (e) {

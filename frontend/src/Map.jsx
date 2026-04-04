@@ -65,6 +65,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     const [newComment, setNewComment] = useState("");
     const [commentSubmitting, setCommentSubmitting] = useState(false);
     const selectedPlaceRef = useRef(null);
+    const lastFetchedTokenRef = useRef(null);
     const hasToken = !!token;
     const authPending = hasToken && !isAuthenticated;
     const showTip = useTips();
@@ -126,15 +127,14 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         return null;
     };
 
-    // 从用户设置或 localStorage 中读取首选样式，优先返回用户指定的样式，再附加默认候选列表
+    // 从用户设置或 localStorage 中读取首选样式：优先返回主题专属配置，再回退到通用 map_style
     const getPreferredCandidates = (isDark) => {
         try {
             let userStyle = null;
-            // Prefer a generic map_style if present (applies regardless of dark/light),
-            // then fall back to theme-specific map_style_dark / map_style_light.
+            // 首先尝试主题专属配置
             if (currentUser && currentUser.map_settings) {
-                if (currentUser.map_settings.map_style) userStyle = currentUser.map_settings.map_style;
-                if (!userStyle) userStyle = currentUser.map_settings[isDark ? 'map_style_dark' : 'map_style_light'] || null;
+                userStyle = currentUser.map_settings[isDark ? 'map_style_dark' : 'map_style_light'] || null;
+                if (!userStyle && currentUser.map_settings.map_style) userStyle = currentUser.map_settings.map_style;
             }
             if (!userStyle) {
                 try {
@@ -142,17 +142,14 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                     if (raw) {
                         const ms = JSON.parse(raw);
                         if (ms) {
-                            if (ms.map_style) userStyle = ms.map_style;
-                            if (!userStyle && ms[isDark ? 'map_style_dark' : 'map_style_light']) userStyle = ms[isDark ? 'map_style_dark' : 'map_style_light'];
+                            userStyle = ms[isDark ? 'map_style_dark' : 'map_style_light'] || ms.map_style || null;
                         }
                     }
                 } catch (e) { /* ignore */ }
             }
 
             const base = isDark ? AMAP_STYLE_CANDIDATES_DARK : AMAP_STYLE_CANDIDATES_LIGHT;
-            if (userStyle) {
-                return [userStyle].concat(base.filter(s => s !== userStyle));
-            }
+            if (userStyle) return [userStyle].concat(base.filter(s => s !== userStyle));
             return base;
         } catch (e) {
             return isDark ? AMAP_STYLE_CANDIDATES_DARK : AMAP_STYLE_CANDIDATES_LIGHT;
@@ -196,9 +193,11 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         let active = true;
         if (!token) {
             setCurrentUser(null);
+            lastFetchedTokenRef.current = null;
             return;
         }
-        if (currentUser) return; // 已有就不用重复请求
+        // If we've already fetched for this token, skip
+        if (lastFetchedTokenRef.current === token) return;
         (async () => {
             setFetchingUser(true);
             try {
@@ -210,15 +209,19 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                     } catch (err) {
                         // ignore
                     }
+                    lastFetchedTokenRef.current = token;
+                } else {
+                    lastFetchedTokenRef.current = null;
                 }
             } catch (e) {
                 console.warn("获取当前用户失败", e);
+                lastFetchedTokenRef.current = null;
             } finally {
                 setFetchingUser(false);
             }
         })();
         return () => { active = false; };
-    }, [token, backendUrl, currentUser]);
+    }, [token, backendUrl]);
 
     useEffect(() => {
         let pollTimer = null;
@@ -358,7 +361,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                     const pageDark = (typeof document !== 'undefined' && document.documentElement && document.documentElement.getAttribute('data-theme') === 'dark');
                     const preferred = getPreferredCandidates(pageDark);
                     if (detail) {
-                        const want = detail.map_style || (pageDark ? (detail.map_style_dark || null) : (detail.map_style_light || null));
+                        const want = (pageDark ? (detail.map_style_dark || null) : (detail.map_style_light || null)) || detail.map_style || null;
                         const candidates = want ? [want].concat(preferred.filter(s => s !== want)) : preferred;
                         trySetAnyAmapStyle(mapRef.current, candidates);
                     } else {
