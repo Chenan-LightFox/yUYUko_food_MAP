@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import { useAuth } from "../AuthContext";
+import useDarkMode from "../hooks/useDarkMode";
 
 function resolveBackendUrl() {
     if (typeof window === "undefined") return "http://localhost:3000";
@@ -23,6 +24,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
     const [message, setMessage] = useState("");
     const [processing, setProcessing] = useState({});
     const fetchIdRef = useRef(0);
+    const dark = useDarkMode();
 
     const canManage = user && user.admin_level;
 
@@ -145,18 +147,18 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                     {users.length === 0 ? (
                         <div>当前没有普通用户记录。</div>
                     ) : (
-                        <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%' }}>
+                        <table cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
                             <thead>
                                 <tr>
-                                    <th>ID</th>
-                                    <th>用户名</th>
-                                    <th>头像</th>
-                                    <th>操作</th>
+                                    <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
+                                    <th style={{ textAlign: 'left', padding: 8 }}>用户名</th>
+                                    <th style={{ textAlign: 'left', padding: 8 }}>头像</th>
+                                    <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {users.map(u => (
-                                    <tr key={u.id}>
+                                {users.map((u, idx) => (
+                                    <tr key={u.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
                                         <td>{u.id}</td>
                                         <td>{u.username}</td>
                                         <td>{u.avatar || '-'}</td>

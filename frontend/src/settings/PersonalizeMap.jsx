@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import PageTemplate from '../components/PageTemplate';
 import Button from '../components/Button';
+import TextInput from '../components/TextInput';
+import SelectInput from '../components/SelectInput';
 import { useTips } from '../components/Tips';
 import useDarkMode from '../hooks/useDarkMode';
 
@@ -127,26 +129,26 @@ export default function PersonalizeMap({ user, onBack, backendUrl, token, onUpda
             <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
                 <label style={{ display: 'block', marginBottom: 8 }}>
                     <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>地图样式</div>
-                    <select value={style} onChange={(e) => setStyle(e.target.value)} style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }}>
+                    <SelectInput value={style} onChange={(e) => setStyle(e.target.value)} style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4 }}>
                         <option value="standard">标准</option>
                         <option value="satellite" disabled>卫星</option>
                         <option value="terrain" disabled>街景</option>
-                    </select>
+                    </SelectInput>
                 </label>
 
                 <label style={{ display: 'block', marginBottom: 8 }}>
                     <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>默认中心纬度 (lat)</div>
-                    <input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="23.016485" style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }} />
+                    <TextInput value={lat} onChange={(e) => setLat(e.target.value)} placeholder="23.016485" style={{ width: '100%' }} />
                 </label>
 
                 <label style={{ display: 'block', marginBottom: 8 }}>
                     <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>默认中心经度 (lng)</div>
-                    <input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="113.394405" style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }} />
+                    <TextInput value={lng} onChange={(e) => setLng(e.target.value)} placeholder="113.394405" style={{ width: '100%' }} />
                 </label>
 
                 <label style={{ display: 'block', marginBottom: 8 }}>
                     <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>默认缩放等级</div>
-                    <input value={zoom} onChange={(e) => setZoom(e.target.value)} placeholder="24" style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }} />
+                    <TextInput value={zoom} onChange={(e) => setZoom(e.target.value)} placeholder="24" style={{ width: '100%' }} />
                 </label>
 
                 <div style={{ display: 'flex', gap: 8 }}>

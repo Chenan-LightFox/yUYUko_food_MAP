@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
+import TextInput from "../components/TextInput";
 import { useAuth } from "../AuthContext";
 import useDarkMode from "../hooks/useDarkMode";
 
@@ -232,12 +233,12 @@ export default function AdminInvitecode({ backendUrl = null }) {
                 <div style={{ marginBottom: 8 }}><strong>创建新邀请码</strong></div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                     <label style={{ marginRight: 8, color: dark ? '#9ca3af' : 'inherit' }}>可用次数：</label>
-                    <input type="number" value={maxUses} onChange={e => setMaxUses(Number(e.target.value))} min={1} style={{ width: 120, marginRight: 8, padding: 6, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }} />
+                    <TextInput type="number" value={maxUses} onChange={e => setMaxUses(Number(e.target.value))} min={1} style={{ width: 120, marginRight: 8 }} />
                     <Button themeAware onClick={() => createInvite()} disabled={creating}>生成并创建</Button>
                 </div>
                 {lastCreatedCode && (
                     <div style={{ marginTop: 8, display: 'flex', alignItems: 'center' }}>
-                        <input readOnly value={lastCreatedCode} style={{ flex: 1, marginRight: 8, padding: 6, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }} />
+                        <TextInput readOnly value={lastCreatedCode} style={{ flex: 1, marginRight: 8 }} />
                         <Button themeAware onClick={() => copyToClipboard(lastCreatedCode)}>复制</Button>
                     </div>
                 )}
@@ -250,20 +251,20 @@ export default function AdminInvitecode({ backendUrl = null }) {
                     {invites.length === 0 ? (
                         <div>当前没有邀请码记录。</div>
                     ) : (
-                        <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%' }}>
+                        <table cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
                             <thead>
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Code (hashed)</th>
-                                    <th>Max Uses</th>
-                                    <th>Current Uses</th>
-                                    <th>创建时间</th>
-                                    <th>操作</th>
+                                    <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
+                                    <th style={{ textAlign: 'left', padding: 8 }}>Code (hashed)</th>
+                                    <th style={{ textAlign: 'left', padding: 8 }}>Max Uses</th>
+                                    <th style={{ textAlign: 'left', padding: 8 }}>Current Uses</th>
+                                    <th style={{ textAlign: 'left', padding: 8 }}>创建时间</th>
+                                    <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {invites.map(inv => (
-                                    <tr key={inv.id}>
+                                {invites.map((inv, idx) => (
+                                    <tr key={inv.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
                                         <td>{inv.id}</td>
                                         <td style={{ maxWidth: 320, wordBreak: 'break-all' }}>{inv.code || inv.hashed || "-"}</td>
                                         <td>{inv.max_uses != null ? inv.max_uses : (inv.maxUses || "-")}</td>

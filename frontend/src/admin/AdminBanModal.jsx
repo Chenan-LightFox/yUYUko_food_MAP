@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Button from '../components/Button';
+import SelectInput from '../components/SelectInput';
 import useDarkMode from '../hooks/useDarkMode';
 
 export default function AdminBanModal({ open, onClose, onConfirm, targetUser }) {
@@ -37,12 +38,12 @@ export default function AdminBanModal({ open, onClose, onConfirm, targetUser }) 
                 <div style={{ marginTop: 8 }}>
                     <div style={{ marginBottom: 8 }}>
                         <label style={{ display: 'block', marginBottom: 6, color: dark ? '#9ca3af' : '#666' }}>封禁时长</label>
-                        <select value={duration} onChange={e => setDuration(e.target.value)} style={{ width: '100%', padding: 8, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }}>
+                        <SelectInput value={duration} onChange={e => setDuration(e.target.value)} style={{ width: '100%', padding: 8, borderRadius: 6 }}>
                             <option value="1">1 天</option>
                             <option value="7">7 天</option>
                             <option value="30">30 天</option>
                             <option value="perm">永久封禁</option>
-                        </select>
+                        </SelectInput>
                     </div>
 
                     <div>

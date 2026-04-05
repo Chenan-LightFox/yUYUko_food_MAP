@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import PageTemplate from '../components/PageTemplate';
 import Button from '../components/Button';
+import TextInput from '../components/TextInput';
+import SelectInput from '../components/SelectInput';
 import { useTips } from '../components/Tips';
 import { applyDarkMode, applyThemeColor } from '../utils/theme';
 import useDarkMode from '../hooks/useDarkMode';
@@ -282,17 +284,10 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                         }}
                     />
 
-                    <input
+                    <TextInput
                         value={themeColor}
                         onChange={(e) => setThemeColor(e.target.value)}
-                        style={{
-                            padding: 8,
-                            borderRadius: 6,
-                            border: dark ? '1px solid #334155' : '1px solid #d1d5db',
-                            background: dark ? '#07101a' : '#fff',
-                            color: dark ? '#e5e7eb' : undefined,
-                            outline: 'none'
-                        }}
+                        style={{ width: 160 }}
                     />
 
                     <Button
@@ -323,11 +318,11 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                         const options = STYLE_OPTIONS.filter(s => darkMode ? DARK_STYLE_IDS.includes(s.id) : LIGHT_STYLE_IDS.includes(s.id));
                         const value = darkMode ? darkMapStyle : lightMapStyle;
                         return (
-                            <select value={value} onChange={(e) => persistMapStyle(darkMode ? 'map_style_dark' : 'map_style_light', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: 6, border: dark ? '1px solid #334155' : undefined, background: dark ? '#07101a' : undefined, color: dark ? '#e5e7eb' : undefined }}>
+                            <SelectInput value={value} onChange={(e) => persistMapStyle(darkMode ? 'map_style_dark' : 'map_style_light', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: 6 }}>
                                 {options.map(s => (
                                     <option key={s.id || s.name} value={s.id}>{s.name}</option>
                                 ))}
-                            </select>
+                            </SelectInput>
                         );
                     })()}
                 </div>

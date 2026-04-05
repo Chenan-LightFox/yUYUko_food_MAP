@@ -1,10 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import Button from '../components/Button';
+import useDarkMode from '../hooks/useDarkMode';
+import { getThemeColor } from '../utils/theme';
+import JsonTable from '../components/JsonTable';
 
 export default function AdminAuditModal({ open, onClose, backendUrl, token }) {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(false);
     const base = backendUrl || (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:3000` : 'http://localhost:3000');
+
+    const dark = useDarkMode();
+    const themeColor = getThemeColor();
+
+    const hexToRgba = (hex, a = 1) => {
+        try {
+            let h = (hex || '').replace('#', '');
+            if (h.length === 3) h = h.split('').map(c => c + c).join('');
+            const bigint = parseInt(h, 16);
+            const r = (bigint >> 16) & 255;
+            const g = (bigint >> 8) & 255;
+            const b = bigint & 255;
+            return `rgba(${r},${g},${b},${a})`;
+        } catch (e) {
+            return `rgba(0,0,0,${a})`;
+        }
+    };
 
     useEffect(() => {
         if (!open) return;
@@ -35,7 +55,17 @@ export default function AdminAuditModal({ open, onClose, backendUrl, token }) {
 
     return (
         <div style={{ position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', zIndex: 6000 }}>
-            <div style={{ background: '#fff', padding: 12, borderRadius: 6, minWidth: 640, maxWidth: '95%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}>
+            <div style={{
+                background: dark ? '#0b1220' : '#fff',
+                padding: 12,
+                borderRadius: 6,
+                minWidth: 640,
+                maxWidth: '95%',
+                maxHeight: '80vh',
+                overflowY: 'auto',
+                boxShadow: dark ? '0 6px 24px rgba(0,0,0,0.6)' : '0 8px 40px rgba(0,0,0,0.25)',
+                color: dark ? '#e5e7eb' : undefined
+            }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 style={{ margin: 0 }}>管理员操作日志（最近 200 条）</h3>
                     <div>
@@ -48,28 +78,34 @@ export default function AdminAuditModal({ open, onClose, backendUrl, token }) {
                     ) : (
                         <div>
                             {logs.length === 0 ? (
-                                <div style={{ color: '#666' }}>暂无操作记录</div>
+                                <div style={{ color: dark ? '#9ca3af' : '#666' }}>暂无操作记录</div>
                             ) : (
-                                <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%' }}>
+                                <table cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
                                     <thead>
                                         <tr>
-                                            <th>ID</th>
-                                            <th>管理员ID</th>
-                                            <th>动作</th>
-                                            <th>目标用户</th>
-                                            <th>详情</th>
-                                            <th>时间</th>
+                                            <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
+                                            <th style={{ textAlign: 'left', padding: 8 }}>管理员ID</th>
+                                            <th style={{ textAlign: 'left', padding: 8 }}>动作</th>
+                                            <th style={{ textAlign: 'left', padding: 8 }}>目标用户</th>
+                                            <th style={{ textAlign: 'left', padding: 8 }}>详情</th>
+                                            <th style={{ textAlign: 'left', padding: 8 }}>时间</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {logs.map(l => (
-                                            <tr key={l.id}>
-                                                <td>{l.id}</td>
-                                                <td>{l.admin_id}</td>
-                                                <td>{l.action}</td>
-                                                <td>{l.target_user_id || '-'}</td>
-                                                <td style={{ maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.details || '-'}</td>
-                                                <td>{l.time}</td>
+                                        {logs.map((l, idx) => (
+                                            <tr key={l.id} style={{ borderTop: dark ? '1px solid rgba(255,255,255,0.04)' : undefined, background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
+                                                <td style={{ padding: 8 }}>{l.id}</td>
+                                                <td style={{ padding: 8 }}>{l.admin_id}</td>
+                                                <td style={{ padding: 8 }}>{l.action}</td>
+                                                <td style={{ padding: 8 }}>{l.target_user_id || '-'}</td>
+                                                <td style={{ padding: 8, maxWidth: 320, verticalAlign: 'top' }}>
+                                                    {l.details ? (
+                                                        <div style={{ maxWidth: 320 }}>
+                                                            <JsonTable value={l.details} />
+                                                        </div>
+                                                    ) : '-'}
+                                                </td>
+                                                <td style={{ padding: 8 }}>{l.time}</td>
                                             </tr>
                                         ))}
                                     </tbody>

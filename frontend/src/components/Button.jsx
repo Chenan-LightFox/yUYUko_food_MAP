@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import useDarkMode from '../hooks/useDarkMode';
+import { getThemeColor } from '../utils/theme';
 
 export default function Button({ children, onClick, disabled, style, title, variant = 'default', full = false, type = 'button', themeAware = false }) {
     const [hover, setHover] = useState(false);
@@ -24,12 +25,22 @@ export default function Button({ children, onClick, disabled, style, title, vari
         base.textAlign = 'left';
     }
 
+    // If caller didn't specify a background, use the user's theme color as default
+    const userStyle = style || {};
+    const themeColor = getThemeColor();
+    if (userStyle.background === undefined && variant !== 'menu') {
+        base.background = themeColor || base.background;
+    }
+
     // If this button should adapt to panel theme (admin/settings), adjust defaults for dark mode
     if (themeAware) {
         if (variant === 'menu') {
             base.color = dark ? '#e5e7eb' : (base.color || 'inherit');
         } else {
-            base.background = dark ? '#111827' : base.background;
+            // let theme color override dark panel background when user wants themed buttons
+            if (!themeColor) {
+                base.background = dark ? '#111827' : base.background;
+            }
             base.border = dark ? '1px solid #374151' : base.border;
             base.color = dark ? '#e5e7eb' : (base.color || 'inherit');
         }
@@ -43,7 +54,6 @@ export default function Button({ children, onClick, disabled, style, title, vari
 
     const hoverStyle = hover ? (variant === 'menu' ? (themeAware && dark ? { background: '#0b1220' } : { background: '#f3f4f6' }) : { opacity: 0.98 }) : {};
 
-    const userStyle = style || {};
     const merged = { ...base, ...userStyle, ...hoverStyle };
 
     // If disabled, apply disabled appearance but do not override explicit user-provided colors/styles
@@ -53,6 +63,12 @@ export default function Button({ children, onClick, disabled, style, title, vari
         if (userStyle.border === undefined) merged.border = themeAware && dark ? '1px solid #374151' : '1px solid #e6e6e6';
         merged.cursor = 'not-allowed';
         if (userStyle.opacity === undefined) merged.opacity = 0.9;
+    }
+
+    // If this looks like a "取消" / cancel button (or variant explicitly set), make text red unless caller set color
+    const label = typeof children === 'string' ? children.trim() : '';
+    if ((variant === 'cancel') || label === '取消' || label.toLowerCase() === 'cancel') {
+        if (!userStyle.color) merged.color = '#ef4444';
     }
 
     return (

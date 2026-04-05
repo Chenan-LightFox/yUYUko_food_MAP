@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
+import TextInput from "../components/TextInput";
 import { useAuth } from "../AuthContext";
+import useDarkMode from "../hooks/useDarkMode";
+import { getThemeColor } from "../utils/theme";
 
 function resolveBackendUrl() {
     if (typeof window === "undefined") return "http://localhost:3000";
@@ -22,6 +25,24 @@ export default function AdminComments({ backendUrl = null }) {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
     const [processing, setProcessing] = useState({});
+    const dark = useDarkMode();
+    const themeColor = getThemeColor();
+    const hexToRgba = (hex, a = 1) => {
+        try {
+            let h = (hex || '').replace('#', '');
+            if (h.length === 3) h = h.split('').map(c => c + c).join('');
+            const bigint = parseInt(h, 16);
+            const r = (bigint >> 16) & 255;
+            const g = (bigint >> 8) & 255;
+            const b = bigint & 255;
+            return `rgba(${r},${g},${b},${a})`;
+        } catch (e) {
+            return `rgba(0,0,0,${a})`;
+        }
+    };
+    const [searchQuery, setSearchQuery] = useState('');
+    const [page, setPage] = useState(1);
+    const PAGE_SIZE = 10;
     const fetchIdRef = useRef(0);
 
     const canManage = user && user.admin_level;
@@ -132,10 +153,15 @@ export default function AdminComments({ backendUrl = null }) {
     return (
         <div style={{ marginTop: 12 }}>
             <h3>评论管理</h3>
-            <div style={{ marginBottom: 8 }}>
+            <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <TextInput
+                    value={searchQuery}
+                    onChange={e => { setSearchQuery(e.target.value); setPage(1); }}
+                    placeholder="搜索 ID / 地点ID / 用户ID / 内容"
+                    style={{ flex: 1 }}
+                />
                 <Button themeAware onClick={fetchComments} disabled={loading}>刷新</Button>
             </div>
-
             {message && <div style={{ color: '#c33', marginBottom: 8 }}>{message}</div>}
 
             {loading ? (
@@ -145,34 +171,61 @@ export default function AdminComments({ backendUrl = null }) {
                     {comments.length === 0 ? (
                         <div>当前没有评论记录。</div>
                     ) : (
-                        <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%' }}>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>地点ID</th>
-                                    <th>用户ID</th>
-                                    <th>内容</th>
-                                    <th>创建时间</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {comments.map(c => (
-                                    <tr key={c.id}>
-                                        <td>{c.id}</td>
-                                        <td>{c.place_id || c.placeId || '-'}</td>
-                                        <td>{c.user_id || c.userId || '-'}</td>
-                                        <td style={{ maxWidth: 420 }}>
-                                            <div style={{ whiteSpace: 'pre-wrap' }}>{c.content || c.text || ''}</div>
-                                        </td>
-                                        <td>{c.created_time || c.createdTime || '-'}</td>
-                                        <td>
-                                            <Button themeAware onClick={() => deleteComment(c.id)} disabled={processing[c.id]} style={{ background: '#e02424', color: '#fff' }}>删除</Button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        (() => {
+                            const q = (searchQuery || '').trim().toLowerCase();
+                            const filtered = q === '' ? comments : comments.filter(c => {
+                                const combined = `${c.id} ${c.place_id || c.placeId || ''} ${c.user_id || c.userId || ''} ${c.content || c.text || ''}`.toLowerCase();
+                                return combined.includes(q);
+                            });
+                            const totalPages = Math.max(1, Math.ceil((filtered || []).length / PAGE_SIZE));
+                            if (page > totalPages) setPage(totalPages);
+                            const pageItems = (filtered || []).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+                            if (filtered.length === 0) return <div>未找到匹配的评论。</div>;
+
+                            return (
+                                <div>
+                                    <table cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
+                                                <th style={{ textAlign: 'left', padding: 8 }}>地点ID</th>
+                                                <th style={{ textAlign: 'left', padding: 8 }}>用户ID</th>
+                                                <th style={{ textAlign: 'left', padding: 8 }}>内容</th>
+                                                <th style={{ textAlign: 'left', padding: 8 }}>创建时间</th>
+                                                <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {pageItems.map((c, idx) => (
+                                                <tr key={c.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
+                                                    <td>{c.id}</td>
+                                                    <td>{c.place_id || c.placeId || '-'}</td>
+                                                    <td>{c.user_id || c.userId || '-'}</td>
+                                                    <td style={{ maxWidth: 420 }}>
+                                                        <div style={{ whiteSpace: 'pre-wrap' }}>{c.content || c.text || ''}</div>
+                                                    </td>
+                                                    <td>{c.created_time || c.createdTime || '-'}</td>
+                                                    <td>
+                                                        <Button themeAware onClick={() => deleteComment(c.id)} disabled={processing[c.id]} style={{ background: '#e02424', color: '#fff' }}>删除</Button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+
+                                    <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div>共 {filtered.length} 条 — 第 {page} / {totalPages} 页</div>
+                                        <div>
+                                            <Button themeAware onClick={() => setPage(1)} disabled={page === 1} style={{ marginRight: 6 }}>首页</Button>
+                                            <Button themeAware onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ marginRight: 6 }}>上一页</Button>
+                                            <Button themeAware onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ marginRight: 6 }}>下一页</Button>
+                                            <Button themeAware onClick={() => setPage(totalPages)} disabled={page === totalPages}>尾页</Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()
                     )}
                 </div>
             )}

@@ -90,6 +90,16 @@ export default function App() {
                 console.warn("调用 /users/logout 失败，继续清理本地登录态", e);
             }
         }
+        // clear auth state and also reset UI theme and map style to defaults
+        try {
+            // remove any persisted map settings so logged-out view uses defaults
+            try { localStorage.removeItem('map_settings'); } catch (e) { }
+            // ensure dark mode off and theme color cleared
+            try { applyDarkMode(false); } catch (e) { }
+            try { applyThemeColor(''); } catch (e) { }
+            // inform map to apply light default style
+            try { document.dispatchEvent(new CustomEvent('mapstylechange', { detail: { map_style_light: 'amap://styles/normal' } })); } catch (e) { }
+        } catch (e) { /* ignore */ }
         clearAuthState();
         goPath("/");
     }, [token, clearAuthState, goPath]);
@@ -171,6 +181,10 @@ export default function App() {
                     // logged out in another tab
                     setUser(null);
                     setShowAuth(true);
+                    // reset theme & map style when user logged out in another tab
+                    try { applyDarkMode(false); } catch (err) { }
+                    try { applyThemeColor(''); } catch (err) { }
+                    try { document.dispatchEvent(new CustomEvent('mapstylechange', { detail: { map_style_light: 'amap://styles/normal' } })); } catch (err) { }
                     if (pathname === '/admin') goPath('/');
                     return;
                 }

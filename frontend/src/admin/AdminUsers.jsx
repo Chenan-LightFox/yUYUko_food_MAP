@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import { useAuth } from "../AuthContext";
 import AdminBanModal from "./AdminBanModal";
+import SelectInput from '../components/SelectInput';
 import useDarkMode from "../hooks/useDarkMode";
 
 function resolveBackendUrl() {
@@ -271,35 +272,35 @@ export default function AdminUsers({ backendUrl = null }) {
             {loading ? (
                 <div>加载中…</div>
             ) : (
-                <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%' }}>
+                <table cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>用户名</th>
-                            <th>头像</th>
-                            <th>等级</th>
-                            <th>操作</th>
+                            <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
+                            <th style={{ textAlign: 'left', padding: 8 }}>用户名</th>
+                            <th style={{ textAlign: 'left', padding: 8 }}>头像</th>
+                            <th style={{ textAlign: 'left', padding: 8 }}>等级</th>
+                            <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {users.map(u => {
+                        {users.map((u, idx) => {
                             const isSelf = user && u.id === user.id;
                             const isSuper = u.admin_level === "YUYUKO";
                             return (
-                                <tr key={u.id}>
+                                <tr key={u.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
                                     <td>{u.id}</td>
                                     <td>{u.username}</td>
                                     <td>{u.avatar || "-"}</td>
                                     <td>
-                                        <select value={u.admin_level || ""}
+                                        <SelectInput value={u.admin_level || ""}
                                             onChange={e => changeLevel(u.id, e.target.value)}
                                             disabled={isSelf || (isSuper && !isSelf)}
-                                            style={{ padding: '6px 8px', borderRadius: 4, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }}>
+                                            style={{ padding: '6px 8px', borderRadius: 4 }}>
                                             <option value="YUYUKO">YUYUKO</option>
                                             <option value="YOUMU">YOUMU</option>
                                             <option value="KOMACHI">KOMACHI</option>
                                             <option value="">普通用户</option>
-                                        </select>
+                                        </SelectInput>
                                     </td>
                                     <td>
                                         {u.is_banned ? (

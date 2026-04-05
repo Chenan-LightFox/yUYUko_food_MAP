@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import TextInput from './components/TextInput';
 
 const REQUEST_TIMEOUT_MS = 12000;
 const MAX_USERNAME_LENGTH = 64;
@@ -280,19 +281,19 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                 <form onSubmit={handleLogin}>
                     <div>
                         <label htmlFor="auth-username" style={labelStyle}>用户名</label>
-                        <input
+                        <TextInput
                             id="auth-username"
                             placeholder="请输入用户名"
                             value={username}
                             autoComplete="username"
                             maxLength={MAX_USERNAME_LENGTH}
                             onChange={(e) => handleUsernameChange(e.target.value)}
-                            style={inputStyle}
+                            style={{ width: '100%' }}
                         />
                     </div>
                     <div style={{ marginTop: 10 }}>
                         <label htmlFor="auth-password-login" style={labelStyle}>密码</label>
-                        <input
+                        <TextInput
                             id="auth-password-login"
                             type="password"
                             placeholder="请输入密码"
@@ -300,7 +301,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                             autoComplete="current-password"
                             maxLength={MAX_PASSWORD_LENGTH}
                             onChange={(e) => handlePasswordChange(e.target.value)}
-                            style={inputStyle}
+                            style={{ width: '100%' }}
                         />
                     </div>
                     <button
@@ -326,19 +327,19 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                 <form onSubmit={handleRegister}>
                     <div>
                         <label htmlFor="auth-username-register" style={labelStyle}>用户名</label>
-                        <input
+                        <TextInput
                             id="auth-username-register"
                             placeholder="请输入用户名"
                             value={username}
                             autoComplete="username"
                             maxLength={MAX_USERNAME_LENGTH}
                             onChange={(e) => handleUsernameChange(e.target.value)}
-                            style={inputStyle}
+                            style={{ width: '100%' }}
                         />
                     </div>
                     <div style={{ marginTop: 10 }}>
                         <label htmlFor="auth-password-register" style={labelStyle}>密码</label>
-                        <input
+                        <TextInput
                             id="auth-password-register"
                             type="password"
                             placeholder="设置一个登录密码"
@@ -346,19 +347,19 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                             autoComplete="new-password"
                             maxLength={MAX_PASSWORD_LENGTH}
                             onChange={(e) => handlePasswordChange(e.target.value)}
-                            style={inputStyle}
+                            style={{ width: '100%' }}
                         />
                     </div>
                     <div style={{ marginTop: 10 }}>
                         <label htmlFor="auth-invite-code" style={labelStyle}>邀请码</label>
-                        <input
+                        <TextInput
                             id="auth-invite-code"
                             placeholder="请输入邀请码"
                             value={inviteCode}
                             maxLength={MAX_INVITE_CODE_LENGTH}
                             onChange={(e) => handleInviteCodeChange(e.target.value)}
                             aria-describedby="auth-invite-note"
-                            style={inputStyle}
+                            style={{ width: '100%' }}
                         />
                         <div id="auth-invite-note" style={{ marginTop: 4, fontSize: 12, color: UI_COLORS.textMuted }}>
                             邀请码请向管理员或群友索取

@@ -1,6 +1,10 @@
 import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
+import TextInput from "../components/TextInput";
 import { useAuth } from "../AuthContext";
+import JsonTable from "../components/JsonTable";
+import useDarkMode from "../hooks/useDarkMode";
+import { getThemeColor } from "../utils/theme";
 
 function resolveBackendUrl() {
     if (typeof window === "undefined") return "http://localhost:3000";
@@ -22,9 +26,16 @@ export default function AdminPlaces({ backendUrl = null }) {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
     const [processing, setProcessing] = useState({}); // id -> bool
+    const [searchQuery, setSearchQuery] = useState('');
+    const [page, setPage] = useState(1);
+    const PAGE_SIZE = 10;
 
     const canManage = user && user.admin_level;
     const fetchIdRef = useRef(0);
+    const dark = useDarkMode();
+    const themeColor = getThemeColor();
+
+
 
     // Fetch when user/token state changes to latest
     useEffect(() => {
@@ -157,13 +168,35 @@ export default function AdminPlaces({ backendUrl = null }) {
         }
     };
 
+    // 仅显示未处理（pending）的申请
+    const pendingRequests = (requests || []).filter(r => r && r.status === 'pending');
+
+    const q = (searchQuery || '').trim().toLowerCase();
+    const filtered = q === '' ? pendingRequests : pendingRequests.filter(r => {
+        const combined = `${r.id} ${r.place_id} ${r.requester_id} ${r.note || ''} ${JSON.stringify(r.proposed || {})}`.toLowerCase();
+        return combined.includes(q);
+    });
+
+    const totalPages = Math.max(1, Math.ceil((filtered || []).length / PAGE_SIZE));
+    useEffect(() => {
+        if (page > totalPages) setPage(totalPages);
+    }, [totalPages]);
+
+    const pageItems = (filtered || []).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
     return (
         <div style={{ marginTop: 12 }}>
             <h3>地点修改申请</h3>
             {!canManage && <div style={{ color: '#b00020' }}>您的账号无权访问此面板。</div>}
             {canManage && (
                 <div>
-                    <div style={{ marginBottom: 8 }}>
+                    <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <TextInput
+                            value={searchQuery}
+                            onChange={e => { setSearchQuery(e.target.value); setPage(1); }}
+                            placeholder="搜索 ID / 地点ID / 申请人 / 内容"
+                            style={{ flex: 1 }}
+                        />
                         <Button themeAware onClick={fetchRequests} disabled={loading}>刷新</Button>
                     </div>
                     {message && <div style={{ color: '#c33', marginBottom: 8 }}>{message}</div>}
@@ -171,47 +204,55 @@ export default function AdminPlaces({ backendUrl = null }) {
                         <div>加载中…</div>
                     ) : (
                         <div>
-                            {requests.length === 0 ? (
-                                <div>当前没有待处理的申请。</div>
+                            {filtered.length === 0 ? (
+                                <div>当前没有匹配的待处理申请。</div>
                             ) : (
-                                <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%' }}>
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>地点ID</th>
-                                            <th>申请人</th>
-                                            <th>提交时间</th>
-                                            <th>当前状态</th>
-                                            <th>提议内容</th>
-                                            <th>操作</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {requests.map(r => (
-                                            <tr key={r.id}>
-                                                <td>{r.id}</td>
-                                                <td>{r.place_id}</td>
-                                                <td>{r.requester_id}</td>
-                                                <td>{r.created_time}</td>
-                                                <td>{r.status}</td>
-                                                <td style={{ maxWidth: 420 }}>
-                                                    <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{JSON.stringify(r.proposed, null, 2)}</pre>
-                                                    {r.note ? <div style={{ color: '#666' }}>备注: {r.note}</div> : null}
-                                                </td>
-                                                <td style={{ whiteSpace: 'nowrap' }}>
-                                                    {r.status === 'pending' ? (
+                                <div>
+                                    <table cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
+                                                <th style={{ textAlign: 'left', padding: 8 }}>地点ID</th>
+                                                <th style={{ textAlign: 'left', padding: 8 }}>申请人</th>
+                                                <th style={{ textAlign: 'left', padding: 8 }}>提交时间</th>
+                                                <th style={{ textAlign: 'left', padding: 8 }}>当前状态</th>
+                                                <th style={{ textAlign: 'left', padding: 8 }}>提议内容</th>
+                                                <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {pageItems.map((r, idx) => (
+                                                <tr key={r.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
+                                                    <td>{r.id}</td>
+                                                    <td>{r.place_id}</td>
+                                                    <td>{r.requester_id}</td>
+                                                    <td>{r.created_time}</td>
+                                                    <td>{r.status}</td>
+                                                    <td style={{ maxWidth: 420, verticalAlign: 'top' }}>
+                                                        <JsonTable value={r.proposed} />
+                                                        {r.note ? <div style={{ color: '#666', marginTop: 6 }}>备注: {r.note}</div> : null}
+                                                    </td>
+                                                    <td style={{ whiteSpace: 'nowrap' }}>
                                                         <>
                                                             <Button themeAware onClick={() => review(r.id, 'approve')} disabled={processing[r.id]} style={{ marginRight: 6 }}>通过</Button>
                                                             <Button themeAware onClick={() => review(r.id, 'reject')} disabled={processing[r.id]} style={{ background: '#e02424', color: '#fff' }}>驳回</Button>
                                                         </>
-                                                    ) : (
-                                                        <div>已处理: {r.status}</div>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+
+                                    <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div>共 {filtered.length} 条 — 第 {page} / {totalPages} 页</div>
+                                        <div>
+                                            <Button themeAware onClick={() => setPage(1)} disabled={page === 1} style={{ marginRight: 6 }}>首页</Button>
+                                            <Button themeAware onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ marginRight: 6 }}>上一页</Button>
+                                            <Button themeAware onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ marginRight: 6 }}>下一页</Button>
+                                            <Button themeAware onClick={() => setPage(totalPages)} disabled={page === totalPages}>尾页</Button>
+                                        </div>
+                                    </div>
+                                </div>
                             )}
                         </div>
                     )}

@@ -1,5 +1,6 @@
 import React from 'react';
 import Button from '../components/Button';
+import TextInput from '../components/TextInput';
 import useDarkMode from '../hooks/useDarkMode';
 
 export default function ManagePanel({
@@ -26,11 +27,11 @@ export default function ManagePanel({
             <div style={{ marginTop: 8, color: dark ? '#e5e7eb' : '#333' }}>
                 <div>
                     <label style={{ display: "block", fontSize: 12, color: dark ? '#9ca3af' : '#666' }}>名称</label>
-                    <input value={manageEdit.name} onChange={(e) => setManageEdit(me => ({ ...me, name: e.target.value }))} style={{ width: "100%", border: dark ? '1px solid #334155' : undefined, background: dark ? '#07101a' : undefined, color: dark ? '#e5e7eb' : undefined }} />
+                    <TextInput value={manageEdit.name} onChange={(e) => setManageEdit(me => ({ ...me, name: e.target.value }))} style={{ width: "100%" }} />
                 </div>
                 <div style={{ marginTop: 8 }}>
                     <label style={{ display: "block", fontSize: 12, color: dark ? '#9ca3af' : '#666' }}>分类</label>
-                    <input value={manageEdit.category} onChange={(e) => setManageEdit(me => ({ ...me, category: e.target.value }))} style={{ width: "100%", border: dark ? '1px solid #334155' : undefined, background: dark ? '#07101a' : undefined, color: dark ? '#e5e7eb' : undefined }} />
+                    <TextInput value={manageEdit.category} onChange={(e) => setManageEdit(me => ({ ...me, category: e.target.value }))} style={{ width: "100%" }} />
                 </div>
                 <div style={{ marginTop: 8 }}>
                     <label style={{ display: "block", fontSize: 12, color: dark ? '#9ca3af' : '#666' }}>描述</label>

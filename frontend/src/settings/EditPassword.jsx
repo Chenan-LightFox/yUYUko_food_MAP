@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import PageTemplate from '../components/PageTemplate';
 import Button from '../components/Button';
+import TextInput from '../components/TextInput';
 import { useTips } from '../components/Tips';
 import useDarkMode from '../hooks/useDarkMode';
 
@@ -72,17 +73,17 @@ export default function EditPassword({ user, onBack, backendUrl, token, onUpdate
             <form onSubmit={handleSubmit}>
                 <label style={{ display: 'block', marginBottom: 8 }}>
                     <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>当前密码</div>
-                    <input type="password" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)} style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }} />
+                    <TextInput type="password" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)} style={{ width: '100%' }} />
                 </label>
 
                 <label style={{ display: 'block', marginBottom: 8 }}>
                     <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>新密码</div>
-                    <input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }} />
+                    <TextInput type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} style={{ width: '100%' }} />
                 </label>
 
                 <label style={{ display: 'block', marginBottom: 8 }}>
                     <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>确认新密码</div>
-                    <input type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }} />
+                    <TextInput type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} style={{ width: '100%' }} />
                 </label>
 
 
