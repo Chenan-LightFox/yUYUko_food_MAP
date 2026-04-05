@@ -11,7 +11,7 @@ import AuthModal from "./components/AuthModal";
 import { AuthProvider } from "./AuthContext";
 import BanNotice from "./components/BanNotice";
 import { TipsProvider } from "./components/Tips";
-import { applyDarkMode } from "./utils/theme";
+import { applyDarkMode, applyThemeColor } from "./utils/theme";
 import useDarkMode from './hooks/useDarkMode';
 
 function normalizeUrl(url) {
@@ -101,6 +101,7 @@ export default function App() {
             if (raw) {
                 const ms = JSON.parse(raw);
                 if (ms && typeof ms.dark_mode !== 'undefined') applyDarkMode(!!ms.dark_mode);
+                if (ms && typeof ms.theme_color !== 'undefined' && ms.theme_color) applyThemeColor(ms.theme_color);
             }
         } catch (e) { }
 
@@ -112,8 +113,9 @@ export default function App() {
     // Apply dark mode when user or their map_settings change
     useEffect(() => {
         try {
-            if (user && user.map_settings && typeof user.map_settings.dark_mode !== 'undefined') {
-                applyDarkMode(!!user.map_settings.dark_mode);
+            if (user && user.map_settings) {
+                if (typeof user.map_settings.dark_mode !== 'undefined') applyDarkMode(!!user.map_settings.dark_mode);
+                if (typeof user.map_settings.theme_color !== 'undefined') applyThemeColor(user.map_settings.theme_color || '');
                 return;
             }
 
@@ -121,10 +123,9 @@ export default function App() {
             const raw = localStorage.getItem('map_settings');
             if (raw) {
                 const ms = JSON.parse(raw);
-                if (ms && typeof ms.dark_mode !== 'undefined') {
-                    applyDarkMode(!!ms.dark_mode);
-                    return;
-                }
+                if (ms && typeof ms.dark_mode !== 'undefined') applyDarkMode(!!ms.dark_mode);
+                if (ms && typeof ms.theme_color !== 'undefined') applyThemeColor(ms.theme_color || '');
+                return;
             }
 
             // default: remove dark mode

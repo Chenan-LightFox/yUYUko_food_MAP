@@ -9,6 +9,7 @@ import { useTips } from "./components/Tips";
 import Tooltip from './components/Tooltip';
 import Button from './components/Button';
 import useDarkMode from './hooks/useDarkMode';
+import { applyThemeColor } from './utils/theme';
 
 const DEFAULT_CENTER = MapUtils.DEFAULT_CENTER;
 const DEFAULT_ZOOM = MapUtils.DEFAULT_ZOOM;
@@ -78,7 +79,42 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     const [manageSubmitting, setManageSubmitting] = useState(false);
     const [manageMessage, setManageMessage] = useState("");
 
-    const customThemeColor = '#002fa7';
+    const DEFAULT_THEME_COLOR = '#002fa7';
+    const [customThemeColor, setCustomThemeColor] = useState(DEFAULT_THEME_COLOR);
+
+    useEffect(() => {
+        try {
+            let color = null;
+            if (currentUser && currentUser.map_settings) {
+                color = currentUser.map_settings.theme_color || null;
+            }
+            if (!color) {
+                try {
+                    const raw = window.localStorage.getItem('map_settings');
+                    if (raw) {
+                        const ms = JSON.parse(raw);
+                        if (ms && ms.theme_color) color = ms.theme_color;
+                    }
+                } catch (e) { }
+            }
+            if (color) setCustomThemeColor(color);
+            else setCustomThemeColor(DEFAULT_THEME_COLOR);
+            try { applyThemeColor(color || DEFAULT_THEME_COLOR); } catch (e) { }
+        } catch (e) { }
+    }, [currentUser]);
+
+    useEffect(() => {
+        const onThemeChange = (e) => {
+            try {
+                const detail = (e && e.detail) ? e.detail : null;
+                if (detail && typeof detail.color !== 'undefined') {
+                    setCustomThemeColor(detail.color || DEFAULT_THEME_COLOR);
+                }
+            } catch (err) { }
+        };
+        window.addEventListener('themechange', onThemeChange);
+        return () => window.removeEventListener('themechange', onThemeChange);
+    }, []);
 
     // Helper: try multiple AMap APIs to set a map style string (robust across versions)
     const trySetAmapStyle = (map, styleStr) => {

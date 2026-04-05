@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import PageTemplate from '../components/PageTemplate';
 import Button from '../components/Button';
 import { useTips } from '../components/Tips';
-import { applyDarkMode } from '../utils/theme';
+import { applyDarkMode, applyThemeColor } from '../utils/theme';
 import useDarkMode from '../hooks/useDarkMode';
 
 const STYLE_OPTIONS = [
@@ -20,6 +20,7 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
     const [darkMapStyle, setDarkMapStyle] = useState('amap://styles/dark');
     const [lightMapStyle, setLightMapStyle] = useState('amap://styles/normal');
     const [loading, setLoading] = useState(false);
+    const [themeColor, setThemeColor] = useState('#002fa7');
     const showTip = useTips();
     const dark = useDarkMode();
 
@@ -41,6 +42,10 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
         }
         if (settings && typeof settings.map_style_light !== 'undefined') {
             setLightMapStyle(settings.map_style_light || 'amap://styles/normal');
+        }
+        if (settings && typeof settings.theme_color !== 'undefined') {
+            setThemeColor(settings.theme_color || '#002fa7');
+            try { applyThemeColor(settings.theme_color || '#002fa7'); } catch (e) { }
         }
     }, [user]);
 
@@ -88,6 +93,56 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
             } else {
                 localStorage.setItem('map_settings', JSON.stringify(payload));
                 setDarkMode(!!value);
+                showTip('已保存到本地（未登录）');
+            }
+        } catch (e) {
+            showTip(e.message || '保存失败');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const persistThemeColor = async (value) => {
+        setLoading(true);
+        const existing = (user && user.map_settings) ? user.map_settings : (() => {
+            try { const raw = localStorage.getItem('map_settings'); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+        })();
+
+        const payload = { ...(existing || {}) };
+        payload.theme_color = value || '';
+        try { window.localStorage.setItem('map_settings', JSON.stringify(payload)); } catch (e) { /* ignore */ }
+        try {
+            if (backendUrl && token) {
+                const res = await fetch(`${backendUrl}/users/me/settings`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ map_settings: payload })
+                });
+
+                const text = await res.text();
+                let data = null;
+                try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+
+                if (!res.ok) {
+                    const errMsg = (data && data.error) ? data.error : (text ? (text.trim().startsWith('<') ? `服务器返回错误（HTTP ${res.status}）` : text) : '保存失败');
+                    showTip(errMsg);
+                    setLoading(false);
+                    return;
+                }
+
+                if (data && data.user) {
+                    if (typeof onUpdateUser === 'function') onUpdateUser(data.user, token);
+                    try {
+                        const ms = data.user.map_settings || null;
+                        if (ms && typeof ms.theme_color !== 'undefined') setThemeColor(ms.theme_color || '#002fa7');
+                    } catch (e) { /* ignore */ }
+                    try { applyThemeColor(value || '#002fa7'); } catch (e) { }
+                    showTip('已保存设置');
+                }
+            } else {
+                localStorage.setItem('map_settings', JSON.stringify(payload));
+                setThemeColor(value || '#002fa7');
+                try { applyThemeColor(value || '#002fa7'); } catch (e) { }
                 showTip('已保存到本地（未登录）');
             }
         } catch (e) {
@@ -202,6 +257,60 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                             <span style={{ color: dark ? '#e5e7eb' : '#6b7280' }}>{darkMode ? '已启用' : '未启用'}</span>
                         </label>
                     </div>
+                </div>
+            </div>
+            <div style={{ marginTop: 18 }}>
+                <div style={{ fontSize: 16, fontWeight: 600, color: dark ? '#e5e7eb' : 'inherit' }}>主题颜色</div>
+                <div style={{ color: dark ? '#9ca3af' : '#6b7280', fontSize: 13, marginTop: 6 }}>自定义页面主色（用于地图按钮与头像外圈）</div>
+
+                <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <input
+                        type="color"
+                        value={themeColor}
+                        onChange={(e) => setThemeColor(e.target.value)}
+                        disabled={loading}
+                        style={{
+                            width: 56,
+                            height: 36,
+                            borderRadius: 6,
+                            border: dark ? '1px solid #334155' : '1px solid #d1d5db',
+                            background: dark ? '#07101a' : '#fff',
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            padding: 6,
+                            boxSizing: 'border-box',
+                            outline: 'none'
+                        }}
+                    />
+
+                    <input
+                        value={themeColor}
+                        onChange={(e) => setThemeColor(e.target.value)}
+                        style={{
+                            padding: 8,
+                            borderRadius: 6,
+                            border: dark ? '1px solid #334155' : '1px solid #d1d5db',
+                            background: dark ? '#07101a' : '#fff',
+                            color: dark ? '#e5e7eb' : undefined,
+                            outline: 'none'
+                        }}
+                    />
+
+                    <Button
+                        onClick={() => persistThemeColor(themeColor)}
+                        disabled={loading}
+                        style={{
+                            background: themeColor,
+                            color: '#fff',
+                            border: 'none',
+                            padding: '8px 12px',
+                            borderRadius: 6,
+                            boxShadow: dark ? '0 4px 12px rgba(0,0,0,0.6)' : `0 4px 12px rgba(0,47,167,0.2)`,
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            opacity: loading ? 0.6 : 1
+                        }}
+                    >
+                        保存
+                    </Button>
                 </div>
             </div>
             <div style={{ marginTop: 18 }}>

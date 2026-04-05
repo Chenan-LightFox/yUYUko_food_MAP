@@ -52,5 +52,4 @@
 **TODO list:**
 - AdminDashboard.js: 美化管理员后台界面设计，完善操作反馈
 - Map.jsx: 修改为自己的Marker图标
-- CustomThemes.jsx: 添加用户自定义主题色功能
 - 大家找找bug（

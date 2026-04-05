@@ -9,7 +9,8 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
     const rootRef = useRef(null);
     const menuRef = useRef(null);
     const closeTimerRef = useRef(null);
-    const customThemeColor = '#002fa7';
+    const DEFAULT_THEME_COLOR = '#002fa7';
+    const [themeColor, setThemeColor] = useState(DEFAULT_THEME_COLOR);
 
     const dark = useDarkMode();
     const menuTextColor = dark ? '#e5e7eb' : 'inherit';
@@ -43,6 +44,37 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
                 closeTimerRef.current = null;
             }
         };
+    }, []);
+
+    useEffect(() => {
+        try {
+            let color = null;
+            if (user && user.map_settings) color = user.map_settings.theme_color || null;
+            if (!color) {
+                try {
+                    const raw = window.localStorage.getItem('map_settings');
+                    if (raw) {
+                        const ms = JSON.parse(raw);
+                        if (ms && ms.theme_color) color = ms.theme_color;
+                    }
+                } catch (e) { }
+            }
+            if (color) setThemeColor(color);
+            else setThemeColor(DEFAULT_THEME_COLOR);
+        } catch (e) { }
+    }, [user]);
+
+    useEffect(() => {
+        const onThemeChange = (e) => {
+            try {
+                const detail = (e && e.detail) ? e.detail : null;
+                if (detail && typeof detail.color !== 'undefined') {
+                    setThemeColor(detail.color || DEFAULT_THEME_COLOR);
+                }
+            } catch (err) { }
+        };
+        window.addEventListener('themechange', onThemeChange);
+        return () => window.removeEventListener('themechange', onThemeChange);
     }, []);
 
     const scheduleClose = (delay = 150) => {
@@ -130,14 +162,14 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
                     width: 50,
                     height: 50,
                     borderRadius: '50%',
-                    background: customThemeColor,
+                    background: themeColor,
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: 'pointer',
                     boxShadow: dark ? '0 1px 3px rgba(0,0,0,0.6)' : '0 1px 3px rgba(0,0,0,0.15)',
                     overflow: 'hidden',
-                    border: `3px solid ${customThemeColor}`,
+                    border: `3px solid ${themeColor}`,
                     boxSizing: 'border-box'
                 }}
             >
