@@ -52,7 +52,8 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
     }, [user]);
 
     const DARK_STYLE_IDS = ['amap://styles/dark', 'amap://styles/darkblue', 'amap://styles/grey', 'amap://styles/night'];
-    const LIGHT_STYLE_IDS = ['amap://styles/light', 'amap://styles/normal', 'amap://styles/default'];
+    // 允许在浅色偏好中也选择“夜间（随昼夜变化）”样式
+    const LIGHT_STYLE_IDS = ['amap://styles/light', 'amap://styles/normal', 'amap://styles/default', 'amap://styles/night'];
 
     const persistDarkMode = async (value) => {
         setLoading(true);

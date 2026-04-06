@@ -148,6 +148,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     const AMAP_STYLE_CANDIDATES_LIGHT = [
         'amap://styles/light',
         'amap://styles/normal',
+        'amap://styles/night',
         'amap://styles/default'
     ];
 
