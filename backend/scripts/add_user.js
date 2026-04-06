@@ -1,14 +1,5 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { db } = require('../db');
 const crypto = require('crypto');
-
-const dbFile = path.join(__dirname, '..', 'data.sqlite');
-const db = new sqlite3.Database(dbFile, (err) => {
-    if (err) {
-        console.error('Failed to open DB:', err.message);
-        process.exit(1);
-    }
-});
 
 const users = [
     { id: 864, username: 'dev', password: '12345679', admin_level: 'YUYUKO' },
@@ -90,7 +81,7 @@ ensureSchema((err) => {
         const u = users[i];
         const hashed = hashPassword(u.password);
         const adminVal = u.admin_level === null ? null : u.admin_level;
-        db.run(sql, [u.id, u.username, hashed, null, adminVal], function(err) {
+        db.run(sql, [u.id, u.username, hashed, null, adminVal], function (err) {
             if (err) {
                 console.error(`Insert failed for ${u.username}:`, err.message);
                 process.exitCode = 2;

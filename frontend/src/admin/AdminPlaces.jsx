@@ -115,7 +115,7 @@ export default function AdminPlaces({ backendUrl = null }) {
                 'Content-Type': 'application/json',
                 ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
             };
-            let res = await fetch(`${base}/place-requests/${id}/review`, {
+            let res = await fetch(`${base}/place-requests/${id}/review`, { 
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ action })

@@ -1,14 +1,5 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { db } = require('../db');
 const crypto = require('crypto');
-
-const dbFile = path.join(__dirname, '..', 'data.sqlite');
-const db = new sqlite3.Database(dbFile, (err) => {
-    if (err) {
-        console.error('Failed to open DB:', err.message);
-        process.exit(1);
-    }
-});
 
 const userIdentifier = { id: 864, username: 'dev' };
 const plainPassword = '12345679';
@@ -23,7 +14,7 @@ db.serialize(() => {
     db.run(
         'UPDATE User SET password = ? WHERE id = ? OR username = ?',
         [hashed, userIdentifier.id, userIdentifier.username],
-        function(err) {
+        function (err) {
             if (err) {
                 console.error('Update failed:', err.message);
                 process.exitCode = 2;
