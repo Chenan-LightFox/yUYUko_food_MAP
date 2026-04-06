@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import { useAuth } from "../AuthContext";
-import useDarkMode from "../hooks/useDarkMode";
+import useDarkMode from "../utils/useDarkMode";
 
 function resolveBackendUrl() {
     if (typeof window === "undefined") return "http://localhost:3000";

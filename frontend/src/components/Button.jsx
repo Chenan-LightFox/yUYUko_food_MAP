@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import useDarkMode from '../hooks/useDarkMode';
+import useDarkMode from '../utils/useDarkMode';
 import { getThemeColor } from '../utils/theme';
 
 export default function Button({ children, onClick, disabled, style, title, variant = 'default', full = false, type = 'button', themeAware = false }) {

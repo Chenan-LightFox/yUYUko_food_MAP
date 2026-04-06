@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Button from './Button';
 import Tooltip from './Tooltip';
 import defaultAvatar from '../img/default.png';
-import useDarkMode from '../hooks/useDarkMode';
+import useDarkMode from '../utils/useDarkMode';
 
 export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onGoHome, pathname }) {
     const [open, setOpen] = useState(false);

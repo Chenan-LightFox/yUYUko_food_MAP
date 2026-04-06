@@ -3,7 +3,7 @@ import PageTemplate from '../components/PageTemplate';
 import Button from '../components/Button';
 import TextInput from '../components/TextInput';
 import { useTips } from '../components/Tips';
-import useDarkMode from '../hooks/useDarkMode';
+import useDarkMode from '../utils/useDarkMode';
 
 export default function EditUsername({ user, onBack, backendUrl, token, onUpdateUser }) {
     const [username, setUsername] = useState(user ? user.username : '');

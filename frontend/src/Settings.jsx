@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Button from './components/Button';
 import Tooltip from './components/Tooltip';
-import useDarkMode from './hooks/useDarkMode';
+import useDarkMode from './utils/useDarkMode';
 
 export default function Settings({ user, onBack, onOpenEditUsername, onOpenEditPassword, onOpenPersonalize, onOpenThemes, backendUrl, token, onLogout }) {
     const dark = useDarkMode();

@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import useDarkMode from '../hooks/useDarkMode';
+import useDarkMode from '../utils/useDarkMode';
 import { getThemeColor } from '../utils/theme';
 
 function hexToRgba(hex, a = 1) {

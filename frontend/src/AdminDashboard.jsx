@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import Button from "./components/Button";
-import useDarkMode from './hooks/useDarkMode';
+import useDarkMode from './utils/useDarkMode';
 import AdminPlaces from "./admin/AdminPlaces";
 import AdminUsers from "./admin/AdminUsers";
 import AdminInvitecode from "./admin/AdminInvitecodes";

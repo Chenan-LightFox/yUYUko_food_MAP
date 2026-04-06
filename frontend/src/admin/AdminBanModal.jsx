@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Button from '../components/Button';
 import SelectInput from '../components/SelectInput';
-import useDarkMode from '../hooks/useDarkMode';
+import useDarkMode from '../utils/useDarkMode';
 
 export default function AdminBanModal({ open, onClose, onConfirm, targetUser }) {
     const [reason, setReason] = useState('');

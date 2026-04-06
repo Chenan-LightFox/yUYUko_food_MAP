@@ -8,7 +8,7 @@ import CommentPanel from './map/CommentPanel';
 import { useTips } from "./components/Tips";
 import Tooltip from './components/Tooltip';
 import Button from './components/Button';
-import useDarkMode from './hooks/useDarkMode';
+import useDarkMode from './utils/useDarkMode';
 import { applyThemeColor } from './utils/theme';
 
 const DEFAULT_CENTER = MapUtils.DEFAULT_CENTER;

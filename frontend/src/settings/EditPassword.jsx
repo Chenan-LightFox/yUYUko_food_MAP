@@ -3,7 +3,7 @@ import PageTemplate from '../components/PageTemplate';
 import Button from '../components/Button';
 import TextInput from '../components/TextInput';
 import { useTips } from '../components/Tips';
-import useDarkMode from '../hooks/useDarkMode';
+import useDarkMode from '../utils/useDarkMode';
 
 export default function EditPassword({ user, onBack, backendUrl, token, onUpdateUser }) {
     const [currentPwd, setCurrentPwd] = useState('');

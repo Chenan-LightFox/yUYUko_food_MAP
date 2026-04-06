@@ -5,7 +5,7 @@ import TextInput from '../components/TextInput';
 import SelectInput from '../components/SelectInput';
 import { useTips } from '../components/Tips';
 import { applyDarkMode, applyThemeColor } from '../utils/theme';
-import useDarkMode from '../hooks/useDarkMode';
+import useDarkMode from '../utils/useDarkMode';
 
 const STYLE_OPTIONS = [
     { id: 'amap://styles/dark', name: '暗黑（默认）' },

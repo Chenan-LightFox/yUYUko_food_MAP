@@ -1,6 +1,6 @@
 import React from 'react';
 import Button from '../components/Button';
-import useDarkMode from '../hooks/useDarkMode';
+import useDarkMode from '../utils/useDarkMode';
 
 export default function CommentPanel({
     place,

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Button from '../components/Button';
 import TextInput from '../components/TextInput';
 import { useTips } from '../components/Tips';
-import useDarkMode from '../hooks/useDarkMode';
+import useDarkMode from '../utils/useDarkMode';
 
 export default function AddForm({ defaultPos, onCancel, onSubmit }) {
     const [name, setName] = useState("");

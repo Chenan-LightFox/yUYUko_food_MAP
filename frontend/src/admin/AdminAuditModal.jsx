@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Button from '../components/Button';
-import useDarkMode from '../hooks/useDarkMode';
+import useDarkMode from '../utils/useDarkMode';
 import { getThemeColor } from '../utils/theme';
 import JsonTable from '../components/JsonTable';
 

@@ -12,7 +12,7 @@ import { AuthProvider } from "./AuthContext";
 import BanNotice from "./components/BanNotice";
 import { TipsProvider } from "./components/Tips";
 import { applyDarkMode, applyThemeColor } from "./utils/theme";
-import useDarkMode from './hooks/useDarkMode';
+import useDarkMode from './utils/useDarkMode';
 
 function normalizeUrl(url) {
     return String(url).replace(/\/+$/, "");
@@ -111,7 +111,15 @@ export default function App() {
             if (raw) {
                 const ms = JSON.parse(raw);
                 if (ms && typeof ms.dark_mode !== 'undefined') applyDarkMode(!!ms.dark_mode);
-                if (ms && typeof ms.theme_color !== 'undefined' && ms.theme_color) applyThemeColor(ms.theme_color);
+                // Only apply saved theme color on mount when:
+                // - there is a token (likely the user's own settings), OR
+                // - the saved settings explicitly enable dark_mode, OR
+                // - the page is already in dark mode (so a theme color makes sense).
+                try {
+                    const pageIsDark = document && document.documentElement && document.documentElement.getAttribute('data-theme') === 'dark';
+                    const shouldApplyThemeColor = !!token || !!(ms && ms.dark_mode) || pageIsDark;
+                    if (ms && typeof ms.theme_color !== 'undefined' && shouldApplyThemeColor && ms.theme_color) applyThemeColor(ms.theme_color);
+                } catch (e) { /* ignore */ }
             }
         } catch (e) { }
 

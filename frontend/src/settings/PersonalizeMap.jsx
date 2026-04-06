@@ -4,7 +4,7 @@ import Button from '../components/Button';
 import TextInput from '../components/TextInput';
 import SelectInput from '../components/SelectInput';
 import { useTips } from '../components/Tips';
-import useDarkMode from '../hooks/useDarkMode';
+import useDarkMode from '../utils/useDarkMode';
 
 export default function PersonalizeMap({ user, onBack, backendUrl, token, onUpdateUser }) {
     const [style, setStyle] = useState('standard');

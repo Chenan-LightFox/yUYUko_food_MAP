@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import useDarkMode from '../hooks/useDarkMode';
+import useDarkMode from '../utils/useDarkMode';
 
 export default function Tooltip({ text, children, placement = 'bottom' }) {
     const [show, setShow] = useState(false);

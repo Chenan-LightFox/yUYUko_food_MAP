@@ -1,5 +1,5 @@
 import React from 'react';
-import useDarkMode from '../hooks/useDarkMode';
+import useDarkMode from '../utils/useDarkMode';
 
 function isJsonString(v) {
     if (typeof v !== 'string') return false;

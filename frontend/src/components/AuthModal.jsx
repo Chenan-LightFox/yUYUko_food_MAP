@@ -1,6 +1,6 @@
 import React from 'react';
 import AuthPage from '../AuthPage';
-import useDarkMode from '../hooks/useDarkMode';
+import useDarkMode from '../utils/useDarkMode';
 
 export default function AuthModal({ backendUrl, onLoginSuccess, onClose }) {
     const dark = useDarkMode();

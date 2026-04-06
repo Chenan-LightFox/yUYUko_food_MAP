@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Button from './Button';
-import useDarkMode from '../hooks/useDarkMode';
+import useDarkMode from '../utils/useDarkMode';
 
 function BreadcrumbLink({ label, onClick, href }) {
     const [hover, setHover] = useState(false);
