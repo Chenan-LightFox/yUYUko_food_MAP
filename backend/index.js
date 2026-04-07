@@ -48,6 +48,7 @@ function isAllowedOrigin(origin) {
     if (EXTRA_ALLOWED_ORIGINS.includes(origin)) return true;
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
     if (/^https?:\/\/cn\.dinnerparty\.cc(:\d+)?$/i.test(origin)) return true;
+    if (/^https?:\/\/dinnerparty\.cc(:\d+)?$/i.test(origin)) return true;
     return false;
 }
 
