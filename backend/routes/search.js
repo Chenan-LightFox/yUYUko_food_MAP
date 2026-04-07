@@ -27,10 +27,10 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
     const R = 6371000;
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lng2 - lng1);
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
 }
 
@@ -40,9 +40,13 @@ async function getAllPlaces(opts = {}) {
     const center = opts.center; // { lat, lng } 或 undefined
     const limit = Number.isInteger(opts.limit) ? opts.limit : undefined;
 
-    // 获取所有地点数据
+    // 获取所有地点数据（附带创建者和最后修改者姓名）
     const rows = await new Promise((resolve, reject) => {
-        db.all("SELECT * FROM Place", [], (err, rows) => {
+        const sql = `SELECT p.*, u.username AS creator_name, uu.username AS updated_by_name
+                     FROM Place p
+                     LEFT JOIN User u ON p.creator_id = u.id
+                     LEFT JOIN User uu ON p.updated_by = uu.id`;
+        db.all(sql, [], (err, rows) => {
             if (err) return reject(err);
             resolve(rows || []);
         });

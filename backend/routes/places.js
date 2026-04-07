@@ -53,19 +53,28 @@ function normalizeCoordinate(value, {
     return { value: numericValue };
 }
 
-// 列出所有地点
+// 列出所有地点（附带创建者和最后修改者姓名）
 router.get("/", (req, res) => {
-    db.all("SELECT * FROM Place ORDER BY created_time DESC", [], (err, rows) => {
+    const sql = `SELECT p.*, u.username AS creator_name, uu.username AS updated_by_name
+                 FROM Place p
+                 LEFT JOIN User u ON p.creator_id = u.id
+                 LEFT JOIN User uu ON p.updated_by = uu.id
+                 ORDER BY p.created_time DESC`;
+    db.all(sql, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
 });
 
-// 按 bounds 查询范围内地点
+// 按 bounds 查询范围内地点（附带创建者和最后修改者姓名）
 router.get("/nearby", (req, res) => {
     const { minLng, minLat, maxLng, maxLat } = req.query;
     if (![minLng, minLat, maxLng, maxLat].every(Boolean)) return res.status(400).json({ error: "缺少范围参数" });
-    const sql = `SELECT * FROM Place WHERE longitude BETWEEN ? AND ? AND latitude BETWEEN ? AND ?`;
+    const sql = `SELECT p.*, u.username AS creator_name, uu.username AS updated_by_name
+                 FROM Place p
+                 LEFT JOIN User u ON p.creator_id = u.id
+                 LEFT JOIN User uu ON p.updated_by = uu.id
+                 WHERE p.longitude BETWEEN ? AND ? AND p.latitude BETWEEN ? AND ?`;
     db.all(sql, [minLng, maxLng, minLat, maxLat], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
@@ -109,17 +118,24 @@ router.post("/", requireAuth, (req, res) => {
     });
     if (normalizedLongitude.error) return res.status(400).json({ error: normalizedLongitude.error });
 
-    const sql = `INSERT INTO Place (name, description, latitude, longitude, category, creator_id) VALUES (?, ?, ?, ?, ?, ?)`;
+    // 将创建者同时设置为首次修改者（updated_by），并记录 updated_time
+    const sql = `INSERT INTO Place (name, description, latitude, longitude, category, creator_id, updated_time, updated_by) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`;
     db.run(sql, [
         normalizedName.value,
         normalizedDescription.value,
         normalizedLatitude.value,
         normalizedLongitude.value,
         normalizedCategory.value,
+        creatorId,
         creatorId
     ], function (err) {
         if (err) return res.status(500).json({ error: err.message });
-        db.get("SELECT * FROM Place WHERE id = ?", [this.lastID], (e, row) => {
+        const sel = `SELECT p.*, u.username AS creator_name, uu.username AS updated_by_name
+                     FROM Place p
+                     LEFT JOIN User u ON p.creator_id = u.id
+                     LEFT JOIN User uu ON p.updated_by = uu.id
+                     WHERE p.id = ?`;
+        db.get(sel, [this.lastID], (e, row) => {
             if (e) return res.status(500).json({ error: e.message });
             res.json(row);
         });
@@ -147,7 +163,12 @@ router.post("/:id/requests", requireAuth, (req, res) => {
 router.put("/:id", requireAuth, (req, res) => {
     const id = req.params.id;
     const { name, description, category, latitude, longitude } = req.body;
-    db.get("SELECT * FROM Place WHERE id = ?", [id], (err, place) => {
+    const selPlaceSql = `SELECT p.*, u.username AS creator_name, uu.username AS updated_by_name
+                        FROM Place p
+                        LEFT JOIN User u ON p.creator_id = u.id
+                        LEFT JOIN User uu ON p.updated_by = uu.id
+                        WHERE p.id = ?`;
+    db.get(selPlaceSql, [id], (err, place) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!place) return res.status(404).json({ error: "地点不存在" });
         const isCreator = String(place.creator_id) === String(req.user.id);
@@ -169,7 +190,12 @@ router.put("/:id", requireAuth, (req, res) => {
         values.push(id);
         db.run(sql, values, function (e) {
             if (e) return res.status(500).json({ error: e.message });
-            db.get("SELECT * FROM Place WHERE id = ?", [id], (e2, row) => {
+            const sel = `SELECT p.*, u.username AS creator_name, uu.username AS updated_by_name
+                         FROM Place p
+                         LEFT JOIN User u ON p.creator_id = u.id
+                         LEFT JOIN User uu ON p.updated_by = uu.id
+                         WHERE p.id = ?`;
+            db.get(sel, [id], (e2, row) => {
                 if (e2) return res.status(500).json({ error: e2.message });
                 res.json(row);
             });
@@ -180,7 +206,12 @@ router.put("/:id", requireAuth, (req, res) => {
 // 删除地点（仅创建者或管理员）
 router.delete("/:id", requireAuth, (req, res) => {
     const id = req.params.id;
-    db.get("SELECT * FROM Place WHERE id = ?", [id], (err, place) => {
+    const selPlaceSql = `SELECT p.*, u.username AS creator_name, uu.username AS updated_by_name
+                        FROM Place p
+                        LEFT JOIN User u ON p.creator_id = u.id
+                        LEFT JOIN User uu ON p.updated_by = uu.id
+                        WHERE p.id = ?`;
+    db.get(selPlaceSql, [id], (err, place) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!place) return res.status(404).json({ error: "地点不存在" });
         const isCreator = String(place.creator_id) === String(req.user.id);

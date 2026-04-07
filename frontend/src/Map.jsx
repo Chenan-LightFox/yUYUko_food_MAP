@@ -745,21 +745,29 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         }
     };
 
-    // 尝试从 selectedPlace 中读出最后修改人/时间，兼容多种字段名
+    // 尝试从 selectedPlace 中读出最后修改人/时间，兼容多种字段名，优先使用名字字段并仅保留到日（YYYY-MM-DD）
     const getLastModifierText = (place) => {
         if (!place) return "-";
-        const by = place.updated_by || place.updated_by_name || place.modified_by || place.last_modified_by || place.updater || place.updater_name || place.updated_by_name || place.creator_name || null;
+        // 优先尝试带名字的字段，再回退到 id/其他字段
+        const nameFields = place.updated_by_name || place.updater_name || place.modified_by_name || place.last_modified_by_name || place.creator_name || place.created_by_name || null;
+        const idFields = place.updated_by || place.modified_by || place.last_modified_by || place.updater || place.creator_id || place.creator || place.created_by || null;
+        const by = nameFields || idFields || null;
         const rawDate = place.updated_at || place.updated_time || place.modified_time || place.last_modified_at || place.modifiedAt || place.updatedAt || place.created_time || null;
         let when = "-";
         if (rawDate) {
             try {
                 const d = (typeof rawDate === "number" || /^\d+$/.test(String(rawDate))) ? new Date(Number(rawDate)) : new Date(String(rawDate));
                 if (!isNaN(d.getTime())) {
-                    when = d.toLocaleString();
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    when = `${y}-${m}-${dd}`;
                 }
             } catch (e) { }
         }
-        return `${by || "-"} · ${when}`;
+        const result = `${by || "-"} · ${when}`;
+        try { console.debug && console.debug('[getLastModifierText]', { id: place.id, by, rawDate, formatted: result }); } catch (e) { }
+        return result;
     };
 
     // 打开管理面板（依据当前用户权限选择直接编辑或提交申请）
