@@ -751,7 +751,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         // 优先尝试带名字的字段，再回退到 id/其他字段
         const nameFields = place.updated_by_name || place.updater_name || place.modified_by_name || place.last_modified_by_name || place.creator_name || place.created_by_name || null;
         const idFields = place.updated_by || place.modified_by || place.last_modified_by || place.updater || place.creator_id || place.creator || place.created_by || null;
-        const by = nameFields || idFields || null;
+        const by = nameFields || `uid${idFields}` || null;
         const rawDate = place.updated_at || place.updated_time || place.modified_time || place.last_modified_at || place.modifiedAt || place.updatedAt || place.created_time || null;
         let when = "-";
         if (rawDate) {
