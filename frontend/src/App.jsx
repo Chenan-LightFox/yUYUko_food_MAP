@@ -25,9 +25,8 @@ function resolveBackendUrl() {
 
     if (typeof window !== "undefined") {
         const { protocol, hostname } = window.location;
-        if (hostname === "localhost" || hostname === "127.0.0.1") {
-            return "http://localhost:2053";
-        }
+        console.log(`Resolved backend URL: ${protocol}//${hostname}:2053`);
+
         return `${protocol}//${hostname}:2053`;
     }
 
