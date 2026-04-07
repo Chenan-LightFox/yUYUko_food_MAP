@@ -7,7 +7,7 @@ import JsonTable from '../components/JsonTable';
 export default function AdminAuditModal({ open, onClose, backendUrl, token }) {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(false);
-    const base = backendUrl || (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:3000` : 'http://localhost:3000');
+    const base = backendUrl || (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:2053` : 'http://localhost:2053');
 
     const dark = useDarkMode();
     const themeColor = getThemeColor();

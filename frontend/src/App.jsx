@@ -25,14 +25,13 @@ function resolveBackendUrl() {
 
     if (typeof window !== "undefined") {
         const { protocol, hostname } = window.location;
-        // 本地开发默认连本机后端；线上默认同主机 3000 端口。
         if (hostname === "localhost" || hostname === "127.0.0.1") {
-            return "http://localhost:3000";
+            return "http://localhost:2053";
         }
-        return `${protocol}//${hostname}:3000`;
+        return `${protocol}//${hostname}:2053`;
     }
 
-    return "http://localhost:3000";
+    return "http://localhost:2053";
 }
 
 const BACKEND_URL = resolveBackendUrl();

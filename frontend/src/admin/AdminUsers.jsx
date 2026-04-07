@@ -6,12 +6,12 @@ import SelectInput from '../components/SelectInput';
 import useDarkMode from "../utils/useDarkMode";
 
 function resolveBackendUrl() {
-    if (typeof window === "undefined") return "http://localhost:3000";
+    if (typeof window === "undefined") return "http://localhost:2053";
     const { protocol, hostname } = window.location;
     if (hostname === "localhost" || hostname === "127.0.0.1") {
-        return "http://localhost:3000";
+        return "http://localhost:2053";
     }
-    return `${protocol}//${hostname}:3000`;
+    return `${protocol}//${hostname}:2053`;
 }
 
 function getLatestStoredToken() {
