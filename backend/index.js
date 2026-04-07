@@ -1,6 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+const fs = require("fs");
+const https = require("https");
+const path = require("path");
 const { init } = require("./db");
 
 const placesRouter = require("./routes/places");
@@ -91,6 +94,35 @@ app.use("/api/place-requests", placeRequestsRouter); // 兼容前端或旧接口
 
 app.get("/", (req, res) => res.json({ ok: true, msg: "yUYUko Food Map Backend" }));
 
-app.listen(PORT, HOST, () => {
-    console.log(`Server running on http://${HOST}:${PORT}`);
-});
+// HTTPS support: if cert and key files exist (or set via env), run HTTPS server.
+const SSL_KEY_PATH = process.env.SSL_KEY_PATH || path.join(__dirname, 'certs', 'key.pem');
+const SSL_CERT_PATH = process.env.SSL_CERT_PATH || path.join(__dirname, 'certs', 'cert.pem');
+const FORCE_HTTPS = process.env.FORCE_HTTPS === 'true';
+
+if (fs.existsSync(SSL_KEY_PATH) && fs.existsSync(SSL_CERT_PATH)) {
+    const options = {
+        key: fs.readFileSync(SSL_KEY_PATH),
+        cert: fs.readFileSync(SSL_CERT_PATH)
+    };
+    https.createServer(options, app).listen(PORT, HOST, () => {
+        console.log(`HTTPS server running on https://${HOST}:${PORT}`);
+    });
+
+    if (FORCE_HTTPS) {
+        const http = require('http');
+        const HTTP_PORT = process.env.HTTP_PORT || 80;
+        http.createServer((req, res) => {
+            const hostHeader = req.headers.host ? req.headers.host.split(':')[0] : HOST;
+            const target = `https://${hostHeader}:${PORT}${req.url}`;
+            res.writeHead(301, { Location: target });
+            res.end();
+        }).listen(HTTP_PORT, HOST, () => {
+            console.log(`HTTP -> HTTPS redirector running on http://${HOST}:${HTTP_PORT}`);
+        });
+    }
+} else {
+    app.listen(PORT, HOST, () => {
+        console.log(`Server running on http://${HOST}:${PORT}`);
+        console.log(`TLS cert/key not found at ${SSL_CERT_PATH} and ${SSL_KEY_PATH}; running HTTP.`);
+    });
+}
