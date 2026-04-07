@@ -25,19 +25,15 @@ const app = express();
 app.set('trust proxy', true);
 
 const HOST = process.env.HOST || "0.0.0.0";
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 2053;
 
 const STATIC_ALLOWED_ORIGINS = [
-    "http://8.210.201.2",
-    "https://8.210.201.2",
-    "http://8.210.201.2:3000",
-    "https://8.210.201.2:3000",
-    "http://localhost:3000",
-    "https://localhost:3000",
+    "http://localhost:2053",
+    "https://localhost:2053",
     "http://localhost:5173",
     "https://localhost:5173",
-    "http://127.0.0.1:3000",
-    "https://127.0.0.1:3000",
+    "http://127.0.0.1:2053",
+    "https://127.0.0.1:2053",
     "http://127.0.0.1:5173",
     "https://127.0.0.1:5173"
 ];
@@ -51,7 +47,7 @@ function isAllowedOrigin(origin) {
     if (STATIC_ALLOWED_ORIGINS.includes(origin)) return true;
     if (EXTRA_ALLOWED_ORIGINS.includes(origin)) return true;
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
-    if (/^https?:\/\/8\.210\.201\.2(:\d+)?$/i.test(origin)) return true;
+    if (/^https?:\/\/cn\.dinnerparty\.cc(:\d+)?$/i.test(origin)) return true;
     return false;
 }
 
