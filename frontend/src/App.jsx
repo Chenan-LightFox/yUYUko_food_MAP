@@ -19,10 +19,6 @@ function normalizeUrl(url) {
 }
 
 function resolveBackendUrl() {
-    const env = (typeof import.meta !== "undefined" && import.meta.env) ? import.meta.env : {};
-    const explicitUrl = env.VITE_BACKEND_URL && String(env.VITE_BACKEND_URL).trim();
-    if (explicitUrl) return normalizeUrl(explicitUrl);
-
     if (typeof window !== "undefined") {
         const { protocol, hostname } = window.location;
         console.log(`Resolved backend URL: ${protocol}//${hostname}:2053`);
