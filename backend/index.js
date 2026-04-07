@@ -91,8 +91,8 @@ app.use("/api/place-requests", placeRequestsRouter); // 兼容前端或旧接口
 app.get("/", (req, res) => res.json({ ok: true, msg: "yUYUko Food Map Backend" }));
 
 // HTTPS support: if cert and key files exist (or set via env), run HTTPS server.
-const SSL_KEY_PATH = 'C:\\certbot\\conf\\live\\dinnerparty.cc\\privkey.pem';
-const SSL_CERT_PATH = 'C:\\certbot\\conf\\live\\dinnerparty.cc\\fullchain.pem';
+const SSL_KEY_PATH = 'C:\\certbot\\conf\\windows_ready_dinnerparty.cc\\privkey.pem';
+const SSL_CERT_PATH = 'C:\\certbot\\conf\\windows_ready_dinnerparty.cc\\fullchain.pem';
 const FORCE_HTTPS = process.env.FORCE_HTTPS === 'true';
 
 if (fs.existsSync(SSL_KEY_PATH) && fs.existsSync(SSL_CERT_PATH)) {
