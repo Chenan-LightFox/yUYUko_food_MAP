@@ -33,7 +33,7 @@ export default function AddForm({ defaultPos, onCancel, onSubmit }) {
                 <TextInput placeholder="分类（例如：火锅）" value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: "100%" }} />
             </div>
             <div style={{ marginTop: 8 }}>
-                <textarea placeholder="描述" value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: "100%", border: dark ? '1px solid #334155' : undefined, background: dark ? '#07101a' : undefined, color: dark ? '#e5e7eb' : undefined }} />
+                <TextInput placeholder="描述" value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: "100%" }} />
             </div>
             <div style={{ marginTop: 8, textAlign: "right" }}>
                 <Button themeAware onClick={onCancel} style={{ marginRight: 8 }}>取消</Button>
