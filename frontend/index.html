@@ -1,10 +1,12 @@
 <!doctype html>
 <html lang="zh-cn">
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>东方饭联地图</title>
-    <script src="https://webapi.amap.com/maps?v=2.0&key=c92da5ff295d79be6e55c3dd2946a272"></script>
+    <script
+        src="https://webapi.amap.com/maps?v=2.0&key=c92da5ff295d79be6e55c3dd2946a272&plugin=AMap.MarkerCluster"></script>
     <style>
         :root {
             --app-height: 100vh;
@@ -16,7 +18,9 @@
             }
         }
 
-        html, body, #root {
+        html,
+        body,
+        #root {
             height: 100%;
             min-height: 100%;
             margin: 0;
@@ -36,10 +40,12 @@
             background: white;
             padding: 8px;
             border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
-        input, textarea, select {
+        input,
+        textarea,
+        select {
             font-size: 16px;
         }
 
@@ -47,10 +53,13 @@
             font-variation-settings: 'FILL' 0, 'wght' 700, 'GRAD' 0, 'opsz' 24
         }
     </style>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 </head>
-    <body>
-        <div id="root"></div>
-        <script type="module" src="/src/main.jsx"></script>
-    </body>
+
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+</body>
+
 </html>
