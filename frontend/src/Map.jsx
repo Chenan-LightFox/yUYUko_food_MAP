@@ -48,6 +48,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     const [addingPos, setAddingPos] = useState(null);
     const [places, setPlaces] = useState([]);
     const [mapReady, setMapReady] = useState(false);
+    const [mapComplete, setMapComplete] = useState(false);
     const [addMode, setAddMode] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [searchResults, setSearchResults] = useState(null);
@@ -331,17 +332,29 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         // 在地图初始化时绑定事件
         const init = () => {
             const savedView = MapUtils.readSavedMapView();
+            let pageDark = (typeof document !== 'undefined' && document.documentElement && document.documentElement.getAttribute('data-theme') === 'dark');
+            if (!pageDark) {
+                try {
+                    const raw = window.localStorage.getItem('map_settings');
+                    if (raw) {
+                        const ms = JSON.parse(raw);
+                        if (ms && typeof ms.dark_mode !== 'undefined') pageDark = !!ms.dark_mode;
+                    }
+                } catch (e) { /* ignore */ }
+            }
+            const preferredStyles = getPreferredCandidates(pageDark);
+
             mapRef.current = new AMap.Map(containerRef.current, {
                 resizeEnable: true,
                 center: savedView ? [savedView.lng, savedView.lat] : DEFAULT_CENTER,
-                zoom: savedView ? savedView.zoom : DEFAULT_ZOOM
+                zoom: savedView ? savedView.zoom : DEFAULT_ZOOM,
+                mapStyle: preferredStyles.length > 0 ? preferredStyles[0] : undefined
             });
-            // Apply initial style according to page theme and user preference (if any)
-            try {
-                const pageDark = (typeof document !== 'undefined' && document.documentElement && document.documentElement.getAttribute('data-theme') === 'dark');
-                trySetAnyAmapStyle(mapRef.current, getPreferredCandidates(pageDark));
-            } catch (e) { /* ignore */ }
             lastSavedViewRef.current = savedView;
+
+            mapRef.current.on('complete', () => {
+                setMapComplete(true);
+            });
 
             handleMapClick = (e) => {
                 if (!addModeRef.current) return;
@@ -465,14 +478,14 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 
     // Watch for dark mode changes and update AMap style accordingly (no re-init)
     useEffect(() => {
-        if (!mapRef.current || typeof window === 'undefined' || !window.AMap) return;
+        if (!mapComplete || !mapRef.current || typeof window === 'undefined' || !window.AMap) return;
         const map = mapRef.current;
         try {
             trySetAnyAmapStyle(map, getPreferredCandidates(dark));
         } catch (e) {
             // ignore style apply errors
         }
-    }, [dark, currentUser]);
+    }, [dark, currentUser, mapComplete]);
 
     const loadPlaces = async () => {
         try {

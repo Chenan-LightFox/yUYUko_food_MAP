@@ -288,9 +288,9 @@ export default function MapUI(props) {
             {addingPos && (
                 <div style={{
                     position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
-                    background: "#fff", padding: 12, zIndex: 3000, borderRadius: 6, boxShadow: "0 2px 12px rgba(0,0,0,0.3)"
+                    background: dark ? '#0b1220' : '#fff', padding: 12, zIndex: 3000, borderRadius: 6, boxShadow: dark ? "0 6px 24px rgba(0,0,0,0.6)" : "0 2px 12px rgba(0,0,0,0.3)"
                 }}>
-                    <h4>添加地点</h4>
+                    <h4 style={{ margin: '0 0 12px 0', color: dark ? '#e5e7eb' : 'inherit' }}>添加地点</h4>
                     <AddForm defaultPos={addingPos} onCancel={onAddCancel} onSubmit={onAddSubmit} />
                 </div>
             )}

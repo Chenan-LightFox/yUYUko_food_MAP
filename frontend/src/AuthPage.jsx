@@ -75,6 +75,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
     const [tab, setTab] = useState("login"); // "login" | "register"
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [qq, setQq] = useState("");
     const [inviteCode, setInviteCode] = useState("");
     const [message, setMessage] = useState("");
     const [loading, setLoading] = useState(false);
@@ -82,6 +83,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
     const resetForm = useCallback(() => {
         setUsername("");
         setPassword("");
+        setQq("");
         setInviteCode("");
         setMessage("");
         setLoading(false);
@@ -118,6 +120,11 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
     const handlePasswordChange = (value) => {
         if (message) setMessage("");
         setPassword(value);
+    };
+
+    const handleQqChange = (value) => {
+        if (message) setMessage("");
+        setQq(value);
     };
 
     const handleInviteCodeChange = (value) => {
@@ -167,17 +174,19 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
         if (loading) return;
         setMessage("");
         const normalizedUsername = username.trim();
+        const normalizedQq = qq.trim();
         const normalizedInviteCode = inviteCode.trim();
-        if (!normalizedUsername || !password || !normalizedInviteCode) return setMessage("请填写用户名、密码和邀请码");
+        if (!normalizedUsername || !password || !normalizedInviteCode || !normalizedQq) return setMessage("请填写用户名、密码、QQ号和邀请码");
         if (normalizedUsername.length > MAX_USERNAME_LENGTH) return setMessage(`用户名不能超过 ${MAX_USERNAME_LENGTH} 个字符`);
         if (password.length > MAX_PASSWORD_LENGTH) return setMessage(`密码不能超过 ${MAX_PASSWORD_LENGTH} 个字符`);
+        if (normalizedQq.length > 20) return setMessage(`QQ号不能超过 20 个字符`);
         if (normalizedInviteCode.length > MAX_INVITE_CODE_LENGTH) return setMessage(`邀请码不能超过 ${MAX_INVITE_CODE_LENGTH} 个字符`);
         setLoading(true);
         try {
             const res = await fetchWithTimeout(`${backendUrl}/users/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username: normalizedUsername, password, inviteCode: normalizedInviteCode })
+                body: JSON.stringify({ username: normalizedUsername, password, qq: normalizedQq, inviteCode: normalizedInviteCode })
             });
             const data = await parseResponseBody(res);
             if (res.ok || res.status === 201) {
@@ -347,6 +356,18 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                             autoComplete="new-password"
                             maxLength={MAX_PASSWORD_LENGTH}
                             onChange={(e) => handlePasswordChange(e.target.value)}
+                            style={{ width: '100%' }}
+                        />
+                    </div>
+                    <div style={{ marginTop: 10 }}>
+                        <label htmlFor="auth-qq-register" style={labelStyle}>QQ号</label>
+                        <TextInput
+                            id="auth-qq-register"
+                            type="text"
+                            placeholder="请输入QQ号"
+                            value={qq}
+                            maxLength={20}
+                            onChange={(e) => handleQqChange(e.target.value)}
                             style={{ width: '100%' }}
                         />
                     </div>

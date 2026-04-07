@@ -44,7 +44,7 @@ export default function AddForm({ defaultPos, onCancel, onSubmit }) {
     };
 
     return (
-        <div style={{ width: 320, background: dark ? '#0b1220' : '#fff', padding: 12, borderRadius: 6, boxShadow: dark ? "0 6px 24px rgba(0,0,0,0.6)" : "0 4px 18px rgba(0,0,0,0.35)" }}>
+        <div style={{ width: 320 }}>
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 6px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: ${dark ? '#1e293b' : '#f1f5f9'}; border-radius: 4px; }

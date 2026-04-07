@@ -20,8 +20,8 @@ function hashCode(invite) {
 }
 
 router.post("/register", (req, res) => {
-    const { username, password, inviteCode } = req.body;
-    if (!username || !password || !inviteCode) return res.status(400).json({ error: "缺少字段" });
+    const { username, password, inviteCode, qq } = req.body;
+    if (!username || !password || !inviteCode || !qq) return res.status(400).json({ error: "缺少字段" });
 
     // 检查用户名是否已存在
     db.get("SELECT * FROM User WHERE username = ?", [username], (err, row) => {
@@ -44,8 +44,8 @@ router.post("/register", (req, res) => {
             // 检验通过，用户注册逻辑
             const hashPwd = hashPassword(password);
             db.run(
-                "INSERT INTO User (username, password) VALUES (?, ?)",
-                [username, hashPwd],
+                "INSERT INTO User (username, password, qq) VALUES (?, ?, ?)",
+                [username, hashPwd, qq],
                 function (err3) {
                     if (err3) return res.status(500).json({ error: err3.message });
                     const userId = this.lastID;

@@ -118,6 +118,7 @@ function init() {
         addIfMissing('ban_reason TEXT');
         addIfMissing('ban_expires DATETIME');
         addIfMissing('map_settings TEXT');
+        addIfMissing('qq TEXT');
 
         rawDb.exec(`CREATE TABLE IF NOT EXISTS "Place" (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

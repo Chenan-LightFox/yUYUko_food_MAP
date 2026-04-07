@@ -23,6 +23,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
     const [processing, setProcessing] = useState({});
+    const [searchQuery, setSearchQuery] = useState('');
     const fetchIdRef = useRef(0);
     const dark = useDarkMode();
 
@@ -131,10 +132,27 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
 
     if (!canManage) return <div style={{ color: '#b00020' }}>您的账号无权访问此面板。</div>;
 
+    const filteredUsers = users.filter(u => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return String(u.id).includes(q) ||
+            (u.username && u.username.toLowerCase().includes(q)) ||
+            (u.qq && String(u.qq).toLowerCase().includes(q));
+    });
+
     return (
         <div style={{ marginTop: 12 }}>
             <h3>普通用户管理</h3>
-            <div style={{ marginBottom: 8 }}>
+            <div style={{ marginBottom: 8, display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                    <input
+                        type="text"
+                        placeholder="搜索用户名称、id、qq号"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        style={{ padding: '6px 12px', width: '100%', boxSizing: 'border-box', border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#07101a' : '#fff', color: dark ? '#e5e7eb' : 'inherit', borderRadius: 6 }}
+                    />
+                </div>
                 <Button themeAware onClick={fetchUsers} disabled={loading}>刷新</Button>
             </div>
 
@@ -144,23 +162,25 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                 <div>加载中…</div>
             ) : (
                 <div>
-                    {users.length === 0 ? (
-                        <div>当前没有普通用户记录。</div>
+                    {filteredUsers.length === 0 ? (
+                        <div>当前没有匹配的普通用户记录。</div>
                     ) : (
                         <table cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
                             <thead>
                                 <tr>
                                     <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
                                     <th style={{ textAlign: 'left', padding: 8 }}>用户名</th>
+                                    <th style={{ textAlign: 'left', padding: 8 }}>QQ号</th>
                                     <th style={{ textAlign: 'left', padding: 8 }}>头像</th>
                                     <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {users.map((u, idx) => (
+                                {filteredUsers.map((u, idx) => (
                                     <tr key={u.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
                                         <td>{u.id}</td>
                                         <td>{u.username}</td>
+                                        <td>{u.qq || '-'}</td>
                                         <td>{u.avatar || '-'}</td>
                                         <td>
                                             <Button themeAware onClick={() => deleteUser(u.id)} disabled={processing[u.id]} style={{ background: '#e02424', color: '#ffffff' }}>删除</Button>
