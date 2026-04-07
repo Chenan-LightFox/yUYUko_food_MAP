@@ -56,12 +56,12 @@ export default function AddForm({ defaultPos, onCancel, onSubmit }) {
                 <TextInput placeholder="店名" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%" }} />
             </div>
             <div style={{ marginTop: 8, position: 'relative' }}>
-                <TextInput 
-                    placeholder="请选择分类（可多选）" 
-                    value={category} 
-                    readOnly 
+                <TextInput
+                    placeholder="请选择分类（可多选）"
+                    value={category}
+                    readOnly
                     onClick={() => setShowCategoryMenu(!showCategoryMenu)}
-                    style={{ width: "100%", cursor: "pointer" }} 
+                    style={{ width: "100%", cursor: "pointer" }}
                 />
                 {showCategoryMenu && (
                     <div className="custom-scrollbar" style={{
@@ -82,7 +82,7 @@ export default function AddForm({ defaultPos, onCancel, onSubmit }) {
                                     {group.items.map(opt => {
                                         const isSelected = category.split(',').map(s => s.trim()).includes(opt);
                                         return (
-                                            <span 
+                                            <span
                                                 key={opt}
                                                 onClick={(e) => {
                                                     e.stopPropagation();

@@ -25,10 +25,10 @@ export default function ManagePanel({
     onSubmitRequest
 }) {
     const [showCategoryMenu, setShowCategoryMenu] = useState(false);
-    
+
     if (!selectedPlace) return null;
     const dark = useDarkMode();
-    
+
     const toggleCategory = (opt) => {
         const catStr = manageEdit.category || '';
         let current = catStr.split(',').map(s => s.trim()).filter(Boolean);
@@ -61,11 +61,11 @@ export default function ManagePanel({
                 <div style={{ marginTop: 8 }}>
                     <label style={{ display: "block", fontSize: 12, color: dark ? '#9ca3af' : '#666' }}>分类</label>
                     <div style={{ position: 'relative' }}>
-                        <TextInput 
-                            value={manageEdit.category || ''} 
-                            readOnly 
+                        <TextInput
+                            value={manageEdit.category || ''}
+                            readOnly
                             onClick={() => setShowCategoryMenu(!showCategoryMenu)}
-                            style={{ width: "100%", cursor: "pointer" }} 
+                            style={{ width: "100%", cursor: "pointer" }}
                             placeholder="请选择分类（可多选）"
                         />
                         {showCategoryMenu && (
@@ -88,7 +88,7 @@ export default function ManagePanel({
                                                 const catStr = manageEdit.category || '';
                                                 const isSelected = catStr.split(',').map(s => s.trim()).includes(opt);
                                                 return (
-                                                    <span 
+                                                    <span
                                                         key={opt}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
