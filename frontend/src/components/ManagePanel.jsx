@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import Button from '../components/Button';
-import TextInput from '../components/TextInput';
-import PlaceImageInputs from './PlaceImageInputs';
+import Button from './Button';
+import TextInput from './TextInput';
+import PlaceImageInputs from '../map/PlaceImageInputs';
 import useDarkMode from '../utils/useDarkMode';
 
 const CATEGORY_DATA = [

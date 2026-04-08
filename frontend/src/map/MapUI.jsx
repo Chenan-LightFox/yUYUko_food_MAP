@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Tooltip from '../components/Tooltip';
 import Button from '../components/Button';
-import ManagePanel from './ManagePanel';
+import ManagePanel from '../components/ManagePanel';
 import AddForm from './AddForm';
 import PlaceDetailPanel from './PlaceDetailPanel';
 import useDarkMode from '../utils/useDarkMode';

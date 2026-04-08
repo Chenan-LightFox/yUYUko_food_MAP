@@ -4,7 +4,7 @@ import * as MapUtils from './map/utils';
 import * as Api from './map/api';
 import { renderMarkers } from './map/markers';
 import MapUI from './map/MapUI';
-import CommentPanel from './map/CommentPanel';
+import CommentPanel from './components/CommentPanel';
 import { useTips } from "./components/Tips";
 import Tooltip from './components/Tooltip';
 import Button from './components/Button';
