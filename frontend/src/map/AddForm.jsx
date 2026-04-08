@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import Button from '../components/Button';
 import TextInput from '../components/TextInput';
+import PlaceImageInputs from './PlaceImageInputs';
 import { useTips } from '../components/Tips';
 import useDarkMode from '../utils/useDarkMode';
 
-export default function AddForm({ defaultPos, onCancel, onSubmit }) {
+export default function AddForm({ backendUrl, token, defaultPos, onCancel, onSubmit }) {
     const [name, setName] = useState("");
     const [category, setCategory] = useState("");
     const [showCategoryMenu, setShowCategoryMenu] = useState(false);
     const [description, setDescription] = useState("");
+    const [exteriorImages, setExteriorImages] = useState([]);
+    const [menuImages, setMenuImages] = useState([]);
     const showTip = useTips();
     const dark = useDarkMode();
 
@@ -37,6 +40,8 @@ export default function AddForm({ defaultPos, onCancel, onSubmit }) {
             name,
             category,
             description,
+            exterior_images: exteriorImages.filter(Boolean),
+            menu_images: menuImages.filter(Boolean),
             longitude: defaultPos[0],
             latitude: defaultPos[1]
         };
@@ -107,6 +112,10 @@ export default function AddForm({ defaultPos, onCancel, onSubmit }) {
             </div>
             <div style={{ marginTop: 8 }}>
                 <TextInput placeholder="描述" value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: "100%" }} />
+            </div>
+            <div style={{ marginTop: 8, maxHeight: "200px", overflowY: "auto" }} className="custom-scrollbar">
+                <PlaceImageInputs backendUrl={backendUrl} token={token} images={exteriorImages} setImages={setExteriorImages} label="外观/招牌图片" />
+                <PlaceImageInputs backendUrl={backendUrl} token={token} images={menuImages} setImages={setMenuImages} label="菜单图片" />
             </div>
             <div style={{ marginTop: 8, textAlign: "right" }}>
                 <Button themeAware onClick={onCancel} style={{ marginRight: 8 }}>取消</Button>

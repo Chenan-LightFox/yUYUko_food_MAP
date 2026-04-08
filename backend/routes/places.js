@@ -83,7 +83,7 @@ router.get("/nearby", (req, res) => {
 
 // 添加地点
 router.post("/", requireAuth, (req, res) => {
-    const { name, description, latitude, longitude, category } = req.body;
+    const { name, description, latitude, longitude, category, exterior_images, menu_images } = req.body;
     const creatorId = req.user.id;
     const normalizedName = normalizePlainTextField(name, {
         fieldLabel: "名称",
@@ -119,13 +119,15 @@ router.post("/", requireAuth, (req, res) => {
     if (normalizedLongitude.error) return res.status(400).json({ error: normalizedLongitude.error });
 
     // 将创建者同时设置为首次修改者（updated_by），并记录 updated_time
-    const sql = `INSERT INTO Place (name, description, latitude, longitude, category, creator_id, updated_time, updated_by) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`;
+    const sql = `INSERT INTO Place (name, description, latitude, longitude, category, exterior_images, menu_images, creator_id, updated_time, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`;
     db.run(sql, [
         normalizedName.value,
         normalizedDescription.value,
         normalizedLatitude.value,
         normalizedLongitude.value,
         normalizedCategory.value,
+        exterior_images ? JSON.stringify(exterior_images) : null,
+        menu_images ? JSON.stringify(menu_images) : null,
         creatorId,
         creatorId
     ], function (err) {
@@ -162,7 +164,7 @@ router.post("/:id/requests", requireAuth, (req, res) => {
 // 更新地点（创建者或管理员）
 router.put("/:id", requireAuth, (req, res) => {
     const id = req.params.id;
-    const { name, description, category, latitude, longitude } = req.body;
+    const { name, description, category, latitude, longitude, exterior_images, menu_images } = req.body;
     const selPlaceSql = `SELECT p.*, u.username AS creator_name, uu.username AS updated_by_name
                         FROM Place p
                         LEFT JOIN User u ON p.creator_id = u.id
@@ -182,6 +184,8 @@ router.put("/:id", requireAuth, (req, res) => {
         if (category != null) { fields.push("category = ?"); values.push(category); }
         if (latitude != null) { fields.push("latitude = ?"); values.push(latitude); }
         if (longitude != null) { fields.push("longitude = ?"); values.push(longitude); }
+        if (exterior_images !== undefined) { fields.push("exterior_images = ?"); values.push(exterior_images ? JSON.stringify(exterior_images) : null); }
+        if (menu_images !== undefined) { fields.push("menu_images = ?"); values.push(menu_images ? JSON.stringify(menu_images) : null); }
         if (fields.length === 0) return res.status(400).json({ error: "没有提供要更新的字段" });
 
         // 更新 updated_time 和 updated_by

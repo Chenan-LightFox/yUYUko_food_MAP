@@ -72,6 +72,10 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files for uploaded images
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/upload', requireAuth, require('./routes/upload'));
+
 // mount admin routers under /admin
 app.use("/admin/users", requireAuth, adminUsersRouter);
 app.use("/admin/invites", requireAuth, adminInvitesRouter);

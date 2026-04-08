@@ -70,10 +70,15 @@ router.post("/:id/review", requireAuth, requireAdmin("manage_places"), (req, res
         if (!proposed) return res.status(400).json({ error: "提议内容解析失败" });
 
         // Build SET clause dynamically
-        const keys = Object.keys(proposed).filter(k => ['name','description','latitude','longitude','category','creator_id','updated_time','updated_by'].includes(k));
+        const keys = Object.keys(proposed).filter(k => ['name', 'description', 'latitude', 'longitude', 'category', 'exterior_images', 'menu_images', 'creator_id', 'updated_time', 'updated_by'].includes(k));
         if (keys.length === 0) return res.status(400).json({ error: "无可应用的变更" });
         const sets = keys.map(k => `${k} = ?`).join(', ');
-        const values = keys.map(k => proposed[k]);
+        const values = keys.map(k => {
+            if (['exterior_images', 'menu_images'].includes(k)) {
+                return proposed[k] ? JSON.stringify(proposed[k]) : null;
+            }
+            return proposed[k];
+        });
 
         db.run(`UPDATE Place SET ${sets} WHERE id = ?`, [...values, reqRow.place_id], function (e) {
             if (e) return res.status(500).json({ error: e.message });

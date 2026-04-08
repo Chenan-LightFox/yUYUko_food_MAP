@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Button from '../components/Button';
 import TextInput from '../components/TextInput';
+import PlaceImageInputs from './PlaceImageInputs';
 import useDarkMode from '../utils/useDarkMode';
 
 const CATEGORY_DATA = [
@@ -13,6 +14,8 @@ const CATEGORY_DATA = [
 ];
 
 export default function ManagePanel({
+    backendUrl,
+    token,
     selectedPlace,
     manageEdit,
     setManageEdit,
@@ -115,8 +118,10 @@ export default function ManagePanel({
                 <div style={{ marginTop: 8 }}>
                     <label style={{ display: "block", fontSize: 12, color: dark ? '#9ca3af' : '#666' }}>描述</label>
                     <textarea value={manageEdit.description} onChange={(e) => setManageEdit(me => ({ ...me, description: e.target.value }))} style={{ width: "100%", border: dark ? '1px solid #334155' : undefined, background: dark ? '#07101a' : undefined, color: dark ? '#e5e7eb' : undefined }} />
+                </div>                  <div style={{ marginTop: 8, maxHeight: "150px", overflowY: "auto" }} className="custom-scrollbar">
+                    <PlaceImageInputs backendUrl={backendUrl} token={token} images={manageEdit.exterior_images || []} setImages={(imgs) => setManageEdit(me => ({ ...me, exterior_images: imgs }))} label="外观/招牌图片" />
+                    <PlaceImageInputs backendUrl={backendUrl} token={token} images={manageEdit.menu_images || []} setImages={(imgs) => setManageEdit(me => ({ ...me, menu_images: imgs }))} label="菜单图片" />
                 </div>
-
                 <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ color: dark ? '#9ca3af' : '#888', fontSize: 12 }}>
                         {canDirectManage() ? "您是创建者或管理员，可直接修改或删除。" : "您不是创建者，提交修改申请后由管理员审核。"}

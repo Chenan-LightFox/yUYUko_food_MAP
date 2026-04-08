@@ -532,7 +532,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 return { x: p.x, y: p.y };
             }
             if (typeof map.lnglatToContainer === "function") {
-                const p = map.lnglatToContainer([lnglat.lng ?? lnglat.longitude, lnglat.lat ?? lnglatlatitude]);
+                const p = map.lnglatToContainer([lnglat.lng ?? lnglat.longitude, lnglat.lat ?? lnglat.latitude]);
                 return { x: p.x, y: p.y };
             }
             if (typeof map.lnglatToPixel === "function") {
@@ -805,7 +805,13 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 setFetchingUser(false);
             }
         }
-        setManageEdit({ name: selectedPlace.name || "", category: selectedPlace.category || "", description: selectedPlace.description || "" });
+        setManageEdit({
+            name: selectedPlace.name || "",
+            category: selectedPlace.category || "",
+            description: selectedPlace.description || "",
+            exterior_images: selectedPlace.exterior_images ? JSON.parse(selectedPlace.exterior_images) : [],
+            menu_images: selectedPlace.menu_images ? JSON.parse(selectedPlace.menu_images) : []
+        });
         setManageMessage("");
         setManageOpen(true);
     };
@@ -849,7 +855,9 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
             const payload = {
                 name: (manageEdit.name || "").trim(),
                 category: (manageEdit.category || "").trim(),
-                description: (manageEdit.description || "").trim()
+                description: (manageEdit.description || "").trim(),
+                exterior_images: (manageEdit.exterior_images || []).filter(Boolean),
+                menu_images: (manageEdit.menu_images || []).filter(Boolean)
             };
             await Api.putPlace(backendUrl, token, selectedPlace.id, payload);
             setManageMessage("已更新");
@@ -876,7 +884,9 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 proposed: {
                     name: (manageEdit.name || "").trim(),
                     category: (manageEdit.category || "").trim(),
-                    description: (manageEdit.description || "").trim()
+                    description: (manageEdit.description || "").trim(),
+                    exterior_images: (manageEdit.exterior_images || []).filter(Boolean),
+                    menu_images: (manageEdit.menu_images || []).filter(Boolean)
                 },
                 note: "用户提交地点信息修改申请"
             };
@@ -963,6 +973,8 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     return (
         <>
             <MapUI
+                backendUrl={backendUrl}
+                token={token}
                 containerRef={containerRef}
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}

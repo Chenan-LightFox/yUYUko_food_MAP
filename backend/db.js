@@ -145,6 +145,8 @@ function init() {
         };
         addPlaceIfMissing('updated_time DATETIME');
         addPlaceIfMissing('updated_by INTEGER');
+        addPlaceIfMissing('exterior_images TEXT');
+        addPlaceIfMissing('menu_images TEXT');
 
         try {
             rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_place_creator_id ON Place(creator_id);`);

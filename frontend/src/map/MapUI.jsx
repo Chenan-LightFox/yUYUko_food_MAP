@@ -3,10 +3,13 @@ import Tooltip from '../components/Tooltip';
 import Button from '../components/Button';
 import ManagePanel from './ManagePanel';
 import AddForm from './AddForm';
+import PlaceDetailPanel from './PlaceDetailPanel';
 import useDarkMode from '../utils/useDarkMode';
 
 export default function MapUI(props) {
     const {
+        backendUrl,
+        token,
         containerRef,
         searchTerm,
         setSearchTerm,
@@ -44,8 +47,14 @@ export default function MapUI(props) {
     } = props;
 
     const [searchOpen, setSearchOpen] = useState(false);
+    const [detailOpen, setDetailOpen] = useState(false);
     const inputRef = useRef(null);
     const dark = useDarkMode();
+
+    // Close detail panel if popup closes
+    useEffect(() => {
+        if (!selectedPlace) setDetailOpen(false);
+    }, [selectedPlace]);
 
     useEffect(() => {
         if (!searchOpen) return;
@@ -265,6 +274,10 @@ export default function MapUI(props) {
                             <Tooltip text="管理此地点">
                                 <Button onClick={openManagePanel} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: dark ? '#e5e7eb' : undefined, padding: '6px 10px', borderRadius: 4 }}>管理</Button>
                             </Tooltip>
+                            <span style={{ padding: 4 }}></span>
+                            <Tooltip text="查看详情与图片">
+                                <Button onClick={() => setDetailOpen(true)} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: dark ? '#e5e7eb' : undefined, padding: '6px 10px', borderRadius: 4 }}>详情</Button>
+                            </Tooltip>
                         </div>
                     </div>
                 </div>
@@ -272,6 +285,8 @@ export default function MapUI(props) {
 
             {manageOpen && selectedPlace && (
                 <ManagePanel
+                    backendUrl={backendUrl}
+                    token={token}
                     selectedPlace={selectedPlace}
                     manageEdit={manageEdit}
                     setManageEdit={setManageEdit}
@@ -291,8 +306,12 @@ export default function MapUI(props) {
                     background: dark ? '#0b1220' : '#fff', padding: 12, zIndex: 3000, borderRadius: 6, boxShadow: dark ? "0 6px 24px rgba(0,0,0,0.6)" : "0 2px 12px rgba(0,0,0,0.3)"
                 }}>
                     <h4 style={{ margin: '0 0 12px 0', color: dark ? '#e5e7eb' : 'inherit' }}>添加地点</h4>
-                    <AddForm defaultPos={addingPos} onCancel={onAddCancel} onSubmit={onAddSubmit} />
+                    <AddForm backendUrl={backendUrl} token={token} defaultPos={addingPos} onCancel={onAddCancel} onSubmit={onAddSubmit} />
                 </div>
+            )}
+
+            {detailOpen && selectedPlace && (
+                <PlaceDetailPanel place={selectedPlace} onClose={() => setDetailOpen(false)} />
             )}
         </>
     );

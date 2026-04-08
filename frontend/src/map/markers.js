@@ -45,11 +45,30 @@ export function renderMarkers(map, markersRef, list, onClick) {
     if (window.AMap.MarkerCluster) {
         const cluster = new window.AMap.MarkerCluster(map, points, {
             gridSize: 60,
-            zoomOnClick: false
+            zoomOnClick: false,
+            renderMarker: function (context) {
+                // 处理单个 Marker 的渲染配置
+                const data = context.data && context.data[0];
+                if (!data || !data.place) return;
+
+                const place = data.place;
+                const marker = context.marker;
+
+                // 将 place 的信息注入到独立 Marker 以备用
+                marker.setTitle(place.name);
+                marker.setExtData(place);
+
+                // 直接向生成的单点 Marker 添加原生的 click 监听，规避 clusterData 无法提取的问题
+                marker.on('click', () => {
+                    const pos = marker.getPosition();
+                    const lnglatObj = (pos && pos.lng != null && pos.lat != null) ? { lng: pos.lng, lat: pos.lat } : { lng: place.longitude, lat: place.latitude };
+                    onClick && onClick(place, lnglatObj);
+                });
+            }
         });
 
-        cluster.on('click', (clusterData) => {
-            const data = clusterData.clusterData;
+        cluster.on('click', (e) => {
+            const data = e.clusterData;
             if (data && data.length > 0) {
                 // 如果是单个marker被点击
                 if (data.length === 1) {
@@ -60,7 +79,7 @@ export function renderMarkers(map, markersRef, list, onClick) {
                 }
 
                 // 点击时将视野中心先移动到该合并Marker的位置
-                const centerLngLat = clusterData.lnglat;
+                const centerLngLat = e.lnglat;
                 map.panTo(centerLngLat);
 
                 setTimeout(() => {
@@ -93,6 +112,24 @@ export function renderMarkers(map, markersRef, list, onClick) {
                         map.setBounds(bounds);
                     }
                 }, 300); // 先做panTo，然后再缩放
+            } else {
+                // 容错：有些情况下单点自身作为事件参数返回
+                const singleData = e.data || e.extData || (e.markerData && e.markerData[0]);
+                const place = singleData && singleData.place ? singleData.place : singleData;
+                if (place && place.longitude && place.latitude) {
+                    const lnglatObj = { lng: place.longitude, lat: place.latitude };
+                    onClick && onClick(place, lnglatObj);
+                }
+            }
+        });
+
+        // 绑定 Marker 的独立原生点击事件作为双保险
+        cluster.on('markerClick', (e) => {
+            const singleData = e.data || (e.clusterData && e.clusterData[0]) || e.extData || (e.markerData && e.markerData[0]);
+            const place = singleData && singleData.place ? singleData.place : singleData;
+            if (place && place.longitude && place.latitude) {
+                const lnglatObj = { lng: place.longitude, lat: place.latitude };
+                onClick && onClick(place, lnglatObj);
             }
         });
 
