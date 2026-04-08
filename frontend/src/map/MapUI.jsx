@@ -5,9 +5,12 @@ import ManagePanel from '../components/ManagePanel';
 import AddForm from './AddForm';
 import PlaceDetailPanel from './PlaceDetailPanel';
 import useDarkMode from '../utils/useDarkMode';
+import { useSearchPanel } from './useSearchPanel';
 
 export default function MapUI(props) {
     const {
+        mapRef,
+        userLocationMarkerRef,
         backendUrl,
         token,
         containerRef,
@@ -15,6 +18,7 @@ export default function MapUI(props) {
         setSearchTerm,
         clearSearch,
         searchServer,
+        onSelectSuggestion,
         mapReady,
         searching,
         tipText,
@@ -50,6 +54,8 @@ export default function MapUI(props) {
     const [detailOpen, setDetailOpen] = useState(false);
     const inputRef = useRef(null);
     const dark = useDarkMode();
+
+    const { results: spResults, loading: spLoading } = useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLocationMarkerRef);
 
     // Close detail panel if popup closes
     useEffect(() => {
@@ -90,6 +96,57 @@ export default function MapUI(props) {
             return;
         }
         searchServer({ q: searchTerm });
+    };
+
+    const handleSelectSpItem = (item) => {
+        setSearchTerm(item.name || item.address);
+        setSearchOpen(false);
+        if (onSelectSuggestion) {
+            onSelectSuggestion(item);
+        }
+        if (mapRef?.current && item.longitude && item.latitude) {
+            mapRef.current.setCenter([item.longitude, item.latitude]);
+            mapRef.current.setZoom(16);
+        }
+    };
+
+    const renderSpSection = (title, items, hasMore, onMore) => {
+        if (!items || items.length === 0) return null;
+        return (
+            <div style={{ marginBottom: 12 }}>
+                <div style={{ padding: '4px 12px', fontSize: 12, color: dark ? '#9ca3af' : '#6b7280', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{title}</span>
+                    {hasMore && onMore && (
+                        <span onClick={onMore} style={{ cursor: 'pointer', color: customThemeColor }}>查看更多</span>
+                    )}
+                </div>
+                {items.map(item => (
+                    <div
+                        key={item.id}
+                        onClick={() => handleSelectSpItem(item)}
+                        style={{
+                            padding: '8px 12px',
+                            cursor: 'pointer',
+                            borderBottom: `1px solid ${dark ? '#1f2937' : '#f3f4f6'}`,
+                            display: 'flex',
+                            flexDirection: 'column'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = dark ? '#1f2937' : '#f9fafb'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                        <span style={{ fontSize: 14, color: dark ? '#f3f4f6' : '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                            <span style={{ fontSize: 12, color: dark ? '#9ca3af' : '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1, paddingRight: 8 }}>
+                                {item.address || item.category || item.description || ''}
+                            </span>
+                            <span style={{ fontSize: 11, color: dark ? '#6b7280' : '#9ca3af', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                距离: {item.dist < 1000 ? `${Math.round(item.dist)}米` : `${(item.dist / 1000).toFixed(1)}公里`}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
     };
 
     return (
@@ -143,6 +200,43 @@ export default function MapUI(props) {
                             zIndex: 2002
                         }}
                     />
+
+                    {searchOpen && searchTerm && (spLoading || spResults) && (
+                        <div style={{
+                            position: 'absolute',
+                            top: 52,
+                            right: 52,
+                            width: 280,
+                            maxHeight: '60vh',
+                            overflowY: 'auto',
+                            background: dark ? '#0b1220' : '#fff',
+                            borderRadius: 8,
+                            boxShadow: searchOpen ? `0 4px 12px ${hexToRgba(customThemeColor, 0.2)}` : 'none',
+                            border: dark ? '1px solid rgba(255,255,255,0.06)' : `1px solid ${hexToRgba(customThemeColor, 0.5)}`,
+                            zIndex: 2002,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            color: dark ? '#e5e7eb' : '#1f2937'
+                        }}>
+                            {spLoading && !spResults ? (
+                                <div style={{ padding: 12, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>加载中...</div>
+                            ) : (
+                                <>
+                                    {renderSpSection('标记点结果', spResults?.markedInView, spResults?.hasMoreMarkedInView, () => searchServer({ q: searchTerm }))}
+                                    {renderSpSection('非标记点结果', spResults?.unmarkedInView, spResults?.hasMoreUnmarkedInView, () => {
+                                        if (mapRef?.current && spResults?.unmarkedInView?.[0]) {
+                                            mapRef.current.setCenter([spResults.unmarkedInView[0].longitude, spResults.unmarkedInView[0].latitude]);
+                                        }
+                                        setSearchOpen(false);
+                                    })}
+                                    {renderSpSection('其他匹配结果', spResults?.others, false, null)}
+                                    {(!spResults?.markedInView?.length && !spResults?.unmarkedInView?.length && !spResults?.others?.length) && (
+                                        <div style={{ padding: 12, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>未找到匹配的结果</div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    )}
 
                     <div style={{ position: 'absolute', right: 0, top: 0 }}>
                         <Tooltip text={tipText}>

@@ -713,6 +713,10 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         await loadPlaces(true); // force load since state hasn't updated ref yet
     };
 
+    const handleSelectSuggestion = (item) => {
+        setSearchResults([item]);
+    };
+
     const handleToggleAddMode = () => {
         if (!mapReady || authPending) return;
         if (!canWrite) {
@@ -1011,6 +1015,8 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     return (
         <>
             <MapUI
+                mapRef={mapRef}
+                userLocationMarkerRef={userLocationMarkerRef}
                 backendUrl={backendUrl}
                 token={token}
                 containerRef={containerRef}
@@ -1018,6 +1024,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 setSearchTerm={setSearchTerm}
                 clearSearch={clearSearch}
                 searchServer={searchServer}
+                onSelectSuggestion={handleSelectSuggestion}
                 mapReady={mapReady}
                 searching={searching}
                 tipText={tipText}
