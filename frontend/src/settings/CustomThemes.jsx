@@ -11,7 +11,7 @@ const STYLE_OPTIONS = [
     { id: 'amap://styles/dark', name: '暗黑（默认）' },
     { id: 'amap://styles/darkblue', name: '深蓝' },
     { id: 'amap://styles/grey', name: '灰色' },
-    { id: 'amap://styles/night', name: '夜间（随昼夜变化）' },
+    { id: 'amap://styles/default', name: '默认' },
     { id: 'amap://styles/light', name: '浅色' },
     { id: 'amap://styles/normal', name: '标准' },
     { id: 'amap://styles/default', name: '默认' }
