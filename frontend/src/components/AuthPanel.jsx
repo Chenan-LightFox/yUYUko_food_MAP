@@ -28,7 +28,7 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
             if (e.key === 'Escape') setOpen(false);
         };
         document.addEventListener('mousedown', onDocClick);
-        document.addEventListener('touchstart', onDocClick);
+        document.addEventListener('touchstart', onDocClick, { passive: true });
         document.addEventListener('keydown', onKey);
         return () => {
             document.removeEventListener('mousedown', onDocClick);
