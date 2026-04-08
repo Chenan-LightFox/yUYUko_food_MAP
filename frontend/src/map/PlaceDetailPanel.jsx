@@ -15,8 +15,8 @@ export default function PlaceDetailPanel({ place, onClose }) {
         <div style={{
             position: 'absolute', top: 120, right: 30, width: 350, bottom: 220,
             background: dark ? '#0f172a' : '#fff', color: dark ? '#f8fafc' : '#333',
-            borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            display: 'flex', flexDirection: 'column', zIndex: 1000
+            borderRadius: 8, boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
+            display: 'flex', flexDirection: 'column', zIndex: 5000
         }}>
             <style>{`
                 .detail-scroll::-webkit-scrollbar { width: 6px; }

@@ -80,6 +80,10 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     const [manageSubmitting, setManageSubmitting] = useState(false);
     const [manageMessage, setManageMessage] = useState("");
 
+    const searchResultsRef = useRef(null);
+    useEffect(() => { searchResultsRef.current = searchResults; }, [searchResults]);
+    const loadPlacesRef = useRef(null);
+
     const DEFAULT_THEME_COLOR = '#002fa7';
     const [customThemeColor, setCustomThemeColor] = useState(DEFAULT_THEME_COLOR);
 
@@ -271,6 +275,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         let handleResize = null;
         let handleMapStyleChange = null;
         let resizeObserver = null;
+        let loadTimer = null;
 
         const getCurrentMapView = () => {
             if (!mapRef.current) return null;
@@ -354,6 +359,10 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 
             mapRef.current.on('complete', () => {
                 setMapComplete(true);
+                // 地图加载完全后再次确保由于bounds已准备好，加载附近数据
+                if (loadPlacesRef.current) {
+                    loadPlacesRef.current(false);
+                }
             });
 
             handleMapClick = (e) => {
@@ -363,6 +372,16 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
             };
             handleViewChange = () => {
                 schedulePersistMapView();
+                // 每次移动或缩放结束时，增加适当防抖加载数据
+                if (loadTimer) {
+                    window.clearTimeout(loadTimer);
+                }
+                loadTimer = window.setTimeout(() => {
+                    loadTimer = null;
+                    if (loadPlacesRef.current) {
+                        loadPlacesRef.current(false);
+                    }
+                }, 300);
             };
             handlePageHide = () => {
                 persistCurrentMapView(true);
@@ -443,6 +462,10 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 window.clearTimeout(saveViewTimerRef.current);
                 saveViewTimerRef.current = null;
             }
+            if (loadTimer) {
+                window.clearTimeout(loadTimer);
+                loadTimer = null;
+            }
             if (mapRef.current) {
                 if (handleMapClick) mapRef.current.off("click", handleMapClick);
                 if (handleViewChange) {
@@ -487,15 +510,30 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         }
     }, [dark, currentUser, mapComplete]);
 
-    const loadPlaces = async () => {
+    const loadPlaces = async (force = false) => {
+        // 如果正在搜索，不请求附近地点，除非强制
+        if (!force && searchResultsRef.current !== null) return;
+        if (!mapRef.current) return;
         try {
-            const data = await Api.fetchPlaces(backendUrl);
+            const bounds = mapRef.current.getBounds();
+            if (!bounds) return;
+            const sw = bounds.getSouthWest();
+            const ne = bounds.getNorthEast();
+            const minLng = typeof sw.lng !== 'undefined' ? sw.lng : sw.getLng();
+            const minLat = typeof sw.lat !== 'undefined' ? sw.lat : sw.getLat();
+            const maxLng = typeof ne.lng !== 'undefined' ? ne.lng : ne.getLng();
+            const maxLat = typeof ne.lat !== 'undefined' ? ne.lat : ne.getLat();
+
+            const data = await Api.fetchPlacesNearby(backendUrl, { minLng, minLat, maxLng, maxLat });
             setPlaces(data);
-            renderMarkers(mapRef.current, markersRef, data, showPopup);
+            if (searchResultsRef.current === null) {
+                renderMarkers(mapRef.current, markersRef, data, showPopup);
+            }
         } catch (e) {
             console.error("加载地点失败", e);
         }
     };
+    loadPlacesRef.current = loadPlaces;
 
     // 用于展示自定义弹窗
     // 优先在 React 层绘制
@@ -622,9 +660,9 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
             await Api.postPlace(backendUrl, token, payload);
             setAddingPos(null);
             // 重新加载数据并清除搜索结果（若正在搜索）
-            await loadPlaces();
             setSearchResults(null);
             setSearching(false);
+            await loadPlaces(true); // force load since state hasn't updated ref yet
             setAddMode(false);
         } catch (e) {
             console.error("提交地点失败", e);
@@ -672,7 +710,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         setSearchTerm("");
         setSearchResults(null);
         setSearching(false);
-        await loadPlaces();
+        await loadPlaces(true); // force load since state hasn't updated ref yet
     };
 
     const handleToggleAddMode = () => {

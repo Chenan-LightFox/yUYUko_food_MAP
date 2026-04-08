@@ -4,6 +4,18 @@ export async function fetchPlaces(backendUrl) {
     return res.json();
 }
 
+export async function fetchPlacesNearby(backendUrl, { minLng, minLat, maxLng, maxLat }) {
+    const params = new URLSearchParams({
+        minLng: String(minLng),
+        minLat: String(minLat),
+        maxLng: String(maxLng),
+        maxLat: String(maxLat)
+    });
+    const res = await fetch(`${backendUrl}/places/nearby?${params.toString()}`);
+    if (!res.ok) throw new Error(`Failed to fetch nearby places: ${res.status}`);
+    return res.json();
+}
+
 export async function fetchCurrentUser(backendUrl, token) {
     if (!token) return null;
     const res = await fetch(`${backendUrl}/users/me`, { headers: { Authorization: `Bearer ${token}` } });

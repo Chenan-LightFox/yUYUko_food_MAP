@@ -266,12 +266,12 @@ export default function MapUI(props) {
                             最近修改：{getLastModifierText(selectedPlace)}
                         </div>
 
-                        {/* 评论功能暂不开放，待敏感词机制完善后再开放 */}
-                        {/*<div style={{ marginTop: 8, textAlign: "right" }}>
-                            <Tooltip text="在这里留下你的评论">
+                        <div style={{ marginTop: 8, textAlign: "right" }}>
+                            {/* 评论功能暂不开放，待敏感词机制完善后再开放 */}
+                            { /*<Tooltip text="在这里留下你的评论">
                                 <Button onClick={openCommentPanel} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: dark ? '#e5e7eb' : undefined, padding: '6px 10px', borderRadius: 4 }}>评论</Button>
                             </Tooltip>
-                            <span style={{ padding: 4 }}></span>
+                            <span style={{ padding: 4 }}></span> */ }
                             <Tooltip text="管理此地点">
                                 <Button onClick={openManagePanel} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: dark ? '#e5e7eb' : undefined, padding: '6px 10px', borderRadius: 4 }}>管理</Button>
                             </Tooltip>
@@ -279,7 +279,7 @@ export default function MapUI(props) {
                             <Tooltip text="查看详情与图片">
                                 <Button onClick={() => setDetailOpen(true)} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: dark ? '#e5e7eb' : undefined, padding: '6px 10px', borderRadius: 4 }}>详情</Button>
                             </Tooltip>
-                        </div>*/}
+                        </div>
                     </div>
                 </div>
             )}
