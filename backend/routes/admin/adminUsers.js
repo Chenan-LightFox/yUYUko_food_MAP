@@ -9,8 +9,9 @@ const SUPER_LEVEL = "YUYUKO";
 
 // 获取所有用户（仅Y级管理员）
 router.get("/", requireAdmin("manage_users"), (req, res) => {
-    db.all("SELECT id, username, avatar, admin_level, is_banned, ban_reason, ban_expires, qq FROM User", [], (err, rows) => {
+    db.all("SELECT id, username, avatar, admin_level, is_banned, ban_reason, ban_expires, qq, (avatar_blob IS NOT NULL) AS has_avatar FROM User", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
+        rows.forEach(r => r.has_avatar = !!r.has_avatar);
         res.json(rows);
     });
 });

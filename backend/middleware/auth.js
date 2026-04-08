@@ -19,7 +19,7 @@ function maskToken(t) {
 
 function loadUserById(userId) {
     return new Promise((resolve, reject) => {
-        db.get("SELECT id, username, admin_level, is_banned, ban_reason, ban_expires, map_settings FROM User WHERE id = ?", [userId], (err, row) => {
+        db.get("SELECT id, username, admin_level, is_banned, ban_reason, ban_expires, map_settings, (avatar_blob IS NOT NULL) AS has_avatar FROM User WHERE id = ?", [userId], (err, row) => {
             if (err) return reject(err);
             if (row && row.map_settings) {
                 try {
@@ -27,6 +27,9 @@ function loadUserById(userId) {
                 } catch (e) {
                     // ignore parse errors and keep raw string
                 }
+            }
+            if (row) {
+                row.has_avatar = !!row.has_avatar;
             }
             resolve(row || null);
         });

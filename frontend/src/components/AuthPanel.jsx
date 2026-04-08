@@ -4,7 +4,7 @@ import Tooltip from './Tooltip';
 import defaultAvatar from '../img/default.png';
 import useDarkMode from '../utils/useDarkMode';
 
-export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onGoHome, pathname }) {
+export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onGoHome, pathname, backendUrl }) {
     const [open, setOpen] = useState(false);
     const rootRef = useRef(null);
     const menuRef = useRef(null);
@@ -175,7 +175,7 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
             >
                 {isAuth && user ? (
                     <img
-                        src={user.avatar || defaultAvatar}
+                        src={user.has_avatar ? `${backendUrl}/users/${user.id}/avatar?t=${Date.now()}` : (user.avatar || defaultAvatar)}
                         alt={user.username || 'avatar'}
                         style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
                     />

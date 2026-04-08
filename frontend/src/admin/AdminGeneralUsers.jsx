@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import { useAuth } from "../AuthContext";
 import useDarkMode from "../utils/useDarkMode";
+import defaultAvatar from '../img/default.png';
 
 function resolveBackendUrl() {
     if (typeof window === "undefined") return "http://localhost:2053";
@@ -181,7 +182,13 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                                         <td>{u.id}</td>
                                         <td>{u.username}</td>
                                         <td>{u.qq || '-'}</td>
-                                        <td>{u.avatar || '-'}</td>
+                                        <td>
+                                            {u.has_avatar ? (
+                                                <img src={`${backendUrl}/users/${u.id}/avatar?t=${Date.now()}`} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <img src={defaultAvatar} alt="default avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                                            )}
+                                        </td>
                                         <td>
                                             <Button themeAware onClick={() => deleteUser(u.id)} disabled={processing[u.id]} style={{ background: '#e02424', color: '#ffffff' }}>删除</Button>
                                         </td>

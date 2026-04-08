@@ -5,8 +5,9 @@ const requireAdmin = require("../../middleware/adminAuth");
 
 // 列出所有普通用户（需 manage_users_general 权限）
 router.get("/", requireAdmin("manage_users_general"), (req, res) => {
-    db.all("SELECT id, username, avatar, qq FROM User WHERE admin_level IS NULL OR admin_level = '' ORDER BY id DESC", [], (err, rows) => {
+    db.all("SELECT id, username, avatar, qq, (avatar_blob IS NOT NULL) AS has_avatar FROM User WHERE admin_level IS NULL OR admin_level = '' ORDER BY id DESC", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
+        rows.forEach(r => r.has_avatar = !!r.has_avatar);
         res.json(rows || []);
     });
 });

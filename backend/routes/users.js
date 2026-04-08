@@ -2,9 +2,13 @@ const express = require("express");
 const router = express.Router();
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
+const multer = require("multer");
+const sharp = require("sharp");
 const { db } = require("../db");
 const redis = require("../redis");
 const { requireAuth } = require("../middleware/auth");
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 const JWT_SECRET = process.env.JWT_SECRET || "yuyuko_secret_key";
 const JWT_EXPIRES_IN = 60 * 60 * 24 * 7; // 7天（秒）
@@ -64,8 +68,9 @@ router.post("/register", (req, res) => {
                     );
 
                     // 返回用户信息
-                    db.get("SELECT id, username, admin_level FROM User WHERE id = ?", [userId], (e, row) => {
+                    db.get("SELECT id, username, admin_level, (avatar_blob IS NOT NULL) AS has_avatar FROM User WHERE id = ?", [userId], (e, row) => {
                         if (e) return res.status(500).json({ error: e.message });
+                        if (row) row.has_avatar = !!row.has_avatar;
                         res.status(201).json({ user: row, token });
                     });
                 }
@@ -81,10 +86,11 @@ router.post("/login", (req, res) => {
     if (!username || !password) return res.status(400).json({ error: "缺少字段" });
 
     const hashed = hashPassword(password);
-    db.get("SELECT id, username, admin_level FROM User WHERE username = ? AND password = ?", [username, hashed], (err, row) => {
+    db.get("SELECT id, username, admin_level, (avatar_blob IS NOT NULL) AS has_avatar FROM User WHERE username = ? AND password = ?", [username, hashed], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!row) return res.status(401).json({ error: "用户名或密码错误" });
 
+        row.has_avatar = !!row.has_avatar;
         const token = jwt.sign({ id: row.id, username: row.username }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
         // 刷新 Redis 中的 session
@@ -119,8 +125,9 @@ router.patch('/me', requireAuth, (req, res) => {
             redis.set(`session:${req.user.id}`, token, 'EX', JWT_EXPIRES_IN, (redisErr) => {
                 if (redisErr) console.error('Failed to update redis session after username change:', redisErr && redisErr.message);
                 // 返回更新后的用户信息
-                db.get('SELECT id, username, admin_level FROM User WHERE id = ?', [req.user.id], (err2, updated) => {
+                db.get('SELECT id, username, admin_level, (avatar_blob IS NOT NULL) AS has_avatar FROM User WHERE id = ?', [req.user.id], (err2, updated) => {
                     if (err2) return res.status(500).json({ error: err2.message });
+                    if (updated) updated.has_avatar = !!updated.has_avatar;
                     return res.json({ user: updated, token });
                 });
             });
@@ -150,8 +157,9 @@ router.patch('/me/password', requireAuth, (req, res) => {
             const token = jwt.sign({ id: req.user.id, username: req.user.username }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
             redis.set(`session:${req.user.id}`, token, 'EX', JWT_EXPIRES_IN, (redisErr) => {
                 if (redisErr) console.error('Failed to update redis session after password change:', redisErr && redisErr.message);
-                db.get('SELECT id, username, admin_level FROM User WHERE id = ?', [req.user.id], (err2, updated) => {
+                db.get('SELECT id, username, admin_level, (avatar_blob IS NOT NULL) AS has_avatar FROM User WHERE id = ?', [req.user.id], (err2, updated) => {
                     if (err2) return res.status(500).json({ error: err2.message });
+                    if (updated) updated.has_avatar = !!updated.has_avatar;
                     return res.json({ user: updated, token });
                 });
             });
@@ -174,13 +182,51 @@ router.patch('/me/settings', requireAuth, (req, res) => {
     db.run('UPDATE User SET map_settings = ? WHERE id = ?', [payload, req.user.id], function (e) {
         if (e) return res.status(500).json({ error: e.message });
 
-        db.get('SELECT id, username, admin_level, map_settings FROM User WHERE id = ?', [req.user.id], (err2, updated) => {
+        db.get('SELECT id, username, admin_level, map_settings, (avatar_blob IS NOT NULL) AS has_avatar FROM User WHERE id = ?', [req.user.id], (err2, updated) => {
             if (err2) return res.status(500).json({ error: err2.message });
+            if (updated) updated.has_avatar = !!updated.has_avatar;
             if (updated && updated.map_settings) {
                 try { updated.map_settings = JSON.parse(updated.map_settings); } catch (ex) { /* ignore */ }
             }
             return res.json({ user: updated });
         });
+    });
+});
+
+// 上传当前用户头像
+router.put('/me/avatar', requireAuth, upload.single('avatar'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: '未上传文件' });
+
+    try {
+        const buffer = await sharp(req.file.buffer)
+            .resize(200, 200, { fit: 'cover' })
+            .webp({ quality: 80 })
+            .toBuffer();
+
+        db.run('UPDATE User SET avatar_blob = ? WHERE id = ?', [buffer, req.user.id], function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+
+            db.get('SELECT id, username, admin_level, (avatar_blob IS NOT NULL) AS has_avatar FROM User WHERE id = ?', [req.user.id], (err2, updated) => {
+                if (err2) return res.status(500).json({ error: err2.message });
+                if (updated) updated.has_avatar = !!updated.has_avatar;
+                res.json({ success: true, user: updated });
+            });
+        });
+    } catch (e) {
+        return res.status(500).json({ error: '图片处理失败', detail: e.message });
+    }
+});
+
+// 获取指定用户的头像
+router.get('/:id/avatar', (req, res) => {
+    db.get('SELECT avatar_blob FROM User WHERE id = ?', [req.params.id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row || !row.avatar_blob) {
+            return res.status(404).json({ error: '未找到头像' });
+        }
+        res.set('Content-Type', 'image/webp');
+        res.set('Cache-Control', 'public, max-age=86400'); // 缓存一天
+        res.send(row.avatar_blob);
     });
 });
 

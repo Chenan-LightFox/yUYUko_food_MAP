@@ -119,6 +119,7 @@ function init() {
         addIfMissing('ban_expires DATETIME');
         addIfMissing('map_settings TEXT');
         addIfMissing('qq TEXT');
+        addIfMissing('avatar_blob BLOB');
 
         rawDb.exec(`CREATE TABLE IF NOT EXISTS "Place" (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

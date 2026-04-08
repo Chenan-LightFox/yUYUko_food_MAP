@@ -5,6 +5,7 @@ import AdminBanModal from "./AdminBanModal";
 import SelectInput from '../components/SelectInput';
 import useDarkMode from "../utils/useDarkMode";
 import TextInput from "../components/TextInput";
+import defaultAvatar from '../img/default.png';
 
 function resolveBackendUrl() {
     if (typeof window === "undefined") return "http://localhost:2053";
@@ -320,7 +321,13 @@ export default function AdminUsers({ backendUrl = null }) {
                                     <td>{u.id}</td>
                                     <td>{u.username}</td>
                                     <td>{u.qq || "-"}</td>
-                                    <td>{u.avatar || "-"}</td>
+                                    <td>
+                                        {u.has_avatar ? (
+                                            <img src={`${backendUrl}/users/${u.id}/avatar?t=${Date.now()}`} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                                        ) : (
+                                            <img src={defaultAvatar} alt="default avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                                        )}
+                                    </td>
                                     <td>
                                         <SelectInput value={u.admin_level || ""}
                                             onChange={e => changeLevel(u.id, e.target.value)}

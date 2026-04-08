@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import useDarkMode from '../utils/useDarkMode';
 
-const TipsContext = createContext({ showTip: () => { }, hideTip: () => { } });
+export const TipsContext = createContext({ showTip: () => { }, hideTip: () => { } });
 
 export function TipsProvider({ children }) {
     const [tip, setTip] = useState(null);
