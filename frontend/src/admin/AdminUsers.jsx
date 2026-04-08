@@ -4,6 +4,7 @@ import { useAuth } from "../AuthContext";
 import AdminBanModal from "./AdminBanModal";
 import SelectInput from '../components/SelectInput';
 import useDarkMode from "../utils/useDarkMode";
+import TextInput from "../components/TextInput";
 
 function resolveBackendUrl() {
     if (typeof window === "undefined") return "http://localhost:2053";
@@ -28,6 +29,7 @@ export default function AdminUsers({ backendUrl = null }) {
     const [banModalOpen, setBanModalOpen] = useState(false);
     const [banTarget, setBanTarget] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [page, setPage] = useState(1);
     const fetchIdRef = useRef(0);
     const dark = useDarkMode();
 
@@ -263,7 +265,9 @@ export default function AdminUsers({ backendUrl = null }) {
 
     if (!canManage) return <div style={{ color: '#b00020' }}>您的账号无权访问此面板。</div>;
 
-    const filteredUsers = users.filter(u => {
+    const PAGE_SIZE = 10;
+
+    const filtered = users.filter(u => {
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
         return String(u.id).includes(q) ||
@@ -271,24 +275,30 @@ export default function AdminUsers({ backendUrl = null }) {
             (u.qq && String(u.qq).toLowerCase().includes(q));
     });
 
+    const totalPages = Math.max(1, Math.ceil((filtered || []).length / PAGE_SIZE));
+    useEffect(() => {
+        if (page > totalPages) setPage(totalPages);
+    }, [totalPages, page]);
+
+    const pageItems = (filtered || []).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
     return (
         <div>
             <h2>用户管理</h2>
-            <div style={{ marginBottom: 8, display: 'flex', gap: 8 }}>
-                <div style={{ flex: 1 }}>
-                    <input
-                        type="text"
-                        placeholder="搜索用户名称、id、qq号"
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        style={{ padding: '6px 12px', width: '100%', boxSizing: 'border-box', border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#07101a' : '#fff', color: dark ? '#e5e7eb' : 'inherit', borderRadius: 6 }}
-                    />
-                </div>
+            <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <TextInput
+                    value={searchQuery}
+                    onChange={e => { setSearchQuery(e.target.value); setPage(1); }}
+                    placeholder="搜索用户名称、id、QQ号"
+                    style={{ flex: 1 }}
+                />
                 <Button themeAware onClick={fetchUsers} disabled={loading}>刷新</Button>
             </div>
             {message && <div style={{ color: "red" }}>{message}</div>}
             {loading ? (
                 <div>加载中…</div>
+            ) : filtered.length === 0 ? (
+                <div>未找到匹配的用户。</div>
             ) : (
                 <table cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
                     <thead>
@@ -302,7 +312,7 @@ export default function AdminUsers({ backendUrl = null }) {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredUsers.map((u, idx) => {
+                        {pageItems.map((u, idx) => {
                             const isSelf = user && u.id === user.id;
                             const isSuper = u.admin_level === "YUYUKO";
                             return (
@@ -341,6 +351,19 @@ export default function AdminUsers({ backendUrl = null }) {
                     </tbody>
                 </table>
             )}
+
+            {!loading && filtered.length > 0 && (
+                <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>共 {filtered.length} 条 — 第 {page} / {totalPages} 页</div>
+                    <div>
+                        <Button themeAware onClick={() => setPage(1)} disabled={page === 1} style={{ marginRight: 6 }}>首页</Button>
+                        <Button themeAware onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ marginRight: 6 }}>上一页</Button>
+                        <Button themeAware onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ marginRight: 6 }}>下一页</Button>
+                        <Button themeAware onClick={() => setPage(totalPages)} disabled={page === totalPages}>尾页</Button>
+                    </div>
+                </div>
+            )}
+
             <AdminBanModal open={banModalOpen} onClose={() => { setBanModalOpen(false); setBanTarget(null); }} onConfirm={handleBanConfirm} targetUser={banTarget} />
         </div>
     );

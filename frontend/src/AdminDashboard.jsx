@@ -48,16 +48,10 @@ export default function AdminDashboard({ user, token, backendUrl, onBackHome, on
                     {level ? (
                         <div>
                             <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div><strong>当前可见权限：</strong></div>
                                 {canViewAudit && (
-                                    <Button themeAware onClick={() => setAuditOpen(true)} style={{ marginLeft: 12 }}>查看操作日志</Button>
+                                    <Button themeAware onClick={() => setAuditOpen(true)}>查看操作日志</Button>
                                 )}
                             </div>
-                            <ul style={{ margin: 0, paddingLeft: 22 }}>
-                                {perms.map((item) => (
-                                    <li key={item}>{item}</li>
-                                ))}
-                            </ul>
                         </div>
                     ) : (
                         <div style={{ color: dark ? '#ffb4b4' : '#b00020' }}>当前账号不是管理员，无法访问后台功能。</div>
@@ -92,12 +86,12 @@ export default function AdminDashboard({ user, token, backendUrl, onBackHome, on
                     </div>
                 )}
 
-                {/* 评论管理面板 */}
-                {canManageComments && (
+                {/* 评论管理面板（评论功能暂不开放） */}
+                {/*canManageComments && (
                     <div style={panelStyle}>
                         <AdminComments backendUrl={backendUrl} token={token} user={user} onRequireAuth={onRequireAuth} />
                     </div>
-                )}
+                )*/}
             </div>
             <AdminAuditModal open={auditOpen} onClose={() => setAuditOpen(false)} backendUrl={backendUrl} token={token} />
         </div>

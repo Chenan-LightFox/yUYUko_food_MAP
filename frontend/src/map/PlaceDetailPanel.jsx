@@ -27,7 +27,7 @@ export default function PlaceDetailPanel({ place, onClose }) {
 
             <div style={{ padding: '16px 20px', borderBottom: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2 style={{ margin: 0, fontSize: 18 }}>{place.name} 详情</h2>
-                <Button variant="secondary" onClick={onClose} style={{ padding: '4px 8px' }}>关闭</Button>
+                <Button variant="secondary" onClick={onClose} style={{ padding: '4px 8px', color: dark ? '#e5e7eb' : undefined }}>关闭</Button>
             </div>
 
             <div className="detail-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
