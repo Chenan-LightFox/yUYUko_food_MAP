@@ -6,13 +6,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>东方饭联地图</title>
     <script type="module">
-        // 动态解析 AMap 安全服务地址：优先使用 Vite 环境变量 VITE_BACKEND_URL，
-        // 否则回退到当前页面的 origin，方便在远程部署时使用同源后端或反向代理。
-        const _backend = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL)
-            ? String(import.meta.env.VITE_BACKEND_URL).replace(/\/+$|\s+/g, '')
-            : window.location.origin;
+        // 动态解析 AMap 安全服务地址：优先使用 Vite 环境变量 VITE_BACKEND_URL。
+        // dinnerparty 多域名部署时若 env 指向不同子域，自动回退当前 origin，避免跨域/404。
+        const envBackend = (typeof import.meta !== 'undefined' && import.meta.env)
+            ? import.meta.env.VITE_BACKEND_URL
+            : undefined;
+
+        const currentOrigin = window.location.origin;
+        const currentHost = window.location.hostname;
+        const isDinnerpartyHost = (h) => {
+            const s = String(h || '').toLowerCase();
+            return s === 'dinnerparty.cc' || s.endsWith('.dinnerparty.cc');
+        };
+
+        let backend = currentOrigin;
+        if (envBackend && String(envBackend).trim()) {
+            const configured = String(envBackend).replace(/\/+$/g, '');
+            backend = configured;
+            try {
+                const envHost = new URL(configured).hostname;
+                if (isDinnerpartyHost(currentHost) && isDinnerpartyHost(envHost) && currentHost !== envHost) {
+                    backend = currentOrigin;
+                    console.warn(`AMap serviceHost fallback to current origin due to host mismatch: ${envHost} -> ${currentHost}`);
+                }
+            } catch (e) {
+                // Keep configured backend if URL parsing fails.
+            }
+        }
+
         window._AMapSecurityConfig = {
-            serviceHost: _backend + '/_AMapService'
+            serviceHost: backend + '/_AMapService'
         };
     </script>
     <script

@@ -21,17 +21,37 @@ function normalizeUrl(url) {
     return String(url).replace(/\/+$/, "");
 }
 
+function isDinnerpartyHost(hostname) {
+    if (!hostname) return false;
+    const h = String(hostname).toLowerCase();
+    return h === 'dinnerparty.cc' || h.endsWith('.dinnerparty.cc');
+}
+
 function resolveBackendUrl() {
     if (typeof window !== "undefined") {
+        const origin = window.location.origin;
+        const currentHost = window.location.hostname;
+
         // 优先使用 Vite 注入的 VITE_BACKEND_URL（在构建/部署时设置），
         // 否则回退到当前页面的 origin（便于同源部署或反向代理）。
         const envBackend = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env.VITE_BACKEND_URL : undefined;
         if (envBackend && String(envBackend).trim()) {
             const v = String(envBackend).replace(/\/+$/g, '');
+            try {
+                const parsed = new URL(v);
+                const envHost = parsed.hostname;
+                // dinnerparty 多域名部署时，若当前页面与 env 指向不同子域，
+                // 优先走当前 origin，避免跨域与错误路由（例如 cn 子域访问主域 API 返回 404）。
+                if (isDinnerpartyHost(currentHost) && isDinnerpartyHost(envHost) && currentHost !== envHost) {
+                    console.warn(`VITE_BACKEND_URL host (${envHost}) differs from current host (${currentHost}), fallback to current origin: ${origin}`);
+                    return origin;
+                }
+            } catch (e) {
+                // Ignore malformed URL and fall through to use configured value.
+            }
             console.log(`Resolved backend URL from VITE_BACKEND_URL: ${v}`);
             return v;
         }
-        const origin = window.location.origin;
         console.log(`Resolved backend URL from window.location.origin: ${origin}`);
         return origin;
     }
