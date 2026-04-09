@@ -5,12 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>东方饭联地图</title>
-    <script type="module">
-        // 动态解析 AMap 安全服务地址：优先使用 Vite 环境变量 VITE_BACKEND_URL。
-        // dinnerparty 多域名部署时若 env 指向不同子域，自动回退当前 origin，避免跨域/404。
-        const envBackend = (typeof import.meta !== 'undefined' && import.meta.env)
-            ? import.meta.env.VITE_BACKEND_URL
-            : undefined;
+    <script>
+        // 注意：这里必须是普通 script，不能用 type="module"。
+        // AMap 在加载时会读取 window._AMapSecurityConfig，若该脚本延后执行会导致代理配置失效。
+        // Vite 会把 %VITE_BACKEND_URL% 注入为对应环境变量值。
+        const rawEnvBackend = '%VITE_BACKEND_URL%';
+        const envBackend = (rawEnvBackend && !rawEnvBackend.startsWith('%VITE_'))
+            ? rawEnvBackend
+            : '';
 
         const currentOrigin = window.location.origin;
         const currentHost = window.location.hostname;

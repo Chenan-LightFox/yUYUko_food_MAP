@@ -82,40 +82,60 @@ app.use(cors({
     maxAge: 3600
 }));
 
+const AMAP_JS_CODE = process.env.AMAP_JS_CODE || '03eac183dd628c79981e675c8cab45f8';
+
+function appendQueryParam(rawPath, key, value) {
+    const [pathname, query = ''] = String(rawPath || '').split('?');
+    const params = new URLSearchParams(query);
+    if (!params.has(key)) {
+        params.set(key, value);
+    }
+    const nextQuery = params.toString();
+    return nextQuery ? `${pathname}?${nextQuery}` : pathname;
+}
+
+function isAmapRestApiPath(urlPath) {
+    const p = String(urlPath || '');
+    return p.includes('/v3/') || p.includes('/v4/') || p.includes('/v5/');
+}
+
+function rewriteAmapPath(pathValue) {
+    const stripped = String(pathValue || '').replace(/^\/_AMapService/, '');
+    return appendQueryParam(stripped, 'jscode', AMAP_JS_CODE);
+}
+
+function handleAmapProxyReq(proxyReq, req) {
+    // pathRewrite should already handle jscode, but keep this as a runtime safety net.
+    const updatedPath = rewriteAmapPath(proxyReq.path || req.url);
+    proxyReq.path = updatedPath;
+
+    // 根据 router 逻辑，动态设置 Host（兼容部分上游网关对 Host 的校验）
+    if (isAmapRestApiPath(req.url)) {
+        proxyReq.setHeader('Host', 'restapi.amap.com');
+    } else {
+        proxyReq.setHeader('Host', 'api.amap.com');
+    }
+}
+
 app.use(
     '/_AMapService',
     createProxyMiddleware({
         target: 'https://api.amap.com/',
         changeOrigin: true,
-        pathRewrite: { '^/_AMapService': '' },
+        // Always inject jscode here so it works even when proxyReq hook is not fired.
+        pathRewrite: (path) => rewriteAmapPath(path),
         router: function (req) {
             // 根据路径动态选择被代理的服务器地址，PlaceSearch组件（/v3/place/text）等都在restapi
-            if (req.url.includes('/v3/') || req.url.includes('/v4/') || req.url.includes('/v5/')) {
-                return 'https://restyyyyapi.amap.com/';
+            if (isAmapRestApiPath(req.url)) {
+                return 'https://restapi.amap.com/';
             }
             return 'https://api.amap.com/';
         },
+        // v2 compatibility
+        onProxyReq: handleAmapProxyReq,
+        // v3 style
         on: {
-            proxyReq: (proxyReq, req, res) => {
-                let path = proxyReq.path;
-                if (!path) {
-                    path = req.url.replace(/^\/_AMapService/, '');
-                }
-
-                if (path.includes('?')) {
-                    path += '&jscode=03eac183dd628c79981e675c8cab45f8';
-                } else {
-                    path += '?jscode=03eac183dd628c79981e675c8cab45f8';
-                }
-                proxyReq.path = path;
-
-                // 根据上面 router 的逻辑，动态修改 Host
-                if (req.url.includes('/v3/') || req.url.includes('/v4/') || req.url.includes('/v5/')) {
-                    proxyReq.setHeader('Host', 'restapi.amap.com');
-                } else {
-                    proxyReq.setHeader('Host', 'api.amap.com');
-                }
-            }
+            proxyReq: handleAmapProxyReq
         }
     })
 );
