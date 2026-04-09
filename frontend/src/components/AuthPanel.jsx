@@ -4,7 +4,7 @@ import Tooltip from './Tooltip';
 import defaultAvatar from '../img/default.png';
 import useDarkMode from '../utils/useDarkMode';
 
-export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onGoHome, pathname, backendUrl }) {
+export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onGoHome, onOpenDinners, onOpenDinnerCreate, pathname, backendUrl }) {
     const [open, setOpen] = useState(false);
     const rootRef = useRef(null);
     const menuRef = useRef(null);
@@ -137,6 +137,7 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
     const currentPath = typeof pathname !== 'undefined' ? pathname : (typeof window !== 'undefined' ? window.location.pathname : '');
     const isOnAdmin = currentPath === '/admin';
     const isOnSettings = typeof currentPath === 'string' && currentPath.startsWith('/settings');
+    const isOnDinners = typeof currentPath === 'string' && currentPath.startsWith('/dinners');
 
     return (
         <div
@@ -231,6 +232,16 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
                                 </Button>
 
                                 <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
+                                <Button variant="menu" full onClick={() => { setOpen(false); if (isOnDinners) { onGoHome && onGoHome(); } else { onOpenDinners && onOpenDinners(); } }} style={{ color: menuTextColor }}>
+                                    {isOnDinners ? '返回地图' : '聚餐活动'}
+                                </Button>
+
+                                <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
+                                <Button variant="menu" full onClick={() => { setOpen(false); if (isAuth) { onOpenDinnerCreate && onOpenDinnerCreate(); } else { onOpenAuth && onOpenAuth(); } }} style={{ color: menuTextColor }}>
+                                    发起聚餐
+                                </Button>
+
+                                <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
                                 <Button variant="menu" full onClick={() => { setOpen(false); onLogout && onLogout(); }} style={{ color: dark ? '#ff8a93' : '#b00020' }}>
                                     注销
                                 </Button>
@@ -239,6 +250,8 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
+                            <Button variant="menu" full onClick={() => { setOpen(false); onOpenDinners && onOpenDinners(); }}>聚餐活动</Button>
                             <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
                             <Button variant="menu" full onClick={() => { setOpen(false); onOpenAuth && onOpenAuth(); }}>登录 / 注册</Button>
                             <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />

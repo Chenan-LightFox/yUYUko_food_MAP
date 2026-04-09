@@ -37,7 +37,7 @@ export default function AdminDashboard({ user, token, backendUrl, onBackHome, on
     return (
         <div style={rootStyle}>
             <div style={containerStyle}>
-                <div style={headerRow}>
+                <div style={{ ...headerRow, marginTop: 50 }}>
                     <h2 style={{ margin: 0 }}>管理员后台</h2>
                 </div>
 

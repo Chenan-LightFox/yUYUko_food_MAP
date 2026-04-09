@@ -339,6 +339,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 
         // 在地图初始化时绑定事件
         const init = () => {
+            if (!containerRef.current) return;
             const savedView = MapUtils.readSavedMapView();
             let pageDark = (typeof document !== 'undefined' && document.documentElement && document.documentElement.getAttribute('data-theme') === 'dark');
             if (!pageDark) {
@@ -499,6 +500,14 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 }
             }
             geolocationRef.current = null;
+            if (mapRef.current && typeof mapRef.current.destroy === 'function') {
+                try {
+                    mapRef.current.destroy();
+                } catch (e) {
+                    console.warn('销毁地图实例失败', e);
+                }
+            }
+            mapRef.current = null;
         };
     }, []);
 

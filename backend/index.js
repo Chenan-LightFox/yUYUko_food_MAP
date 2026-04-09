@@ -16,6 +16,7 @@ const adminCommentsRouter = require("./routes/admin/adminComments");
 const adminGeneralUsersRouter = require("./routes/admin/adminGeneralUsers");
 const adminAuditRouter = require('./routes/admin/adminAudit');
 const placeRequestsRouter = require("./routes/placeRequests");
+const dinnersRouter = require("./routes/dinners");
 const { requireAuth } = require("./middleware/auth");
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
@@ -130,6 +131,7 @@ app.use("/comments", commentsRouter);
 app.use("/users", usersRouter);
 app.use("/place-requests", placeRequestsRouter);
 app.use("/api/place-requests", placeRequestsRouter); // 兼容前端或旧接口可能带 /api 前缀
+app.use("/dinners", dinnersRouter);
 
 app.get("/", (req, res) => res.json({ ok: true, msg: "yUYUko Food Map Backend" }));
 

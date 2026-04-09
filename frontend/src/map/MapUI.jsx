@@ -339,7 +339,7 @@ export default function MapUI(props) {
                     </div>
 
                     <div style={{ padding: "4px 8px", background: "rgba(0,0,0,0.5)", color: "#fff", borderRadius: "12px", fontSize: "12px", pointerEvents: "none", userSelect: "none" }}>
-                        v1.1.1
+                        v1.2.0beta
                     </div>
                 </div>
             </div>

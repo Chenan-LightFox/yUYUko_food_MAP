@@ -81,3 +81,47 @@ export async function postPlaceRequest(backendUrl, token, payload) {
     if (!res.ok) throw new Error(data.error || `申请提交失败 ${res.status}`);
     return data;
 }
+
+function normalizeDinner(item) {
+    if (!item || typeof item !== 'object') return null;
+    return {
+        id: Number(item.id),
+        title: item.title || '',
+        description: item.description || '',
+        place_name: item.place_name || '',
+        start_time: item.start_time || null,
+        max_participants: item.max_participants == null ? null : Number(item.max_participants),
+        contact_info: item.contact_info || '',
+        status: item.status || 'open',
+        creator_id: item.creator_id == null ? null : Number(item.creator_id),
+        creator_name: item.creator_name || '',
+        created_time: item.created_time || null,
+        updated_time: item.updated_time || null
+    };
+}
+
+export async function fetchDinners(backendUrl) {
+    const res = await fetch(`${backendUrl}/dinners`);
+    if (!res.ok) throw new Error(`获取聚餐活动失败 ${res.status}`);
+    const data = await res.json().catch(() => []);
+    const list = Array.isArray(data) ? data : [];
+    return list.map(normalizeDinner).filter(Boolean);
+}
+
+export async function fetchDinnerById(backendUrl, id) {
+    const res = await fetch(`${backendUrl}/dinners/${id}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `获取聚餐详情失败 ${res.status}`);
+    return normalizeDinner(data);
+}
+
+export async function createDinner(backendUrl, token, payload) {
+    const res = await fetch(`${backendUrl}/dinners`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `创建聚餐失败 ${res.status}`);
+    return normalizeDinner(data);
+}

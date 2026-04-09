@@ -48,7 +48,7 @@ export default function Settings({ user, onBack, onOpenEditAvatar, onOpenEditUse
     return (
         <div style={rootStyle}>
             <div style={container}>
-                <div style={titleRow}>
+                <div style={{ ...titleRow, marginTop: 50 }}>
                     <h2 style={{ margin: 0 }}>用户设置</h2>
                 </div>
 

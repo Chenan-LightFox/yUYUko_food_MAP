@@ -209,6 +209,26 @@ function init() {
             console.warn('Failed to create idx_invitecode_code:', e.message);
         }
 
+        rawDb.exec(`CREATE TABLE IF NOT EXISTS "DinnerEvent" (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT,
+            place_name TEXT NOT NULL,
+            start_time DATETIME NOT NULL,
+            max_participants INTEGER,
+            contact_info TEXT,
+            status TEXT DEFAULT 'open',
+            creator_id INTEGER NOT NULL,
+            created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_time DATETIME
+        );`);
+        try {
+            rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_dinnerevent_start_time ON DinnerEvent(start_time);`);
+            rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_dinnerevent_creator_id ON DinnerEvent(creator_id);`);
+        } catch (e) {
+            console.warn('Failed to create DinnerEvent indexes:', e.message);
+        }
+
     } catch (e) {
         console.error('DB init failed:', e && e.message);
         throw e;

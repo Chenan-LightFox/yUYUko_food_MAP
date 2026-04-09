@@ -15,6 +15,7 @@ import { TipsProvider } from "./components/Tips";
 import { ConfirmProvider } from "./components/Confirm";
 import { applyDarkMode, applyThemeColor } from "./utils/theme";
 import useDarkMode from './utils/useDarkMode';
+import { DinnerCreatePage, DinnerDetailPage, DinnerListPage, isDinnerPath, parseDinnerIdFromPath } from './DinnerPages';
 
 function normalizeUrl(url) {
     return String(url).replace(/\/+$/, "");
@@ -236,15 +237,15 @@ export default function App() {
     }, [token, user, clearAuthState]);
 
     useEffect(() => {
-        // 限定本阶段只支持若干页面路径（允许 /, /admin, /settings/*）
-        if (pathname !== "/" && pathname !== "/admin" && !pathname.startsWith("/settings")) {
+        // 限定页面路径（允许 /, /admin, /settings/*, /dinners*）
+        if (pathname !== "/" && pathname !== "/admin" && !pathname.startsWith("/settings") && !isDinnerPath(pathname)) {
             goPath("/");
         }
     }, [pathname, goPath]);
 
     useEffect(() => {
-        // 未登录访问 /admin 或任何 /settings 子路径时，弹出登录对话框但不强制跳回首页，以便用户在页面内登录
-        if ((pathname === "/admin" || pathname.startsWith("/settings")) && !token) {
+        // 未登录访问受限页面时，弹出登录对话框但不强制跳转，以便用户在页面内登录
+        if ((pathname === "/admin" || pathname.startsWith("/settings") || pathname === "/dinners/new") && !token) {
             setShowAuth(true);
             // do not navigate away; allow login modal to appear over these pages
         }
@@ -260,6 +261,12 @@ export default function App() {
     const showSettingsThemes = pathname === "/settings/themes";
     const showSettingsAny = typeof pathname === 'string' && pathname.startsWith("/settings");
     const showSettingsAvatar = pathname === "/settings/avatar";
+    const showDinnerList = pathname === "/dinners";
+    const showDinnerCreate = pathname === "/dinners/new";
+    const dinnerId = parseDinnerIdFromPath(pathname);
+    const showDinnerDetail = Number.isFinite(dinnerId) && dinnerId > 0;
+    const showAnyDinnerPage = showDinnerList || showDinnerCreate || showDinnerDetail;
+    const showMapPage = !showAdminPage && !showSettingsAny && !showAnyDinnerPage;
 
     const authValue = {
         token,
@@ -278,12 +285,47 @@ export default function App() {
                 <ConfirmProvider>
                     <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
                         <BanNotice />
-                        {!showAdminPage && !showSettingsAny && (
+                        <div style={{ display: showMapPage ? 'block' : 'none', width: '100%', height: '100%' }}>
                             <MapView
                                 backendUrl={BACKEND_URL}
                                 token={token}
                                 isAuthenticated={isAuth}
                                 onRequireAuth={() => setShowAuth(true)}
+                            />
+                        </div>
+
+                        {showDinnerList && (
+                            <DinnerListPage
+                                backendUrl={BACKEND_URL}
+                                onGoCreate={() => {
+                                    if (!token) {
+                                        setShowAuth(true);
+                                        return;
+                                    }
+                                    goPath('/dinners/new');
+                                }}
+                                onOpenDetail={(id) => goPath(`/dinners/${id}`)}
+                                onGoHome={() => goPath('/')}
+                            />
+                        )}
+
+                        {showDinnerCreate && (
+                            <DinnerCreatePage
+                                backendUrl={BACKEND_URL}
+                                token={token}
+                                isAuth={isAuth}
+                                onRequireAuth={() => setShowAuth(true)}
+                                onCreated={(dinner) => goPath(`/dinners/${dinner.id}`)}
+                                onBack={() => goPath('/dinners')}
+                            />
+                        )}
+
+                        {showDinnerDetail && (
+                            <DinnerDetailPage
+                                backendUrl={BACKEND_URL}
+                                dinnerId={dinnerId}
+                                onBackList={() => goPath('/dinners')}
+                                onGoHome={() => goPath('/')}
                             />
                         )}
 
@@ -414,6 +456,8 @@ export default function App() {
                             onOpenAuth={() => setShowAuth(true)}
                             onOpenAdmin={() => goPath("/admin")}
                             onOpenSettings={() => goPath("/settings")}
+                            onOpenDinners={() => goPath('/dinners')}
+                            onOpenDinnerCreate={() => goPath('/dinners/new')}
                             onGoHome={() => goPath("/")}
                             pathname={pathname}
                             backendUrl={BACKEND_URL}
