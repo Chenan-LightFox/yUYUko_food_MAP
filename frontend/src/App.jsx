@@ -292,6 +292,7 @@ export default function App() {
                                 isAuthenticated={isAuth}
                                 onRequireAuth={() => setShowAuth(true)}
                                 onOpenDinnerCreate={() => goPath('/dinners/new')}
+                                onOpenDinners={() => goPath('/dinners')}
                             />
                         </div>
 

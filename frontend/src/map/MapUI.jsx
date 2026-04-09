@@ -32,6 +32,7 @@ export default function MapUI(props) {
         handleToggleAddMode,
         addPlaceTipText,
         onOpenDinnerCreate,
+        onOpenDinners,
         popupPoint,
         selectedPlace,
         getLastModifierText,
@@ -279,7 +280,13 @@ export default function MapUI(props) {
                 <Tooltip text={authPending ? '正在验证登录状态，请稍候再试' : '发起聚餐'} placement="top">
                     <div style={{ display: "inline-block" }}>
                         <Button
-                            onClick={() => { if (typeof onOpenDinnerCreate === 'function') onOpenDinnerCreate(); }}
+                            onClick={() => {
+                                if (typeof onOpenDinners === 'function') {
+                                    onOpenDinners();
+                                    return;
+                                }
+                                if (typeof onOpenDinnerCreate === 'function') onOpenDinnerCreate();
+                            }}
                             disabled={!mapReady || authPending}
                             aria-label="发起聚餐"
                             style={{

@@ -37,7 +37,7 @@ function buildInfoWindowContent(place) {
     return root;
 }
 
-export default function MapView({ backendUrl, token, isAuthenticated, onRequireAuth, onOpenDinnerCreate }) {
+export default function MapView({ backendUrl, token, isAuthenticated, onRequireAuth, onOpenDinnerCreate, onOpenDinners }) {
     const containerRef = useRef(null);
     const mapRef = useRef(null);
     const markersRef = useRef([]);
@@ -1136,6 +1136,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 handleToggleAddMode={handleToggleAddMode}
                 addPlaceTipText={addPlaceTipText}
                 onOpenDinnerCreate={onOpenDinnerCreate}
+                onOpenDinners={onOpenDinners}
                 popupPoint={popupPoint}
                 selectedPlace={selectedPlace}
                 getLastModifierText={getLastModifierText}
