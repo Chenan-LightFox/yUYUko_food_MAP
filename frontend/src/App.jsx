@@ -31,7 +31,7 @@ function resolveBackendUrl() {
     if (typeof window !== "undefined") {
         const origin = window.location.origin;
         const currentHost = window.location.hostname;
-
+        const { protocol, hostname } = window.location;
         // 优先使用 Vite 注入的 VITE_BACKEND_URL（在构建/部署时设置），
         // 否则回退到当前页面的 origin（便于同源部署或反向代理）。
         const envBackend = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env.VITE_BACKEND_URL : undefined;
@@ -44,7 +44,7 @@ function resolveBackendUrl() {
                 // 优先走当前 origin，避免跨域与错误路由（例如 cn 子域访问主域 API 返回 404）。
                 if (isDinnerpartyHost(currentHost) && isDinnerpartyHost(envHost) && currentHost !== envHost) {
                     console.warn(`VITE_BACKEND_URL host (${envHost}) differs from current host (${currentHost}), fallback to current origin: ${origin}`);
-                    return currentHost + ":2053";
+                    return `${protocol}//${hostname}:2053`;
                 }
             } catch (e) {
                 // Ignore malformed URL and fall through to use configured value.
@@ -53,7 +53,7 @@ function resolveBackendUrl() {
             return v;
         }
         console.log(`Resolved backend URL from window.location.origin: ${origin}`);
-        return currentHost + ":2053";
+        return `${protocol}//${hostname}:2053`;
     }
 
     return "http://localhost:2053";
