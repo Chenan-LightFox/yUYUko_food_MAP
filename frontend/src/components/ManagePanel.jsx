@@ -10,7 +10,8 @@ const CATEGORY_DATA = [
     { group: '外国餐厅', items: ['俄国菜', '印度风味', '地中海风格菜品', '墨西哥菜', '德国菜', '意式菜品餐厅', '日本料理', '法式菜品餐厅', '泰国/越南菜品餐厅', '牛扒店', '美式风味', '韩国料理', '其他国家'] },
     { group: '快餐厅', items: ['中式快餐', '西式快餐', '茶餐厅'] },
     { group: '宵夜小吃', items: ['烧烤', '排挡', '街边小摊'] },
-    { group: '其他', items: ['其他'] }
+    { group: '其他', items: ['其他'] },
+    { group: '避雷', items: ['避雷'] }
 ];
 
 export default function ManagePanel({
@@ -90,6 +91,19 @@ export default function ManagePanel({
                                             {group.items.map(opt => {
                                                 const catStr = manageEdit.category || '';
                                                 const isSelected = catStr.split(',').map(s => s.trim()).includes(opt);
+                                                let selBg = '#3b82f6';
+                                                let selBorder = '#2563eb';
+                                                let selColor = '#fff';
+                                                if (group.group === '休闲餐饮店') {
+                                                    selBg = '#4ade80'; // 浅绿色
+                                                    selBorder = '#22c55e';
+                                                } else if (group.group === '宵夜小吃') {
+                                                    selBg = '#eab308'; // 亮黄色
+                                                    selBorder = '#ca8a04';
+                                                } else if (group.group === '避雷') {
+                                                    selBg = '#ef4444'; // 红色
+                                                    selBorder = '#dc2626';
+                                                }
                                                 return (
                                                     <span
                                                         key={opt}
@@ -99,9 +113,9 @@ export default function ManagePanel({
                                                         }}
                                                         style={{
                                                             padding: '4px 8px', fontSize: 12, borderRadius: 12, cursor: 'pointer',
-                                                            background: isSelected ? '#3b82f6' : (dark ? '#334155' : '#f1f5f9'),
-                                                            color: isSelected ? '#fff' : (dark ? '#e2e8f0' : '#333'),
-                                                            border: `1px solid ${isSelected ? '#2563eb' : (dark ? '#475569' : '#cbd5e1')}`
+                                                            background: isSelected ? selBg : (dark ? '#334155' : '#f1f5f9'),
+                                                            color: isSelected ? selColor : (dark ? '#e2e8f0' : '#333'),
+                                                            border: `1px solid ${isSelected ? selBorder : (dark ? '#475569' : '#cbd5e1')}`
                                                         }}
                                                     >
                                                         {opt}
