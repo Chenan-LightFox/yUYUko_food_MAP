@@ -10,6 +10,7 @@ import ScrollableView from '../components/ScrollableView';
 
 export default function MapUI(props) {
     const {
+        places,
         mapRef,
         userLocationMarkerRef,
         backendUrl,
@@ -58,7 +59,7 @@ export default function MapUI(props) {
     const inputRef = useRef(null);
     const dark = useDarkMode();
 
-    const { results: spResults, loading: spLoading } = useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLocationMarkerRef);
+    const { results: spResults, loading: spLoading } = useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLocationMarkerRef, places);
 
     // Close detail panel if popup closes
     useEffect(() => {
@@ -338,7 +339,7 @@ export default function MapUI(props) {
                     </div>
 
                     <div style={{ padding: "4px 8px", background: "rgba(0,0,0,0.5)", color: "#fff", borderRadius: "12px", fontSize: "12px", pointerEvents: "none", userSelect: "none" }}>
-                        v1.1.0beta
+                        v1.1.0
                     </div>
                 </div>
             </div>

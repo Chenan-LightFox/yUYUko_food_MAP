@@ -719,6 +719,24 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 const lng = p.location?.lng;
                 const lat = p.location?.lat;
                 if (!lng || !lat) return null;
+
+                const allKnown = [...(places || []), ...markedData];
+                let isKnown = false;
+                if (window.AMap) {
+                    for (const kp of allKnown) {
+                        if (!kp.longitude || !kp.latitude) continue;
+                        const d = window.AMap.GeometryUtil.distance(
+                            new window.AMap.LngLat(lng, lat),
+                            new window.AMap.LngLat(kp.longitude, kp.latitude)
+                        );
+                        if (d < 50) {
+                            isKnown = true;
+                            break;
+                        }
+                    }
+                }
+                if (isKnown) return null;
+
                 return {
                     id: 'amap_' + p.id,
                     name: p.name,
@@ -1087,6 +1105,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     return (
         <>
             <MapUI
+                places={places}
                 mapRef={mapRef}
                 userLocationMarkerRef={userLocationMarkerRef}
                 backendUrl={backendUrl}
