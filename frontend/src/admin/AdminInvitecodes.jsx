@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import TextInput from "../components/TextInput";
+import { useTips } from "../components/Tips";
 import { useAuth } from "../AuthContext";
 import useDarkMode from "../utils/useDarkMode";
 
@@ -35,7 +36,7 @@ export default function AdminInvitecode({ backendUrl = null }) {
     const { token, user, onRequireAuth } = useAuth();
     const [invites, setInvites] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState("");
+    const showTip = useTips();
     const [creating, setCreating] = useState(false);
     const [maxUses, setMaxUses] = useState(1);
     const [lastCreatedCode, setLastCreatedCode] = useState("");
@@ -54,13 +55,12 @@ export default function AdminInvitecode({ backendUrl = null }) {
     const handleUnauthorized = () => {
         setInvites([]);
         const authMsg = '未登录或授权已失效，请重新登录';
-        setMessage(authMsg);
+        showTip(authMsg);
         if (onRequireAuth) onRequireAuth();
     };
 
     const fetchInvites = async () => {
         setLoading(true);
-        setMessage("");
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token;
         try {
@@ -85,7 +85,7 @@ export default function AdminInvitecode({ backendUrl = null }) {
                     return;
                 }
                 if (res.status === 403) {
-                    setMessage('权限不足，无法获取邀请码列表');
+                    showTip('权限不足，无法获取邀请码列表');
                     return;
                 }
                 throw new Error(`服务器错误 ${res.status} ${txt}`);
@@ -98,7 +98,7 @@ export default function AdminInvitecode({ backendUrl = null }) {
             if (e && String(e.message || '').toLowerCase().includes('未登录')) {
                 // handled
             } else {
-                setMessage('加载失败: ' + (e.message || e));
+                showTip('加载失败: ' + (e.message || e));
             }
         } finally {
             setLoading(false);
@@ -106,7 +106,6 @@ export default function AdminInvitecode({ backendUrl = null }) {
     };
 
     const createInvite = async (codeArg = null) => {
-        setMessage("");
         // generate code if not provided
         const code = codeArg || randomString(24 + Math.floor(Math.random() * 9)); // 24-32
         setCreating(true);
@@ -146,13 +145,13 @@ export default function AdminInvitecode({ backendUrl = null }) {
                 throw new Error(data.error || `创建失败 ${res.status}`);
             }
 
-            setMessage('创建成功，请复制以下邀请码文本（只会显示一次）');
+            showTip('创建成功，请复制以下邀请码文本（只会显示一次）');
             setLastCreatedCode(code);
             setMaxUses(1);
             await fetchInvites();
         } catch (e) {
             console.error('createInvite failed', e);
-            setMessage('创建失败：' + (e.message || e));
+            showTip('创建失败：' + (e.message || e));
             setLastCreatedCode("");
         } finally {
             setCreating(false);
@@ -161,7 +160,6 @@ export default function AdminInvitecode({ backendUrl = null }) {
 
     const deleteInvite = async (id) => {
         if (!window.confirm('确认删除此邀请码？')) return;
-        setMessage("");
         setProcessing(p => ({ ...p, [id]: true }));
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token;
@@ -189,11 +187,11 @@ export default function AdminInvitecode({ backendUrl = null }) {
                 throw new Error(data.error || `删除失败 ${res.status}`);
             }
 
-            setMessage('已删除');
+            showTip('已删除');
             setInvites(list => list.filter(i => i.id !== id));
         } catch (e) {
             console.error('deleteInvite failed', e);
-            setMessage('删除失败：' + (e.message || e));
+            showTip('删除失败：' + (e.message || e));
         } finally {
             setProcessing(p => ({ ...p, [id]: false }));
         }
@@ -211,10 +209,10 @@ export default function AdminInvitecode({ backendUrl = null }) {
                 document.execCommand('copy');
                 document.body.removeChild(ta);
             }
-            setMessage('已复制到剪贴板');
+            showTip('已复制到剪贴板');
         } catch (e) {
             console.warn('copy failed', e);
-            setMessage('复制失败');
+            showTip('复制失败');
         }
     };
 
@@ -227,8 +225,7 @@ export default function AdminInvitecode({ backendUrl = null }) {
                 <Button themeAware onClick={fetchInvites} disabled={loading}>刷新</Button>
             </div>
 
-            {message && <div style={{ color: '#c33', marginBottom: 8 }}>{message}</div>}
-
+            
             <div style={{ marginBottom: 12, padding: 8, border: dark ? '1px solid #1f2937' : '1px solid #eee', borderRadius: 6, background: dark ? '#0b1220' : undefined }}>
                 <div style={{ marginBottom: 8 }}><strong>创建新邀请码</strong></div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import { useAuth } from "../AuthContext";
 import useDarkMode from "../utils/useDarkMode";
+import { useTips } from "../components/Tips";
 import defaultAvatar from '../img/default.png';
 
 function resolveBackendUrl() {
@@ -22,7 +23,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
     const { token, user, onRequireAuth } = useAuth();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState("");
+    const showTip = useTips();
     const [processing, setProcessing] = useState({});
     const [searchQuery, setSearchQuery] = useState('');
     const fetchIdRef = useRef(0);
@@ -39,13 +40,12 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
     const handleUnauthorized = () => {
         setUsers([]);
         const authMsg = '未登录或授权已失效，请重新登录';
-        setMessage(authMsg);
+        showTip(authMsg);
         if (onRequireAuth) onRequireAuth();
     };
 
     const fetchUsers = async () => {
         setLoading(true);
-        setMessage("");
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token;
         try {
@@ -70,7 +70,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                     return;
                 }
                 if (res.status === 403) {
-                    setMessage('权限不足，无法获取普通用户列表');
+                    showTip('权限不足，无法获取普通用户列表');
                     return;
                 }
                 throw new Error(`服务器错误 ${res.status} ${txt}`);
@@ -83,7 +83,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
             if (e && String(e.message || '').toLowerCase().includes('未登录')) {
                 // handled
             } else {
-                setMessage('加载失败: ' + (e.message || e));
+                showTip('加载失败: ' + (e.message || e));
             }
         } finally {
             setLoading(false);
@@ -92,7 +92,6 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
 
     const deleteUser = async (id) => {
         if (!window.confirm('确认删除此用户？')) return;
-        setMessage("");
         setProcessing(p => ({ ...p, [id]: true }));
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token;
@@ -117,15 +116,15 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                     handleUnauthorized();
                     return;
                 }
-                setMessage(data.error || `删除失败 ${res.status}`);
+                showTip(data.error || `删除失败 ${res.status}`);
                 return;
             }
 
-            setMessage('用户已删除');
+            showTip('用户已删除');
             setUsers(list => list.filter(u => u.id !== id));
         } catch (e) {
             console.error('deleteUser failed', e);
-            setMessage('删除失败：' + (e.message || e));
+            showTip('删除失败：' + (e.message || e));
         } finally {
             setProcessing(p => ({ ...p, [id]: false }));
         }
@@ -157,8 +156,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                 <Button themeAware onClick={fetchUsers} disabled={loading}>刷新</Button>
             </div>
 
-            {message && <div style={{ color: '#c33', marginBottom: 8 }}>{message}</div>}
-
+            
             {loading ? (
                 <div>加载中…</div>
             ) : (

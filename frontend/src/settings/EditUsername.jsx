@@ -44,6 +44,7 @@ export default function EditUsername({ user, onBack, backendUrl, token, onUpdate
                 onUpdateUser(data.user, data.token);
             }
             showTip('用户名已更新');
+            if (onBack) onBack();
         } catch (ex) {
             showTip(ex.message || '请求失败');
         } finally {
@@ -69,7 +70,7 @@ export default function EditUsername({ user, onBack, backendUrl, token, onUpdate
 
                 <div style={{ display: 'flex', gap: 8 }}>
                     <Button themeAware type="submit" disabled={loading} style={{ padding: '8px 12px' }}>{loading ? '保存中...' : '保存'}</Button>
-                    <Button themeAware type="button" onClick={() => { setUsername(user ? user.username : ''); }} style={{ padding: '8px 12px' }}>取消</Button>
+                    <Button themeAware type="button" onClick={() => { setUsername(user ? user.username : ''); if (onBack) onBack(); }} style={{ padding: '8px 12px' }}>取消</Button>
                 </div>
             </form>
         </PageTemplate>

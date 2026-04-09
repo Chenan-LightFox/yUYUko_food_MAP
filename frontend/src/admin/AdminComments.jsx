@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import TextInput from "../components/TextInput";
+import { useTips } from "../components/Tips";
 import { useAuth } from "../AuthContext";
 import useDarkMode from "../utils/useDarkMode";
 import { getThemeColor } from "../utils/theme";
@@ -23,7 +24,7 @@ export default function AdminComments({ backendUrl = null }) {
     const { token, user, onRequireAuth } = useAuth();
     const [comments, setComments] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState("");
+    const showTip = useTips();
     const [processing, setProcessing] = useState({});
     const dark = useDarkMode();
     const themeColor = getThemeColor();
@@ -56,13 +57,12 @@ export default function AdminComments({ backendUrl = null }) {
     const handleUnauthorized = () => {
         setComments([]);
         const authMsg = '未登录或授权已失效，请重新登录';
-        setMessage(authMsg);
+        showTip(authMsg);
         if (onRequireAuth) onRequireAuth();
     };
 
     const fetchComments = async () => {
         setLoading(true);
-        setMessage("");
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token;
         try {
@@ -87,7 +87,7 @@ export default function AdminComments({ backendUrl = null }) {
                     return;
                 }
                 if (res.status === 403) {
-                    setMessage('权限不足，无法获取评论列表');
+                    showTip('权限不足，无法获取评论列表');
                     return;
                 }
                 throw new Error(`服务器错误 ${res.status} ${txt}`);
@@ -100,7 +100,7 @@ export default function AdminComments({ backendUrl = null }) {
             if (e && String(e.message || '').toLowerCase().includes('未登录')) {
                 // handled
             } else {
-                setMessage('加载失败: ' + (e.message || e));
+                showTip('加载失败: ' + (e.message || e));
             }
         } finally {
             setLoading(false);
@@ -109,7 +109,6 @@ export default function AdminComments({ backendUrl = null }) {
 
     const deleteComment = async (id) => {
         if (!window.confirm('确认删除此评论？')) return;
-        setMessage("");
         setProcessing(p => ({ ...p, [id]: true }));
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token;
@@ -134,15 +133,15 @@ export default function AdminComments({ backendUrl = null }) {
                     handleUnauthorized();
                     return;
                 }
-                setMessage(data.error || `删除失败 ${res.status}`);
+                showTip(data.error || `删除失败 ${res.status}`);
                 return;
             }
 
-            setMessage('已删除');
+            showTip('已删除');
             setComments(list => list.filter(c => c.id !== id));
         } catch (e) {
             console.error('deleteComment failed', e);
-            setMessage('删除失败：' + (e.message || e));
+            showTip('删除失败：' + (e.message || e));
         } finally {
             setProcessing(p => ({ ...p, [id]: false }));
         }
@@ -162,8 +161,7 @@ export default function AdminComments({ backendUrl = null }) {
                 />
                 <Button themeAware onClick={fetchComments} disabled={loading}>刷新</Button>
             </div>
-            {message && <div style={{ color: '#c33', marginBottom: 8 }}>{message}</div>}
-
+            
             {loading ? (
                 <div>加载中…</div>
             ) : (

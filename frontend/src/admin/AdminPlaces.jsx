@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import TextInput from "../components/TextInput";
+import { useTips } from "../components/Tips";
 import { useAuth } from "../AuthContext";
 import JsonTable from "../components/JsonTable";
 import useDarkMode from "../utils/useDarkMode";
@@ -24,7 +25,7 @@ export default function AdminPlaces({ backendUrl = null }) {
     const { token, user, onRequireAuth } = useAuth();
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState("");
+    const showTip = useTips();
     const [processing, setProcessing] = useState({}); // id -> bool
     const [searchQuery, setSearchQuery] = useState('');
     const [page, setPage] = useState(1);
@@ -47,14 +48,13 @@ export default function AdminPlaces({ backendUrl = null }) {
     const handleUnauthorized = () => {
         setRequests([]);
         const authMsg = '未登录或授权已失效，请重新登录';
-        setMessage(authMsg);
+        showTip(authMsg);
         if (onRequireAuth) onRequireAuth();
     };
 
     // Fetch requests and ignore responses from stale tokens/earlier fetches
     const fetchRequests = async () => {
         setLoading(true);
-        setMessage("");
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token; // capture current token
         try {
@@ -98,7 +98,7 @@ export default function AdminPlaces({ backendUrl = null }) {
             if (e && String(e.message || '').toLowerCase().includes('未登录')) {
                 // nothing more
             } else {
-                setMessage("加载失败: " + (e.message || e));
+                showTip("加载失败: " + (e.message || e));
             }
         } finally {
             setLoading(false);
@@ -115,7 +115,7 @@ export default function AdminPlaces({ backendUrl = null }) {
                 'Content-Type': 'application/json',
                 ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
             };
-            let res = await fetch(`${base}/place-requests/${id}/review`, { 
+            let res = await fetch(`${base}/place-requests/${id}/review`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ action })
@@ -155,13 +155,13 @@ export default function AdminPlaces({ backendUrl = null }) {
                 throw new Error(data.error || `Review failed ${res.status}`);
             }
             await fetchRequests();
-            setMessage('操作成功');
+            showTip('操作成功');
         } catch (e) {
             console.error('审批失败', e);
             if (e && String(e.message || '').toLowerCase().includes('未登录')) {
                 // already handled
             } else {
-                setMessage('操作失败: ' + (e.message || e));
+                showTip('操作失败: ' + (e.message || e));
             }
         } finally {
             setProcessing(p => ({ ...p, [id]: false }));
@@ -199,8 +199,7 @@ export default function AdminPlaces({ backendUrl = null }) {
                         />
                         <Button themeAware onClick={fetchRequests} disabled={loading}>刷新</Button>
                     </div>
-                    {message && <div style={{ color: '#c33', marginBottom: 8 }}>{message}</div>}
-                    {loading ? (
+                                        {loading ? (
                         <div>加载中…</div>
                     ) : (
                         <div>

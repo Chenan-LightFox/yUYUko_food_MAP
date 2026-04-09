@@ -90,7 +90,7 @@ export default function EditPassword({ user, onBack, backendUrl, token, onUpdate
 
                 <div style={{ display: 'flex', gap: 8 }}>
                     <Button themeAware type="submit" disabled={loading} style={{ padding: '8px 12px' }}>{loading ? '保存中...' : '保存'}</Button>
-                    <Button themeAware type="button" onClick={() => { setCurrentPwd(''); setNewPwd(''); setConfirmPwd(''); }} style={{ padding: '8px 12px' }}>取消</Button>
+                    <Button themeAware type="button" onClick={() => { setCurrentPwd(''); setNewPwd(''); setConfirmPwd(''); if (onBack) onBack(); }} style={{ padding: '8px 12px' }}>取消</Button>
                 </div>
             </form>
         </PageTemplate>

@@ -5,6 +5,7 @@ import AdminBanModal from "./AdminBanModal";
 import SelectInput from '../components/SelectInput';
 import useDarkMode from "../utils/useDarkMode";
 import TextInput from "../components/TextInput";
+import { useTips } from "../components/Tips";
 import defaultAvatar from '../img/default.png';
 
 function resolveBackendUrl() {
@@ -24,7 +25,7 @@ export default function AdminUsers({ backendUrl = null }) {
     const base = backendUrl || resolveBackendUrl();
     const { token, user, onRequireAuth } = useAuth();
     const [users, setUsers] = useState([]);
-    const [message, setMessage] = useState("");
+    const showTip = useTips();
     const [loading, setLoading] = useState(false);
     const [processing, setProcessing] = useState({});
     const [banModalOpen, setBanModalOpen] = useState(false);
@@ -45,13 +46,12 @@ export default function AdminUsers({ backendUrl = null }) {
     const handleUnauthorized = () => {
         setUsers([]);
         const authMsg = '未登录或授权已失效，请重新登录';
-        setMessage(authMsg);
+        showTip(authMsg);
         if (onRequireAuth) onRequireAuth();
     };
 
     const fetchUsers = async () => {
         setLoading(true);
-        setMessage("");
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token;
         try {
@@ -76,7 +76,7 @@ export default function AdminUsers({ backendUrl = null }) {
                     return;
                 }
                 if (res.status === 403) {
-                    setMessage('权限不足，无法获取用户列表');
+                    showTip('权限不足，无法获取用户列表');
                     return;
                 }
                 throw new Error(`服务器错误 ${res.status} ${txt}`);
@@ -89,7 +89,7 @@ export default function AdminUsers({ backendUrl = null }) {
             if (e && String(e.message || '').toLowerCase().includes('未登录')) {
                 // handled
             } else {
-                setMessage('加载失败: ' + (e.message || e));
+                showTip('加载失败: ' + (e.message || e));
             }
         } finally {
             setLoading(false);
@@ -97,7 +97,6 @@ export default function AdminUsers({ backendUrl = null }) {
     };
 
     const changeLevel = async (userId, newLevel) => {
-        setMessage("");
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token;
         try {
@@ -135,21 +134,20 @@ export default function AdminUsers({ backendUrl = null }) {
                     handleUnauthorized();
                     return;
                 }
-                setMessage(data.error || `更新失败 ${res.status}`);
+                showTip(data.error || `更新失败 ${res.status}`);
                 return;
             }
 
-            setMessage('权限已更新');
+            showTip('权限已更新');
             setUsers(list => list.map(u => u.id === userId ? { ...u, admin_level: newLevel || null } : u));
         } catch (e) {
             console.error('changeLevel failed', e);
-            setMessage('失败：' + (e.message || e));
+            showTip('失败：' + (e.message || e));
         }
     };
 
     const deleteUser = async (id) => {
         if (!window.confirm("确认删除此用户？")) return;
-        setMessage("");
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token;
         try {
@@ -176,15 +174,15 @@ export default function AdminUsers({ backendUrl = null }) {
                     handleUnauthorized();
                     return;
                 }
-                setMessage(data.error || `删除失败 ${res.status}`);
+                showTip(data.error || `删除失败 ${res.status}`);
                 return;
             }
 
-            setMessage('用户已删除');
+            showTip('用户已删除');
             setUsers(list => list.filter(u => u.id !== id));
         } catch (e) {
             console.error('deleteUser failed', e);
-            setMessage('失败：' + (e.message || e));
+            showTip('失败：' + (e.message || e));
         }
     };
 
@@ -197,7 +195,6 @@ export default function AdminUsers({ backendUrl = null }) {
         if (!banTarget) return;
         const id = banTarget.id;
         setProcessing(p => ({ ...p, [id]: true }));
-        setMessage("");
         try {
             const headers = {
                 'Content-Type': 'application/json',
@@ -217,14 +214,14 @@ export default function AdminUsers({ backendUrl = null }) {
                     handleUnauthorized();
                     return;
                 }
-                setMessage(data.error || `封禁失败 ${res.status}`);
+                showTip(data.error || `封禁失败 ${res.status}`);
                 return;
             }
             setUsers(list => list.map(x => x.id === id ? { ...x, is_banned: 1, ban_reason: reason || null, ban_expires: data && data.ban_expires ? data.ban_expires : null } : x));
-            setMessage('用户已封禁');
+            showTip('用户已封禁');
         } catch (e) {
             console.error('banUser failed', e);
-            setMessage('封禁失败：' + (e.message || e));
+            showTip('封禁失败：' + (e.message || e));
         } finally {
             setProcessing(p => ({ ...p, [banTarget.id]: false }));
             setBanModalOpen(false);
@@ -233,7 +230,6 @@ export default function AdminUsers({ backendUrl = null }) {
     };
 
     const unbanUser = async (id) => {
-        setMessage("");
         setProcessing(p => ({ ...p, [id]: true }));
         try {
             const headers = {
@@ -251,14 +247,14 @@ export default function AdminUsers({ backendUrl = null }) {
                     handleUnauthorized();
                     return;
                 }
-                setMessage(data.error || `解除封禁失败 ${res.status}`);
+                showTip(data.error || `解除封禁失败 ${res.status}`);
                 return;
             }
-            setMessage('已解除封禁');
+            showTip('已解除封禁');
             setUsers(list => list.map(u => u.id === id ? { ...u, is_banned: 0, ban_reason: null, ban_expires: null } : u));
         } catch (e) {
             console.error('unbanUser failed', e);
-            setMessage('解除封禁失败：' + (e.message || e));
+            showTip('解除封禁失败：' + (e.message || e));
         } finally {
             setProcessing(p => ({ ...p, [id]: false }));
         }
@@ -295,8 +291,7 @@ export default function AdminUsers({ backendUrl = null }) {
                 />
                 <Button themeAware onClick={fetchUsers} disabled={loading}>刷新</Button>
             </div>
-            {message && <div style={{ color: "red" }}>{message}</div>}
-            {loading ? (
+                        {loading ? (
                 <div>加载中…</div>
             ) : filtered.length === 0 ? (
                 <div>未找到匹配的用户。</div>
