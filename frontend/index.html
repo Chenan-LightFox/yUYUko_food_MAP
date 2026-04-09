@@ -5,9 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>东方饭联地图</title>
-    <script type="text/javascript">
+    <script type="module">
+        // 动态解析 AMap 安全服务地址：优先使用 Vite 环境变量 VITE_BACKEND_URL，
+        // 否则回退到当前页面的 origin，方便在远程部署时使用同源后端或反向代理。
+        const _backend = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL)
+            ? String(import.meta.env.VITE_BACKEND_URL).replace(/\/+$|\s+/g, '')
+            : window.location.origin;
         window._AMapSecurityConfig = {
-            serviceHost: "http://localhost:2053/_AMapService",
+            serviceHost: _backend + '/_AMapService'
         };
     </script>
     <script

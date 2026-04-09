@@ -23,10 +23,17 @@ function normalizeUrl(url) {
 
 function resolveBackendUrl() {
     if (typeof window !== "undefined") {
-        const { protocol, hostname } = window.location;
-        console.log(`Resolved backend URL: ${protocol}//${hostname}:2053`);
-
-        return `${protocol}//${hostname}:2053`;
+        // 优先使用 Vite 注入的 VITE_BACKEND_URL（在构建/部署时设置），
+        // 否则回退到当前页面的 origin（便于同源部署或反向代理）。
+        const envBackend = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env.VITE_BACKEND_URL : undefined;
+        if (envBackend && String(envBackend).trim()) {
+            const v = String(envBackend).replace(/\/+$/g, '');
+            console.log(`Resolved backend URL from VITE_BACKEND_URL: ${v}`);
+            return v;
+        }
+        const origin = window.location.origin;
+        console.log(`Resolved backend URL from window.location.origin: ${origin}`);
+        return origin;
     }
 
     return "http://localhost:2053";
