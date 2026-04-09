@@ -26,8 +26,14 @@ function normalizeInputDateTime(value) {
     return `${y}-${m}-${day}T${hh}:${mm}`;
 }
 
-function buildShareUrl(id) {
-    const path = `/dinners/${id}`;
+function buildShareUrl(id, backendUrl) {
+    const normalizedBackend = String(backendUrl || '').replace(/\/+$/, '');
+    // Use backend share endpoint so crawlers and direct opens always hit an existing HTML route with OG tags.
+    if (normalizedBackend) {
+        return `${normalizedBackend}/dinners/${id}/share`;
+    }
+
+    const path = `/dinners/${id}/share`;
     if (typeof window === 'undefined' || !window.location || !window.location.origin) {
         return path;
     }
@@ -254,7 +260,7 @@ export function DinnerDetailPage({ backendUrl, dinnerId, token, currentUserId, i
         return () => { cancelled = true; };
     }, [backendUrl, dinnerId]);
 
-    const shareUrl = item ? buildShareUrl(item.id) : '';
+    const shareUrl = item ? buildShareUrl(item.id, backendUrl) : '';
     const ogImageUrl = item ? `${String(backendUrl).replace(/\/+$/, '')}/dinners/${item.id}/og-image` : '';
     const canDelete = !!(item && token && ((currentUserId && String(item.creator_id) === String(currentUserId)) || isAdmin));
 
