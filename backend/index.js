@@ -38,6 +38,14 @@ const STATIC_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "https://127.0.0.1:5173"
 ];
+// Add common production origins to avoid CORS issues when frontend is served from a different host/port
+STATIC_ALLOWED_ORIGINS.push(
+    "https://dinnerparty.cc",
+    "https://www.dinnerparty.cc",
+    "https://cn.dinnerparty.cc",
+    "https://cn.dinnerparty.cc:8443",
+    "https://dinnerparty.cc:8443"
+);
 const EXTRA_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || "")
     .split(",")
     .map((v) => v.trim())
@@ -57,9 +65,13 @@ app.use(cors({
     origin: (origin, callback) => {
         // origin 为空时（例如某些本地请求或 curl），允许通过
         if (!origin) {
+            console.log('CORS: request with no Origin header (allowing)');
             return callback(null, true);
         }
-        if (isAllowedOrigin(origin)) {
+        const allowed = isAllowedOrigin(origin);
+        // log origin and decision — helpful for diagnosing production CORS failures
+        console.log(`CORS: origin='${origin}', allowed=${allowed}`);
+        if (allowed) {
             return callback(null, true);
         }
         return callback(new Error('Not allowed by CORS'));
