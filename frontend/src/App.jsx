@@ -291,6 +291,7 @@ export default function App() {
                                 token={token}
                                 isAuthenticated={isAuth}
                                 onRequireAuth={() => setShowAuth(true)}
+                                onOpenDinnerCreate={() => goPath('/dinners/new')}
                             />
                         </div>
 
@@ -316,7 +317,7 @@ export default function App() {
                                 isAuth={isAuth}
                                 onRequireAuth={() => setShowAuth(true)}
                                 onCreated={(dinner) => goPath(`/dinners/${dinner.id}`)}
-                                onBack={() => goPath('/dinners')}
+                                onBack={() => goPath('/')}
                             />
                         )}
 
@@ -324,6 +325,9 @@ export default function App() {
                             <DinnerDetailPage
                                 backendUrl={BACKEND_URL}
                                 dinnerId={dinnerId}
+                                token={token}
+                                currentUserId={user && user.id}
+                                isAdmin={isAdmin}
                                 onBackList={() => goPath('/dinners')}
                                 onGoHome={() => goPath('/')}
                             />

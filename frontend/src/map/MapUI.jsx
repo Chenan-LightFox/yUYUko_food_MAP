@@ -31,6 +31,7 @@ export default function MapUI(props) {
         addMode,
         handleToggleAddMode,
         addPlaceTipText,
+        onOpenDinnerCreate,
         popupPoint,
         selectedPlace,
         getLastModifierText,
@@ -272,6 +273,38 @@ export default function MapUI(props) {
                         </Tooltip>
                     </div>
                 </div>
+            </div>
+
+            <div style={{ position: "absolute", left: 16, bottom: 32, zIndex: 2000 }}>
+                <Tooltip text={authPending ? '正在验证登录状态，请稍候再试' : '发起聚餐'} placement="top">
+                    <div style={{ display: "inline-block" }}>
+                        <Button
+                            onClick={() => { if (typeof onOpenDinnerCreate === 'function') onOpenDinnerCreate(); }}
+                            disabled={!mapReady || authPending}
+                            aria-label="发起聚餐"
+                            style={{
+                                width: 64,
+                                height: 64,
+                                padding: 0,
+                                borderRadius: '50%',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: customThemeColor,
+                                color: '#fff',
+                                border: 'none',
+                                boxShadow: '0 4px 12px rgba(0,47,167,0.2)',
+                                transition: 'background 180ms ease, transform 220ms ease',
+                                cursor: (!mapReady || authPending) ? 'not-allowed' : 'pointer',
+                                opacity: (!mapReady || authPending) ? 0.6 : 1
+                            }}
+                        >
+                            <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 36 }}>
+                                flatware
+                            </span>
+                        </Button>
+                    </div>
+                </Tooltip>
             </div>
 
             <div style={{ position: "absolute", right: 8, bottom: 8, zIndex: 2000 }}>

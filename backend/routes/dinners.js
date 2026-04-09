@@ -170,6 +170,30 @@ router.post("/", requireAuth, (req, res) => {
     );
 });
 
+router.delete("/:id", requireAuth, (req, res) => {
+    db.get(
+        `SELECT id, creator_id
+         FROM DinnerEvent
+         WHERE id = ?`,
+        [req.params.id],
+        (err, row) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (!row) return res.status(404).json({ error: "聚餐活动不存在" });
+
+            const isCreator = String(row.creator_id) === String(req.user.id);
+            const isAdmin = !!(req.user && req.user.admin_level);
+            if (!isCreator && !isAdmin) {
+                return res.status(403).json({ error: "仅活动发起人或管理员可删除该聚餐" });
+            }
+
+            db.run("DELETE FROM DinnerEvent WHERE id = ?", [req.params.id], function (e2) {
+                if (e2) return res.status(500).json({ error: e2.message });
+                return res.json({ success: true, id: Number(req.params.id) });
+            });
+        }
+    );
+});
+
 router.get("/:id/og-image", (req, res) => {
     db.get(
         `SELECT d.*, u.username AS creator_name

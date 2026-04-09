@@ -125,3 +125,33 @@ export async function createDinner(backendUrl, token, payload) {
     if (!res.ok) throw new Error(data.error || `创建聚餐失败 ${res.status}`);
     return normalizeDinner(data);
 }
+
+export async function deleteDinner(backendUrl, token, id) {
+    const targets = [
+        `${backendUrl}/dinners/${id}`,
+        `${backendUrl}/api/dinners/${id}`
+    ];
+
+    let lastError = null;
+    for (const url of targets) {
+        const res = await fetch(url, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+            return res.json().catch(() => ({ success: true }));
+        }
+
+        const data = await res.json().catch(() => ({}));
+        const msg = data.error || `删除聚餐失败 ${res.status}`;
+
+        // 若是 404，继续尝试兼容路径；其他错误直接抛出
+        if (res.status !== 404) {
+            throw new Error(msg);
+        }
+        lastError = new Error(msg);
+    }
+
+    throw (lastError || new Error('删除聚餐失败 404'));
+}

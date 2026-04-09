@@ -237,11 +237,6 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
                                 </Button>
 
                                 <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
-                                <Button variant="menu" full onClick={() => { setOpen(false); if (isAuth) { onOpenDinnerCreate && onOpenDinnerCreate(); } else { onOpenAuth && onOpenAuth(); } }} style={{ color: menuTextColor }}>
-                                    发起聚餐
-                                </Button>
-
-                                <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
                                 <Button variant="menu" full onClick={() => { setOpen(false); onLogout && onLogout(); }} style={{ color: dark ? '#ff8a93' : '#b00020' }}>
                                     注销
                                 </Button>

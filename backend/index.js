@@ -132,6 +132,7 @@ app.use("/users", usersRouter);
 app.use("/place-requests", placeRequestsRouter);
 app.use("/api/place-requests", placeRequestsRouter); // 兼容前端或旧接口可能带 /api 前缀
 app.use("/dinners", dinnersRouter);
+app.use("/api/dinners", dinnersRouter);
 
 app.get("/", (req, res) => res.json({ ok: true, msg: "yUYUko Food Map Backend" }));
 
