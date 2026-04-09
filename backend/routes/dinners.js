@@ -55,9 +55,10 @@ function buildFrontendDinnerUrl(req, id) {
 
     const protocol = req.protocol || "http";
     const host = req.get("host") || "localhost:2053";
-    if (/^(localhost|127\.0\.0\.1):2053$/i.test(host)) {
+    if (/:2053$/i.test(host)) {
         return `${protocol}://${host.replace(/:2053$/i, ":5173")}/dinners/${id}`;
     }
+
     return `${protocol}://${host}/dinners/${id}`;
 }
 
