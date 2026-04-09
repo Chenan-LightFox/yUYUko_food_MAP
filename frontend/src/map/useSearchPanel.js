@@ -40,16 +40,14 @@ export function useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLoc
 
                 if (cancel) return;
 
-                const processMarked = (markedData || []).map(p => {
+                const processMarked = (markedData || []).map((p, idx) => {
                     const lat = p.latitude;
                     const lng = p.longitude;
-                    const isInside = (bounds && window.AMap) ? bounds.contains(new window.AMap.LngLat(lng, lat)) : false;
                     const dist = (centerNode && window.AMap) ? window.AMap.GeometryUtil.distance(centerNode, new window.AMap.LngLat(lng, lat)) : (p.distance || 9999999);
-                    return { ...p, isMarked: true, isInside, dist, rank: p.rank || 0 };
+                    return { ...p, isMarked: true, dist, rank: idx }; // 优先保留来自后端的关键词相关度排序
                 });
 
-                const markedInView = processMarked.filter(p => p.isInside).sort((a, b) => a.dist - b.dist);
-                const markedOthers = processMarked.filter(p => !p.isInside).sort((a, b) => a.rank - b.rank || a.dist - b.dist);
+                const markedPoints = processMarked.sort((a, b) => a.rank - b.rank || a.dist - b.dist);
 
                 // 2. Fetch AMap POI (unmarked points)
                 let unmarkedData = [];
@@ -57,28 +55,37 @@ export function useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLoc
                     unmarkedData = await new Promise(resolve => {
                         window.AMap.plugin('AMap.PlaceSearch', () => {
                             const ps = new window.AMap.PlaceSearch({
-                                city: '全国',
                                 pageSize: 20,
                                 pageIndex: 1
                             });
-                            ps.search(searchTerm.trim(), (status, result) => {
-                                if (status === 'complete' && result.info === 'OK') {
-                                    resolve(result.poiList.pois || []);
-                                } else {
-                                    resolve([]);
-                                }
-                            });
+                            const cpoint = centerNode ? [centerNode.lng, centerNode.lat] : null;
+                            if (cpoint) {
+                                ps.searchNearBy(searchTerm.trim(), cpoint, 20000, (status, result) => {
+                                    if (status === 'complete' && result.info === 'OK') {
+                                        resolve(result.poiList.pois || []);
+                                    } else {
+                                        resolve([]);
+                                    }
+                                });
+                            } else {
+                                ps.search(searchTerm.trim(), (status, result) => {
+                                    if (status === 'complete' && result.info === 'OK') {
+                                        resolve(result.poiList.pois || []);
+                                    } else {
+                                        resolve([]);
+                                    }
+                                });
+                            }
                         });
                     });
                 }
 
                 if (cancel) return;
 
-                const processUnmarked = unmarkedData.map(p => {
+                const processUnmarked = unmarkedData.map((p, idx) => {
                     const lng = p.location?.lng;
                     const lat = p.location?.lat;
                     if (!lng || !lat) return null;
-                    const isInside = (bounds && window.AMap) ? bounds.contains(new window.AMap.LngLat(lng, lat)) : false;
                     const dist = (centerNode && window.AMap) ? window.AMap.GeometryUtil.distance(centerNode, new window.AMap.LngLat(lng, lat)) : 9999999;
                     return {
                         id: 'amap_' + p.id,
@@ -87,32 +94,29 @@ export function useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLoc
                         latitude: lat,
                         address: p.address || `${p.pname || ''}${p.cityname || ''}${p.adname || ''}`,
                         isMarked: false,
-                        isInside,
-                        dist
+                        dist,
+                        rank: idx // AMap 原本返回的排序（关键词相关度优先）
                     };
                 }).filter(Boolean);
 
-                const unmarkedInView = processUnmarked.filter(p => p.isInside).sort((a, b) => a.dist - b.dist);
-                const unmarkedOthers = processUnmarked.filter(p => !p.isInside).sort((a, b) => a.dist - b.dist);
+                const unmarkedPoints = processUnmarked.sort((a, b) => a.rank - b.rank || a.dist - b.dist);
 
-                const finalMarkedInView = markedInView.slice(0, 5);
-                const hasMoreMarkedInView = markedInView.length > 5;
+                const finalMarked = markedPoints.slice(0, 5);
+                const hasMoreMarked = markedPoints.length > 5;
 
-                const finalUnmarkedInView = unmarkedInView.slice(0, 5);
-                const hasMoreUnmarkedInView = unmarkedInView.length > 5;
+                const finalUnmarked = unmarkedPoints.slice(0, 5);
+                const hasMoreUnmarked = unmarkedPoints.length > 5;
 
                 const othersCombined = [
-                    ...markedInView.slice(5),
-                    ...unmarkedInView.slice(5),
-                    ...markedOthers,
-                    ...unmarkedOthers
+                    ...markedPoints.slice(5),
+                    ...unmarkedPoints.slice(5)
                 ].slice(0, 10);
 
                 setResults({
-                    markedInView: finalMarkedInView,
-                    hasMoreMarkedInView,
-                    unmarkedInView: finalUnmarkedInView,
-                    hasMoreUnmarkedInView,
+                    markedInView: finalMarked,
+                    hasMoreMarkedInView: hasMoreMarked,
+                    unmarkedInView: finalUnmarked,
+                    hasMoreUnmarkedInView: hasMoreUnmarked,
                     others: othersCombined
                 });
 

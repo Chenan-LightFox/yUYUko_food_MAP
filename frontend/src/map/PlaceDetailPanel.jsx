@@ -1,6 +1,7 @@
 import React from 'react';
 import Button from '../components/Button';
 import useDarkMode from '../utils/useDarkMode';
+import ScrollableView from '../components/ScrollableView';
 
 export default function PlaceDetailPanel({ place, onClose }) {
     const dark = useDarkMode();
@@ -18,19 +19,12 @@ export default function PlaceDetailPanel({ place, onClose }) {
             borderRadius: 8, boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
             display: 'flex', flexDirection: 'column', zIndex: 5000
         }}>
-            <style>{`
-                .detail-scroll::-webkit-scrollbar { width: 6px; }
-                .detail-scroll::-webkit-scrollbar-track { background: transparent; }
-                .detail-scroll::-webkit-scrollbar-thumb { background: ${dark ? '#475569' : '#cbd5e1'}; border-radius: 4px; }
-                .detail-scroll::-webkit-scrollbar-thumb:hover { background: ${dark ? '#64748b' : '#94a3b8'}; }
-            `}</style>
-
             <div style={{ padding: '16px 20px', borderBottom: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2 style={{ margin: 0, fontSize: 18 }}>{place.name} 详情</h2>
                 <Button variant="secondary" onClick={onClose} style={{ padding: '4px 8px', color: dark ? '#e5e7eb' : undefined }}>关闭</Button>
             </div>
 
-            <div className="detail-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+            <ScrollableView style={{ flex: 1, padding: '20px' }}>
                 <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 13, color: dark ? '#94a3b8' : '#64748b', marginBottom: 4 }}>分类</div>
                     <div>{place.category || '暂无'}</div>
@@ -68,7 +62,7 @@ export default function PlaceDetailPanel({ place, onClose }) {
                         暂无相关图片
                     </div>
                 )}
-            </div>
+            </ScrollableView>
         </div>
     );
 }

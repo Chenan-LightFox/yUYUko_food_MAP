@@ -4,6 +4,7 @@ import TextInput from '../components/TextInput';
 import PlaceImageInputs from './PlaceImageInputs';
 import { useTips } from '../components/Tips';
 import useDarkMode from '../utils/useDarkMode';
+import ScrollableView from '../components/ScrollableView';
 
 export default function AddForm({ backendUrl, token, defaultPos, onCancel, onSubmit }) {
     const [name, setName] = useState("");
@@ -51,12 +52,6 @@ export default function AddForm({ backendUrl, token, defaultPos, onCancel, onSub
 
     return (
         <div style={{ width: 320 }}>
-            <style>{`
-                .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-                .custom-scrollbar::-webkit-scrollbar-track { background: ${dark ? '#1e293b' : '#f1f5f9'}; border-radius: 4px; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: ${dark ? '#475569' : '#cbd5e1'}; border-radius: 4px; }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: ${dark ? '#64748b' : '#94a3b8'}; }
-            `}</style>
             <div><strong style={{ color: dark ? '#e5e7eb' : undefined }}>经纬度：</strong><span style={{ color: dark ? '#e5e7eb' : undefined }}>{defaultPos[1].toFixed(6)}, {defaultPos[0].toFixed(6)}</span></div>
             <div style={{ marginTop: 8 }}>
                 <TextInput placeholder="店名" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%" }} />
@@ -70,7 +65,7 @@ export default function AddForm({ backendUrl, token, defaultPos, onCancel, onSub
                     style={{ width: "100%", cursor: "pointer" }}
                 />
                 {showCategoryMenu && (
-                    <div className="custom-scrollbar" style={{
+                    <ScrollableView style={{
                         position: 'absolute', top: '100%', left: 0, width: '100%',
                         background: dark ? '#1e293b' : '#fff',
                         border: `1px solid ${dark ? '#334155' : '#ccc'}`,
@@ -121,7 +116,7 @@ export default function AddForm({ backendUrl, token, defaultPos, onCancel, onSub
                                 </div>
                             </div>
                         ))}
-                    </div>
+                    </ScrollableView>
                 )}
             </div>
             <div style={{ marginTop: 8 }}>

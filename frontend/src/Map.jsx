@@ -672,7 +672,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         }
     };
 
-    // 使用后端 /api/places/search 接口进行搜索（注意 /api 前缀）
+    // 使用后端 /api/places/search 接口进行搜索，并混合高德地图 API 非标记点结果
     const searchServer = async ({ q = "", center = undefined, limit = 200 } = {}) => {
         if (!mapRef.current && !center) {
             console.warn("searchServer: 地图尚未就绪且未传入 center，直接返回");
@@ -680,7 +680,56 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         }
         setSearching(true);
         try {
-            const data = await Api.searchPlaces(backendUrl, { q, center, limit });
+            const markedData = await Api.searchPlaces(backendUrl, { q, center, limit });
+
+            let unmarkedData = [];
+            if (window.AMap && q && q.trim()) {
+                unmarkedData = await new Promise(resolve => {
+                    window.AMap.plugin('AMap.PlaceSearch', () => {
+                        const ps = new window.AMap.PlaceSearch({
+                            pageSize: 20,
+                            pageIndex: 1
+                        });
+                        const cpoint = center ? [center.lng, center.lat] : (mapRef.current ? [mapRef.current.getCenter().lng, mapRef.current.getCenter().lat] : null);
+
+                        if (cpoint) {
+                            ps.searchNearBy(q.trim(), cpoint, 2000, (status, result) => {
+                                if (status === 'complete' && result.info === 'OK') {
+                                    resolve(result.poiList.pois || []);
+                                } else {
+                                    resolve([]);
+                                }
+                            });
+                        } else {
+                            ps.search(q.trim(), (status, result) => {
+                                if (status === 'complete' && result.info === 'OK') {
+                                    resolve(result.poiList.pois || []);
+                                } else {
+                                    resolve([]);
+                                }
+                            });
+                        }
+                    });
+                });
+            }
+
+            const processUnmarked = unmarkedData.map(p => {
+                const lng = p.location?.lng;
+                const lat = p.location?.lat;
+                if (!lng || !lat) return null;
+                return {
+                    id: 'amap_' + p.id,
+                    name: p.name,
+                    longitude: lng,
+                    latitude: lat,
+                    address: p.address || `${p.pname || ''}${p.cityname || ''}${p.adname || ''}`,
+                    category: p.type || "非标记点",
+                    isMarked: false
+                };
+            }).filter(Boolean);
+
+            const data = [...markedData, ...processUnmarked];
+
             setSearchResults(data);
             renderMarkers(mapRef.current, markersRef, data, showPopup);
             // 若匹配成功，调整视野到所有匹配 marker

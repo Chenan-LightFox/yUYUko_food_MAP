@@ -6,6 +6,7 @@ import AddForm from './AddForm';
 import PlaceDetailPanel from './PlaceDetailPanel';
 import useDarkMode from '../utils/useDarkMode';
 import { useSearchPanel } from './useSearchPanel';
+import ScrollableView from '../components/ScrollableView';
 
 export default function MapUI(props) {
     const {
@@ -202,13 +203,12 @@ export default function MapUI(props) {
                     />
 
                     {searchOpen && searchTerm && (spLoading || spResults) && (
-                        <div style={{
+                        <ScrollableView style={{
                             position: 'absolute',
-                            top: 52,
-                            right: 52,
-                            width: 280,
+                            top: 48,
+                            right: 0,
+                            width: 320,
                             maxHeight: '60vh',
-                            overflowY: 'auto',
                             background: dark ? '#0b1220' : '#fff',
                             borderRadius: 8,
                             boxShadow: searchOpen ? `0 4px 12px ${hexToRgba(customThemeColor, 0.2)}` : 'none',
@@ -235,7 +235,7 @@ export default function MapUI(props) {
                                     )}
                                 </>
                             )}
-                        </div>
+                        </ScrollableView>
                     )}
 
                     <div style={{ position: 'absolute', right: 0, top: 0 }}>
@@ -336,7 +336,7 @@ export default function MapUI(props) {
                     </div>
 
                     <div style={{ padding: "4px 8px", background: "rgba(0,0,0,0.5)", color: "#fff", borderRadius: "12px", fontSize: "12px", pointerEvents: "none", userSelect: "none" }}>
-                        v1.0.2
+                        v1.1.0beta
                     </div>
                 </div>
             </div>

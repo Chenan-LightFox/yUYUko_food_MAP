@@ -17,7 +17,7 @@ const adminGeneralUsersRouter = require("./routes/admin/adminGeneralUsers");
 const adminAuditRouter = require('./routes/admin/adminAudit');
 const placeRequestsRouter = require("./routes/placeRequests");
 const { requireAuth } = require("./middleware/auth");
-
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
 // When running behind an HTTPS reverse proxy (e.g. nginx), enable trust proxy
@@ -68,6 +68,44 @@ app.use(cors({
     credentials: true,
     maxAge: 3600
 }));
+
+app.use(
+    '/_AMapService',
+    createProxyMiddleware({
+        target: 'https://api.amap.com/',
+        changeOrigin: true,
+        pathRewrite: { '^/_AMapService': '' },
+        router: function (req) {
+            // 根据路径动态选择被代理的服务器地址，PlaceSearch组件（/v3/place/text）等都在restapi
+            if (req.url.includes('/v3/') || req.url.includes('/v4/') || req.url.includes('/v5/')) {
+                return 'https://restapi.amap.com/';
+            }
+            return 'https://api.amap.com/';
+        },
+        on: {
+            proxyReq: (proxyReq, req, res) => {
+                let path = proxyReq.path;
+                if (!path) {
+                    path = req.url.replace(/^\/_AMapService/, '');
+                }
+
+                if (path.includes('?')) {
+                    path += '&jscode=03eac183dd628c79981e675c8cab45f8';
+                } else {
+                    path += '?jscode=03eac183dd628c79981e675c8cab45f8';
+                }
+                proxyReq.path = path;
+
+                // 根据上面 router 的逻辑，动态修改 Host
+                if (req.url.includes('/v3/') || req.url.includes('/v4/') || req.url.includes('/v5/')) {
+                    proxyReq.setHeader('Host', 'restapi.amap.com');
+                } else {
+                    proxyReq.setHeader('Host', 'api.amap.com');
+                }
+            }
+        }
+    })
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

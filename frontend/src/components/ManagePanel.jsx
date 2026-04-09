@@ -3,6 +3,7 @@ import Button from './Button';
 import TextInput from './TextInput';
 import PlaceImageInputs from '../map/PlaceImageInputs';
 import useDarkMode from '../utils/useDarkMode';
+import ScrollableView from './ScrollableView';
 
 const CATEGORY_DATA = [
     { group: '中餐厅', items: ['上海菜', '东北菜', '中式素菜馆', '中餐厅', '云贵菜', '北京菜', '台湾菜', '四川菜(川菜)', '安徽菜(徽菜)', '山东菜(鲁菜)', '广东菜(粤菜)', '江苏菜', '浙江菜', '清真菜馆', '湖北菜(鄂菜)', '湖南菜(湘菜)', '潮州菜', '火锅店', '福建菜', '西北菜'] },
@@ -50,12 +51,6 @@ export default function ManagePanel({
             background: dark ? '#0b1220' : '#fff', padding: 12, zIndex: 5000, borderRadius: 6, boxShadow: dark ? "0 6px 24px rgba(0,0,0,0.6)" : "0 4px 18px rgba(0,0,0,0.35)",
             minWidth: 360, maxWidth: "90%"
         }}>
-            <style>{`
-                .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-                .custom-scrollbar::-webkit-scrollbar-track { background: ${dark ? '#1e293b' : '#f1f5f9'}; border-radius: 4px; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: ${dark ? '#475569' : '#cbd5e1'}; border-radius: 4px; }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: ${dark ? '#64748b' : '#94a3b8'}; }
-            `}</style>
             <h4 style={{ margin: 0, color: dark ? '#e5e7eb' : 'inherit' }}>管理地点 — {selectedPlace.name}</h4>
             <div style={{ marginTop: 8, color: dark ? '#e5e7eb' : '#333' }}>
                 <div>
@@ -73,7 +68,7 @@ export default function ManagePanel({
                             placeholder="请选择分类（可多选）"
                         />
                         {showCategoryMenu && (
-                            <div className="custom-scrollbar" style={{
+                            <ScrollableView style={{
                                 position: 'absolute', top: '100%', left: 0, width: '100%',
                                 background: dark ? '#1e293b' : '#fff',
                                 border: `1px solid ${dark ? '#334155' : '#ccc'}`,
@@ -125,17 +120,18 @@ export default function ManagePanel({
                                         </div>
                                     </div>
                                 ))}
-                            </div>
+                            </ScrollableView>
                         )}
                     </div>
                 </div>
                 <div style={{ marginTop: 8 }}>
                     <label style={{ display: "block", fontSize: 12, color: dark ? '#9ca3af' : '#666' }}>描述</label>
                     <textarea value={manageEdit.description} onChange={(e) => setManageEdit(me => ({ ...me, description: e.target.value }))} style={{ width: "100%", border: dark ? '1px solid #334155' : undefined, background: dark ? '#07101a' : undefined, color: dark ? '#e5e7eb' : undefined }} />
-                </div>                  <div style={{ marginTop: 8, maxHeight: "150px", overflowY: "auto" }} className="custom-scrollbar">
+                </div>
+                <ScrollableView style={{ marginTop: 8, maxHeight: "150px", overflowY: "auto" }}>
                     <PlaceImageInputs backendUrl={backendUrl} token={token} images={manageEdit.exterior_images || []} setImages={(imgs) => setManageEdit(me => ({ ...me, exterior_images: imgs }))} label="外观/招牌图片" />
                     <PlaceImageInputs backendUrl={backendUrl} token={token} images={manageEdit.menu_images || []} setImages={(imgs) => setManageEdit(me => ({ ...me, menu_images: imgs }))} label="菜单图片" />
-                </div>
+                </ScrollableView>
                 <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ color: dark ? '#9ca3af' : '#888', fontSize: 12 }}>
                         {canDirectManage() ? "您是创建者或管理员，可直接修改或删除。" : "您不是创建者，提交修改申请后由管理员审核。"}

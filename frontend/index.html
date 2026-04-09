@@ -5,8 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>东方饭联地图</title>
+    <script type="text/javascript">
+        window._AMapSecurityConfig = {
+            serviceHost: "http://localhost:2053/_AMapService",
+        };
+    </script>
     <script
-        src="https://webapi.amap.com/maps?v=2.0&key=c92da5ff295d79be6e55c3dd2946a272&plugin=AMap.MarkerCluster"></script>
+        src="https://webapi.amap.com/maps?v=2.0&key=c92da5ff295d79be6e55c3dd2946a272&plugin=AMap.MarkerCluster,AMap.PlaceSearch,AMap.Geolocation,AMap.InfoWindow"></script>
     <style>
         :root {
             --app-height: 100vh;
