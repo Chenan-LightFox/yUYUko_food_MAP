@@ -91,7 +91,7 @@ app.use(
         router: function (req) {
             // 根据路径动态选择被代理的服务器地址，PlaceSearch组件（/v3/place/text）等都在restapi
             if (req.url.includes('/v3/') || req.url.includes('/v4/') || req.url.includes('/v5/')) {
-                return 'https://restapi.amap.com/';
+                return 'https://restyyyyapi.amap.com/';
             }
             return 'https://api.amap.com/';
         },
