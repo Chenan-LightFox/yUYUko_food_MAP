@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { searchPlaces } from './api';
 
-export function useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLocationMarkerRef) {
+export function useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLocationMarkerRef, places) {
     const [results, setResults] = useState(null);
     const [loading, setLoading] = useState(false);
 
@@ -82,10 +82,25 @@ export function useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLoc
 
                 if (cancel) return;
 
+                const allKnownPlaces = [...(places || []), ...markedPoints];
+                const isNearKnownPlace = (lng, lat) => {
+                    if (!window.AMap || !lng || !lat) return false;
+                    for (const p of allKnownPlaces) {
+                        if (!p.longitude || !p.latitude) continue;
+                        const d = window.AMap.GeometryUtil.distance(
+                            new window.AMap.LngLat(lng, lat),
+                            new window.AMap.LngLat(p.longitude, p.latitude)
+                        );
+                        if (d < 50) return true; // 视为同一个地点，过滤掉
+                    }
+                    return false;
+                };
+
                 const processUnmarked = unmarkedData.map((p, idx) => {
                     const lng = p.location?.lng;
                     const lat = p.location?.lat;
                     if (!lng || !lat) return null;
+                    if (isNearKnownPlace(lng, lat)) return null;
                     const dist = (centerNode && window.AMap) ? window.AMap.GeometryUtil.distance(centerNode, new window.AMap.LngLat(lng, lat)) : 9999999;
                     return {
                         id: 'amap_' + p.id,
