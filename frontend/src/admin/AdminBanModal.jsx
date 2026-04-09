@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Button from '../components/Button';
 import SelectInput from '../components/SelectInput';
+import TextArea from '../components/TextArea';
 import useDarkMode from '../utils/useDarkMode';
 
 export default function AdminBanModal({ open, onClose, onConfirm, targetUser }) {
@@ -48,7 +49,7 @@ export default function AdminBanModal({ open, onClose, onConfirm, targetUser }) 
 
                     <div>
                         <label style={{ display: 'block', marginBottom: 6, color: dark ? '#9ca3af' : '#666' }}>封禁原因（可选）</label>
-                        <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="请输入封禁原因" style={{ width: '96%', minHeight: 80, padding: 8, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }} />
+                        <TextArea value={reason} onChange={e => setReason(e.target.value)} placeholder="请输入封禁原因" style={{ width: '96%', minHeight: 80, padding: 8, border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#0b1220' : '#fff', color: dark ? '#e5e7eb' : 'inherit' }} />
                     </div>
 
                     <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>

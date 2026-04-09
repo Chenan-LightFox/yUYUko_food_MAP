@@ -1,5 +1,6 @@
 import React from 'react';
 import Button from '../components/Button';
+import TextArea from '../components/TextArea';
 import useDarkMode from '../utils/useDarkMode';
 
 export default function CommentPanel({
@@ -52,7 +53,7 @@ export default function CommentPanel({
 
             <div style={{ marginTop: 8 }}>
                 {message && <div style={{ color: '#c33', marginBottom: 8 }}>{message}</div>}
-                <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder={canPost ? '写下你的评论…' : '请登录后发表评论'} disabled={!canPost} style={{ width: '96%', minHeight: 80, padding: 8, border: dark ? '1px solid #334155' : undefined, background: dark ? '#07101a' : undefined, color: dark ? '#e5e7eb' : undefined }} />
+                <TextArea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder={canPost ? '写下你的评论…' : '请登录后发表评论'} disabled={!canPost} style={{ width: '96%', minHeight: 80, padding: 8, border: dark ? '1px solid #334155' : undefined, background: dark ? '#07101a' : undefined, color: dark ? '#e5e7eb' : undefined }} />
                 <div style={{ marginTop: 8, textAlign: 'right' }}>
                     <Button themeAware onClick={onSubmit} disabled={!canPost || submitting || !newComment || !newComment.trim()} style={{ marginRight: 8 }}>发布</Button>
                 </div>

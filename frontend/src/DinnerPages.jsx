@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Button from './components/Button';
 import TextInput from './components/TextInput';
+import TextArea from './components/TextArea';
 import JsonTable from './components/JsonTable';
 import { createDinner, deleteDinner, fetchDinnerById, fetchDinners } from './map/api';
 import { useTips } from './components/Tips';
@@ -200,7 +201,7 @@ export function DinnerCreatePage({ backendUrl, token, isAuth, onCreated, onRequi
                         <TextInput type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
                         <TextInput type="number" min={2} max={1000} value={maxParticipants} onChange={(e) => setMaxParticipants(e.target.value)} placeholder="人数上限（可选）" />
                         <TextInput value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} placeholder="联系方式（可选）" maxLength={200} />
-                        <textarea
+                        <TextArea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="活动说明（可选）"
@@ -211,8 +212,7 @@ export function DinnerCreatePage({ backendUrl, token, isAuth, onCreated, onRequi
                                 border: dark ? '1px solid #334155' : '1px solid #bcccdc',
                                 background: dark ? '#0b1220' : '#fff',
                                 color: dark ? '#e5e7eb' : '#102a43',
-                                padding: 12,
-                                resize: 'vertical'
+                                padding: 12
                             }}
                         />
 

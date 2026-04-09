@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Button from './Button';
 import TextInput from './TextInput';
+import TextArea from './TextArea';
 import PlaceImageInputs from '../map/PlaceImageInputs';
 import useDarkMode from '../utils/useDarkMode';
 import ScrollableView from './ScrollableView';
@@ -126,7 +127,7 @@ export default function ManagePanel({
                 </div>
                 <div style={{ marginTop: 8 }}>
                     <label style={{ display: "block", fontSize: 12, color: dark ? '#9ca3af' : '#666' }}>描述</label>
-                    <textarea value={manageEdit.description} onChange={(e) => setManageEdit(me => ({ ...me, description: e.target.value }))} style={{ width: "100%", border: dark ? '1px solid #334155' : undefined, background: dark ? '#07101a' : undefined, color: dark ? '#e5e7eb' : undefined }} />
+                    <TextArea value={manageEdit.description} onChange={(e) => setManageEdit(me => ({ ...me, description: e.target.value }))} style={{ width: "100%", border: dark ? '1px solid #334155' : undefined, background: dark ? '#07101a' : undefined, color: dark ? '#e5e7eb' : undefined }} />
                 </div>
                 <ScrollableView style={{ marginTop: 8, maxHeight: "150px", overflowY: "auto" }}>
                     <PlaceImageInputs backendUrl={backendUrl} token={token} images={manageEdit.exterior_images || []} setImages={(imgs) => setManageEdit(me => ({ ...me, exterior_images: imgs }))} label="外观/招牌图片" />
