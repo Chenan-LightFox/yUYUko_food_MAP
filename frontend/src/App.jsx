@@ -44,7 +44,7 @@ function resolveBackendUrl() {
                 // 优先走当前 origin，避免跨域与错误路由（例如 cn 子域访问主域 API 返回 404）。
                 if (isDinnerpartyHost(currentHost) && isDinnerpartyHost(envHost) && currentHost !== envHost) {
                     console.warn(`VITE_BACKEND_URL host (${envHost}) differs from current host (${currentHost}), fallback to current origin: ${origin}`);
-                    return origin;
+                    return origin.hostname + ":2053";
                 }
             } catch (e) {
                 // Ignore malformed URL and fall through to use configured value.
@@ -53,7 +53,7 @@ function resolveBackendUrl() {
             return v;
         }
         console.log(`Resolved backend URL from window.location.origin: ${origin}`);
-        return origin;
+        return origin.hostname + ":2053";
     }
 
     return "http://localhost:2053";
