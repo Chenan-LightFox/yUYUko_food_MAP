@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import TextInput from "../components/TextInput";
 import { useTips } from "../components/Tips";
+import { useConfirm } from "../components/Confirm";
 import { useAuth } from "../AuthContext";
 import useDarkMode from "../utils/useDarkMode";
 
@@ -37,6 +38,7 @@ export default function AdminInvitecode({ backendUrl = null }) {
     const [invites, setInvites] = useState([]);
     const [loading, setLoading] = useState(false);
     const showTip = useTips();
+    const confirm = useConfirm();
     const [creating, setCreating] = useState(false);
     const [maxUses, setMaxUses] = useState(1);
     const [lastCreatedCode, setLastCreatedCode] = useState("");
@@ -159,7 +161,7 @@ export default function AdminInvitecode({ backendUrl = null }) {
     };
 
     const deleteInvite = async (id) => {
-        if (!window.confirm('确认删除此邀请码？')) return;
+        if (!(await confirm('确认删除此邀请码？'))) return;
         setProcessing(p => ({ ...p, [id]: true }));
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token;
@@ -225,7 +227,7 @@ export default function AdminInvitecode({ backendUrl = null }) {
                 <Button themeAware onClick={fetchInvites} disabled={loading}>刷新</Button>
             </div>
 
-            
+
             <div style={{ marginBottom: 12, padding: 8, border: dark ? '1px solid #1f2937' : '1px solid #eee', borderRadius: 6, background: dark ? '#0b1220' : undefined }}>
                 <div style={{ marginBottom: 8 }}><strong>创建新邀请码</strong></div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>

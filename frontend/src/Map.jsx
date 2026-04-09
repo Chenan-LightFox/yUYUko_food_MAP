@@ -6,6 +6,7 @@ import { renderMarkers } from './map/markers';
 import MapUI from './map/MapUI';
 import CommentPanel from './components/CommentPanel';
 import { useTips } from "./components/Tips";
+import { useConfirm } from "./components/Confirm";
 import Tooltip from './components/Tooltip';
 import Button from './components/Button';
 import useDarkMode from './utils/useDarkMode';
@@ -53,6 +54,8 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     const [searchTerm, setSearchTerm] = useState("");
     const [searchResults, setSearchResults] = useState(null);
     const [searching, setSearching] = useState(false);
+    const showTip = useTips();
+    const confirm = useConfirm();
     const [locating, setLocating] = useState(false);
     const [locationError, setLocationError] = useState("");
     const [currentUser, setCurrentUser] = useState(null);
@@ -70,7 +73,6 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     const lastFetchedTokenRef = useRef(null);
     const hasToken = !!token;
     const authPending = hasToken && !isAuthenticated;
-    const showTip = useTips();
     // disallow write actions for banned users
     const isBanned = !!(currentUser && currentUser.is_banned);
     const canWrite = hasToken && isAuthenticated && !isBanned;
@@ -871,7 +873,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         if (!selectedPlace) return;
         if (!token) { onRequireAuth && onRequireAuth(); return; }
         if (isBanned) { showTip('您的账号已被封禁，无法删除地点'); return; }
-        if (!window.confirm("确认删除此地点？此操作不可恢复。")) return;
+        if (!(await confirm("确认删除此地点？此操作不可恢复。"))) return;
         setManageSubmitting(true);
         try {
             await Api.deletePlace(backendUrl, token, selectedPlace.id);

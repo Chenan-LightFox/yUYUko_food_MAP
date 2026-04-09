@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import TextInput from "../components/TextInput";
 import { useTips } from "../components/Tips";
+import { useConfirm } from "../components/Confirm";
 import { useAuth } from "../AuthContext";
 import JsonTable from "../components/JsonTable";
 import useDarkMode from "../utils/useDarkMode";
@@ -26,6 +27,7 @@ export default function AdminPlaces({ backendUrl = null }) {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(false);
     const showTip = useTips();
+    const confirm = useConfirm();
     const [processing, setProcessing] = useState({}); // id -> bool
     const [searchQuery, setSearchQuery] = useState('');
     const [page, setPage] = useState(1);
@@ -106,7 +108,7 @@ export default function AdminPlaces({ backendUrl = null }) {
     };
 
     const review = async (id, action) => {
-        if (!window.confirm(`确认要 ${action === 'approve' ? '通过' : '驳回'} 此申请？`)) return;
+        if (!(await confirm(`确认要 ${action === 'approve' ? '通过' : '驳回'} 此申请？`))) return;
         setProcessing(p => ({ ...p, [id]: true }));
         const thisFetchId = ++fetchIdRef.current; // bump to mark new action
         try {
@@ -199,7 +201,7 @@ export default function AdminPlaces({ backendUrl = null }) {
                         />
                         <Button themeAware onClick={fetchRequests} disabled={loading}>刷新</Button>
                     </div>
-                                        {loading ? (
+                    {loading ? (
                         <div>加载中…</div>
                     ) : (
                         <div>

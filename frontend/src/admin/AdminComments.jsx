@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import TextInput from "../components/TextInput";
 import { useTips } from "../components/Tips";
+import { useConfirm } from "../components/Confirm";
 import { useAuth } from "../AuthContext";
 import useDarkMode from "../utils/useDarkMode";
 import { getThemeColor } from "../utils/theme";
@@ -25,6 +26,7 @@ export default function AdminComments({ backendUrl = null }) {
     const [comments, setComments] = useState([]);
     const [loading, setLoading] = useState(false);
     const showTip = useTips();
+    const confirm = useConfirm();
     const [processing, setProcessing] = useState({});
     const dark = useDarkMode();
     const themeColor = getThemeColor();
@@ -108,7 +110,7 @@ export default function AdminComments({ backendUrl = null }) {
     };
 
     const deleteComment = async (id) => {
-        if (!window.confirm('确认删除此评论？')) return;
+        if (!(await confirm('确认删除此评论？'))) return;
         setProcessing(p => ({ ...p, [id]: true }));
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token;
@@ -161,7 +163,7 @@ export default function AdminComments({ backendUrl = null }) {
                 />
                 <Button themeAware onClick={fetchComments} disabled={loading}>刷新</Button>
             </div>
-            
+
             {loading ? (
                 <div>加载中…</div>
             ) : (

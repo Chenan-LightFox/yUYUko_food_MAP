@@ -6,6 +6,7 @@ import SelectInput from '../components/SelectInput';
 import useDarkMode from "../utils/useDarkMode";
 import TextInput from "../components/TextInput";
 import { useTips } from "../components/Tips";
+import { useConfirm } from "../components/Confirm";
 import defaultAvatar from '../img/default.png';
 
 function resolveBackendUrl() {
@@ -26,6 +27,7 @@ export default function AdminUsers({ backendUrl = null }) {
     const { token, user, onRequireAuth } = useAuth();
     const [users, setUsers] = useState([]);
     const showTip = useTips();
+    const confirm = useConfirm();
     const [loading, setLoading] = useState(false);
     const [processing, setProcessing] = useState({});
     const [banModalOpen, setBanModalOpen] = useState(false);
@@ -147,7 +149,7 @@ export default function AdminUsers({ backendUrl = null }) {
     };
 
     const deleteUser = async (id) => {
-        if (!window.confirm("确认删除此用户？")) return;
+        if (!(await confirm("确认删除此用户？"))) return;
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token;
         try {
@@ -291,7 +293,7 @@ export default function AdminUsers({ backendUrl = null }) {
                 />
                 <Button themeAware onClick={fetchUsers} disabled={loading}>刷新</Button>
             </div>
-                        {loading ? (
+            {loading ? (
                 <div>加载中…</div>
             ) : filtered.length === 0 ? (
                 <div>未找到匹配的用户。</div>

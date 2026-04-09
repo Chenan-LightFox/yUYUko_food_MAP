@@ -12,6 +12,7 @@ import AuthModal from "./components/AuthModal";
 import { AuthProvider } from "./AuthContext";
 import BanNotice from "./components/BanNotice";
 import { TipsProvider } from "./components/Tips";
+import { ConfirmProvider } from "./components/Confirm";
 import { applyDarkMode, applyThemeColor } from "./utils/theme";
 import useDarkMode from './utils/useDarkMode';
 
@@ -274,157 +275,159 @@ export default function App() {
     return (
         <AuthProvider value={authValue}>
             <TipsProvider>
-                <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
-                    <BanNotice />
-                    {!showAdminPage && !showSettingsAny && (
-                        <MapView
+                <ConfirmProvider>
+                    <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
+                        <BanNotice />
+                        {!showAdminPage && !showSettingsAny && (
+                            <MapView
+                                backendUrl={BACKEND_URL}
+                                token={token}
+                                isAuthenticated={isAuth}
+                                onRequireAuth={() => setShowAuth(true)}
+                            />
+                        )}
+
+                        {showAdminPage && (
+                            user ? (
+                                <AdminDashboard
+                                    user={user}
+                                    token={token}
+                                    backendUrl={BACKEND_URL}
+                                    onBackHome={() => goPath("/")}
+                                    onLogout={handleLogout}
+                                    onRequireAuth={handleRequireAuth}
+                                />
+                            ) : (
+                                <div style={placeholderStyle}>
+                                    正在验证登录状态...
+                                </div>
+                            )
+                        )}
+
+                        {showSettingsBase && (
+                            user ? (
+                                <Settings
+                                    user={user}
+                                    onBack={() => goPath("/")}
+                                    backendUrl={BACKEND_URL}
+                                    token={token}
+                                    onUpdateUser={handleLoginSuccess}
+                                    onLogout={handleLogout}
+                                    onOpenEditAvatar={() => goPath('/settings/avatar')}
+                                    onOpenEditUsername={() => goPath('/settings/username')}
+                                    onOpenEditPassword={() => goPath('/settings/password')}
+                                    onOpenPersonalize={() => goPath('/settings/personalize')}
+                                    onOpenThemes={() => goPath('/settings/themes')}
+                                />
+                            ) : (
+                                <div style={placeholderStyle}>
+                                    正在验证登录状态...
+                                </div>
+                            )
+                        )}
+
+                        {showSettingsPassword && (
+                            user ? (
+                                <EditPassword
+                                    user={user}
+                                    onBack={() => goPath('/settings')}
+                                    backendUrl={BACKEND_URL}
+                                    token={token}
+                                    onUpdateUser={handleLoginSuccess}
+                                />
+                            ) : (
+                                <div style={placeholderStyle}>
+                                    正在验证登录状态...
+                                </div>
+                            )
+                        )}
+
+                        {showSettingsPersonalize && (
+                            user ? (
+                                <PersonalizeMap
+                                    user={user}
+                                    onBack={() => goPath('/settings')}
+                                    backendUrl={BACKEND_URL}
+                                    token={token}
+                                    onUpdateUser={handleLoginSuccess}
+                                />
+                            ) : (
+                                <div style={placeholderStyle}>
+                                    正在验证登录状态...
+                                </div>
+                            )
+                        )}
+
+                        {showSettingsThemes && (
+                            user ? (
+                                <CustomThemes
+                                    user={user}
+                                    onBack={() => goPath('/settings')}
+                                    backendUrl={BACKEND_URL}
+                                    token={token}
+                                    onUpdateUser={handleLoginSuccess}
+                                />
+                            ) : (
+                                <div style={placeholderStyle}>
+                                    正在验证登录状态...
+                                </div>
+                            )
+                        )}
+
+                        {showSettingsEdit && (
+                            user ? (
+                                <EditUsername
+                                    user={user}
+                                    onBack={() => goPath('/settings')}
+                                    backendUrl={BACKEND_URL}
+                                    token={token}
+                                    onUpdateUser={handleLoginSuccess}
+                                />
+                            ) : (
+                                <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    正在验证登录状态...
+                                </div>
+                            )
+                        )}
+
+                        {showSettingsAvatar && (
+                            user ? (
+                                <EditAvatar
+                                    user={user}
+                                    onBack={() => goPath('/settings')}
+                                    backendUrl={BACKEND_URL}
+                                    token={token}
+                                    onUpdateUser={handleLoginSuccess}
+                                />
+                            ) : (
+                                <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    正在验证登录状态...
+                                </div>
+                            )
+                        )}
+
+                        <AuthPanel
+                            user={user}
+                            isAuth={isAuth}
+                            isAdmin={isAdmin}
+                            onLogout={handleLogout}
+                            onOpenAuth={() => setShowAuth(true)}
+                            onOpenAdmin={() => goPath("/admin")}
+                            onOpenSettings={() => goPath("/settings")}
+                            onGoHome={() => goPath("/")}
+                            pathname={pathname}
                             backendUrl={BACKEND_URL}
-                            token={token}
-                            isAuthenticated={isAuth}
-                            onRequireAuth={() => setShowAuth(true)}
                         />
-                    )}
 
-                    {showAdminPage && (
-                        user ? (
-                            <AdminDashboard
-                                user={user}
-                                token={token}
+                        {showAuth && (
+                            <AuthModal
                                 backendUrl={BACKEND_URL}
-                                onBackHome={() => goPath("/")}
-                                onLogout={handleLogout}
-                                onRequireAuth={handleRequireAuth}
+                                onLoginSuccess={(u, t) => { handleLoginSuccess(u, t); }}
+                                onClose={() => setShowAuth(false)}
                             />
-                        ) : (
-                            <div style={placeholderStyle}>
-                                正在验证登录状态...
-                            </div>
-                        )
-                    )}
-
-                    {showSettingsBase && (
-                        user ? (
-                            <Settings
-                                user={user}
-                                onBack={() => goPath("/")}
-                                backendUrl={BACKEND_URL}
-                                token={token}
-                                onUpdateUser={handleLoginSuccess}
-                                onLogout={handleLogout}
-                                onOpenEditAvatar={() => goPath('/settings/avatar')}
-                                onOpenEditUsername={() => goPath('/settings/username')}
-                                onOpenEditPassword={() => goPath('/settings/password')}
-                                onOpenPersonalize={() => goPath('/settings/personalize')}
-                                onOpenThemes={() => goPath('/settings/themes')}
-                            />
-                        ) : (
-                            <div style={placeholderStyle}>
-                                正在验证登录状态...
-                            </div>
-                        )
-                    )}
-
-                    {showSettingsPassword && (
-                        user ? (
-                            <EditPassword
-                                user={user}
-                                onBack={() => goPath('/settings')}
-                                backendUrl={BACKEND_URL}
-                                token={token}
-                                onUpdateUser={handleLoginSuccess}
-                            />
-                        ) : (
-                            <div style={placeholderStyle}>
-                                正在验证登录状态...
-                            </div>
-                        )
-                    )}
-
-                    {showSettingsPersonalize && (
-                        user ? (
-                            <PersonalizeMap
-                                user={user}
-                                onBack={() => goPath('/settings')}
-                                backendUrl={BACKEND_URL}
-                                token={token}
-                                onUpdateUser={handleLoginSuccess}
-                            />
-                        ) : (
-                            <div style={placeholderStyle}>
-                                正在验证登录状态...
-                            </div>
-                        )
-                    )}
-
-                    {showSettingsThemes && (
-                        user ? (
-                            <CustomThemes
-                                user={user}
-                                onBack={() => goPath('/settings')}
-                                backendUrl={BACKEND_URL}
-                                token={token}
-                                onUpdateUser={handleLoginSuccess}
-                            />
-                        ) : (
-                            <div style={placeholderStyle}>
-                                正在验证登录状态...
-                            </div>
-                        )
-                    )}
-
-                    {showSettingsEdit && (
-                        user ? (
-                            <EditUsername
-                                user={user}
-                                onBack={() => goPath('/settings')}
-                                backendUrl={BACKEND_URL}
-                                token={token}
-                                onUpdateUser={handleLoginSuccess}
-                            />
-                        ) : (
-                            <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                正在验证登录状态...
-                            </div>
-                        )
-                    )}
-
-                    {showSettingsAvatar && (
-                        user ? (
-                            <EditAvatar
-                                user={user}
-                                onBack={() => goPath('/settings')}
-                                backendUrl={BACKEND_URL}
-                                token={token}
-                                onUpdateUser={handleLoginSuccess}
-                            />
-                        ) : (
-                            <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                正在验证登录状态...
-                            </div>
-                        )
-                    )}
-
-                    <AuthPanel
-                        user={user}
-                        isAuth={isAuth}
-                        isAdmin={isAdmin}
-                        onLogout={handleLogout}
-                        onOpenAuth={() => setShowAuth(true)}
-                        onOpenAdmin={() => goPath("/admin")}
-                        onOpenSettings={() => goPath("/settings")}
-                        onGoHome={() => goPath("/")}
-                        pathname={pathname}
-                        backendUrl={BACKEND_URL}
-                    />
-
-                    {showAuth && (
-                        <AuthModal
-                            backendUrl={BACKEND_URL}
-                            onLoginSuccess={(u, t) => { handleLoginSuccess(u, t); }}
-                            onClose={() => setShowAuth(false)}
-                        />
-                    )}
-                </div>
+                        )}
+                    </div>
+                </ConfirmProvider>
             </TipsProvider>
         </AuthProvider>
     );

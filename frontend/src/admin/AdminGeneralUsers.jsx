@@ -3,6 +3,7 @@ import Button from "../components/Button";
 import { useAuth } from "../AuthContext";
 import useDarkMode from "../utils/useDarkMode";
 import { useTips } from "../components/Tips";
+import { useConfirm } from "../components/Confirm";
 import defaultAvatar from '../img/default.png';
 
 function resolveBackendUrl() {
@@ -24,6 +25,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const showTip = useTips();
+    const confirm = useConfirm();
     const [processing, setProcessing] = useState({});
     const [searchQuery, setSearchQuery] = useState('');
     const fetchIdRef = useRef(0);
@@ -91,7 +93,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
     };
 
     const deleteUser = async (id) => {
-        if (!window.confirm('确认删除此用户？')) return;
+        if (!(await confirm('确认删除此用户？'))) return;
         setProcessing(p => ({ ...p, [id]: true }));
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token;
@@ -156,7 +158,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                 <Button themeAware onClick={fetchUsers} disabled={loading}>刷新</Button>
             </div>
 
-            
+
             {loading ? (
                 <div>加载中…</div>
             ) : (

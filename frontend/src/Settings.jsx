@@ -4,11 +4,13 @@ import Tooltip from './components/Tooltip';
 import useDarkMode from './utils/useDarkMode';
 import defaultAvatar from './img/default.png';
 import { TipsContext } from './components/Tips';
+import { useConfirm } from './components/Confirm';
 
 export default function Settings({ user, onBack, onOpenEditAvatar, onOpenEditUsername, onOpenEditPassword, onOpenPersonalize, onOpenThemes, backendUrl, token, onLogout }) {
     const dark = useDarkMode();
     const [deleting, setDeleting] = useState(false);
     const { showTip } = React.useContext(TipsContext);
+    const confirm = useConfirm();
 
     const rootStyle = { minHeight: 'var(--app-height, 100vh)', background: dark ? '#0f1724' : '#f6f7f9', padding: 20, boxSizing: 'border-box', color: dark ? '#e5e7eb' : 'inherit' };
     const container = { maxWidth: 960, margin: '0 auto' };
@@ -22,7 +24,7 @@ export default function Settings({ user, onBack, onOpenEditAvatar, onOpenEditUse
             if (onLogout) onLogout();
             return;
         }
-        if (!window.confirm('确认删除账户吗？此操作不可恢复，所有个人数据可能被删除或无法恢复。')) return;
+        if (!(await confirm('确认删除账户吗？此操作不可恢复，所有个人数据可能被删除或无法恢复。'))) return;
         setDeleting(true);
         try {
             const res = await fetch(`${backendUrl}/users/me`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });

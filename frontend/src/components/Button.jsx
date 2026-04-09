@@ -65,12 +65,6 @@ export default function Button({ children, onClick, disabled, style, title, vari
         if (userStyle.opacity === undefined) merged.opacity = 0.9;
     }
 
-    // If this looks like a "取消" / cancel button (or variant explicitly set), make text red unless caller set color
-    const label = typeof children === 'string' ? children.trim() : '';
-    if ((variant === 'cancel') || label === '取消' || label.toLowerCase() === 'cancel') {
-        if (!userStyle.color) merged.color = '#ef4444';
-    }
-
     return (
         <button
             type={type}
