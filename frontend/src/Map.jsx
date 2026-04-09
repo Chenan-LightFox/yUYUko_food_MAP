@@ -47,6 +47,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     const saveViewTimerRef = useRef(null);
     const lastSavedViewRef = useRef(null);
     const [addingPos, setAddingPos] = useState(null);
+    const [addingPrefill, setAddingPrefill] = useState(null);
     const [places, setPlaces] = useState([]);
     const [mapReady, setMapReady] = useState(false);
     const [mapComplete, setMapComplete] = useState(false);
@@ -661,6 +662,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         try {
             await Api.postPlace(backendUrl, token, payload);
             setAddingPos(null);
+            setAddingPrefill(null);
             // 重新加载数据并清除搜索结果（若正在搜索）
             setSearchResults(null);
             setSearching(false);
@@ -874,6 +876,25 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         const result = `${by || "-"} · ${when}`;
         try { console.debug && console.debug('[getLastModifierText]', { id: place.id, by, rawDate, formatted: result }); } catch (e) { }
         return result;
+    };
+
+    const openCreateFromPoi = () => {
+        if (!selectedPlace) return;
+        if (!token) {
+            onRequireAuth && onRequireAuth();
+            return;
+        }
+        if (isBanned) {
+            showTip('您的账号已被封禁，无法提交地点。');
+            return;
+        }
+        closePopup();
+        setAddingPos([selectedPlace.longitude, selectedPlace.latitude]);
+        setAddingPrefill({
+            name: selectedPlace.name || "",
+            category: selectedPlace.category || "",
+            description: selectedPlace.description || selectedPlace.address || ""
+        });
     };
 
     // 打开管理面板（依据当前用户权限选择直接编辑或提交申请）
@@ -1090,6 +1111,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 selectedPlace={selectedPlace}
                 getLastModifierText={getLastModifierText}
                 openManagePanel={openManagePanel}
+                openCreateFromPoi={openCreateFromPoi}
                 openCommentPanel={openCommentPanel}
                 closePopup={closePopup}
                 manageOpen={manageOpen}
@@ -1103,7 +1125,8 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 onManageDelete={handleDirectDelete}
                 onManageSubmitRequest={handleSubmitModifyRequest}
                 addingPos={addingPos}
-                onAddCancel={() => { setAddingPos(null); setAddMode(false); }}
+                addingPrefill={addingPrefill}
+                onAddCancel={() => { setAddingPos(null); setAddMode(false); setAddingPrefill(null); }}
                 onAddSubmit={submitPlace}
             />
 

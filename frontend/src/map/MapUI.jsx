@@ -34,6 +34,7 @@ export default function MapUI(props) {
         selectedPlace,
         getLastModifierText,
         openManagePanel,
+        openCreateFromPoi,
         openCommentPanel,
         closePopup,
         manageOpen,
@@ -47,6 +48,7 @@ export default function MapUI(props) {
         onManageDelete,
         onManageSubmitRequest,
         addingPos,
+        addingPrefill,
         onAddCancel,
         onAddSubmit
     } = props;
@@ -370,8 +372,12 @@ export default function MapUI(props) {
                                 <Button onClick={openCommentPanel} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: dark ? '#e5e7eb' : undefined, padding: '6px 10px', borderRadius: 4 }}>评论</Button>
                             </Tooltip>
                             <span style={{ padding: 4 }}></span> */ }
-                            <Tooltip text="管理此地点">
-                                <Button onClick={openManagePanel} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: dark ? '#e5e7eb' : undefined, padding: '6px 10px', borderRadius: 4 }}>管理</Button>
+                            <Tooltip text={selectedPlace.isMarked === false ? '创建此地点' : '管理此地点'}>
+                                {selectedPlace.isMarked === false ? (
+                                    <Button onClick={openCreateFromPoi} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: dark ? '#e5e7eb' : undefined, padding: '6px 10px', borderRadius: 4 }}>创建</Button>
+                                ) : (
+                                    <Button onClick={openManagePanel} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: dark ? '#e5e7eb' : undefined, padding: '6px 10px', borderRadius: 4 }}>管理</Button>
+                                )}
                             </Tooltip>
                             <span style={{ padding: 4 }}></span>
                             <Tooltip text="查看详情与图片">
@@ -405,7 +411,7 @@ export default function MapUI(props) {
                     background: dark ? '#0b1220' : '#fff', padding: 12, zIndex: 3000, borderRadius: 6, boxShadow: dark ? "0 6px 24px rgba(0,0,0,0.6)" : "0 2px 12px rgba(0,0,0,0.3)"
                 }}>
                     <h4 style={{ margin: '0 0 12px 0', color: dark ? '#e5e7eb' : 'inherit' }}>添加地点</h4>
-                    <AddForm backendUrl={backendUrl} token={token} defaultPos={addingPos} onCancel={onAddCancel} onSubmit={onAddSubmit} />
+                    <AddForm backendUrl={backendUrl} token={token} defaultPos={addingPos} onCancel={onAddCancel} onSubmit={onAddSubmit} defaultName={addingPrefill?.name} defaultCategory={addingPrefill?.category} defaultDescription={addingPrefill?.description} />
                 </div>
             )}
 

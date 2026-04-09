@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from '../components/Button';
 import TextInput from '../components/TextInput';
 import PlaceImageInputs from './PlaceImageInputs';
@@ -6,11 +6,11 @@ import { useTips } from '../components/Tips';
 import useDarkMode from '../utils/useDarkMode';
 import ScrollableView from '../components/ScrollableView';
 
-export default function AddForm({ backendUrl, token, defaultPos, onCancel, onSubmit }) {
-    const [name, setName] = useState("");
-    const [category, setCategory] = useState("");
+export default function AddForm({ backendUrl, token, defaultPos, defaultName = "", defaultCategory = "", defaultDescription = "", onCancel, onSubmit }) {
+    const [name, setName] = useState(defaultName);
+    const [category, setCategory] = useState(defaultCategory);
     const [showCategoryMenu, setShowCategoryMenu] = useState(false);
-    const [description, setDescription] = useState("");
+    const [description, setDescription] = useState(defaultDescription);
     const [exteriorImages, setExteriorImages] = useState([]);
     const [menuImages, setMenuImages] = useState([]);
     const showTip = useTips();
