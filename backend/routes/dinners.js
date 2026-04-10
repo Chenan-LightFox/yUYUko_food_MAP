@@ -48,21 +48,22 @@ function htmlEscape(text) {
 }
 
 function buildFrontendDinnerUrl(req, id) {
+    const dinnerHashPath = `/#/dinners/${id}`;
     const configured = process.env.FRONTEND_BASE_URL;
     if (configured) {
-        return `${String(configured).replace(/\/+$/, "")}/dinners/${id}`;
+        return `${String(configured).replace(/\/+$/, "")}${dinnerHashPath}`;
     }
 
     const protocol = req.protocol || "http";
     const host = req.get("host") || "localhost:2053";
     if (/^(localhost|127\.0\.0\.1):2053$/i.test(host)) {
-        return `${protocol}://${host.replace(/:2053$/i, ":5173")}/dinners/${id}`;
+        return `${protocol}://${host.replace(/:2053$/i, ":5173")}${dinnerHashPath}`;
     }
     if (/:2053$/i.test(host)) {
-        return `${protocol}://${host.replace(/:2053$/i, ":8443")}/dinners/${id}`;
+        return `${protocol}://${host.replace(/:2053$/i, ":8443")}${dinnerHashPath}`;
     }
 
-    return `${protocol}://${host}/dinners/${id}`;
+    return `${protocol}://${host}${dinnerHashPath}`;
 }
 
 function buildShareDescription(row) {
