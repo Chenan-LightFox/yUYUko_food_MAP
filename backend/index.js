@@ -69,8 +69,6 @@ app.use(cors({
             return callback(null, true);
         }
         const allowed = isAllowedOrigin(origin);
-        // log origin and decision — helpful for diagnosing production CORS failures
-        console.log(`CORS: origin='${origin}', allowed=${allowed}`);
         if (allowed) {
             return callback(null, true);
         }
