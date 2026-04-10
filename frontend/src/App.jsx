@@ -63,6 +63,11 @@ const BACKEND_URL = resolveBackendUrl();
 
 function currentPathname() {
     if (typeof window === "undefined") return "/";
+    const hash = String(window.location.hash || "");
+    if (hash.startsWith("#/")) {
+        const [path] = hash.slice(1).split("?");
+        return path || "/";
+    }
     return window.location.pathname || "/";
 }
 
