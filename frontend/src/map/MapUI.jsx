@@ -383,7 +383,7 @@ export default function MapUI(props) {
                     </div>
 
                     <div style={{ padding: "4px 8px", background: "rgba(0,0,0,0.5)", color: "#fff", borderRadius: "12px", fontSize: "12px", pointerEvents: "none", userSelect: "none" }}>
-                        v1.2.2
+                        v1.2.3beta
                     </div>
                 </div>
             </div>
@@ -425,8 +425,8 @@ export default function MapUI(props) {
                                             disabled={favoriteLoading}
                                             style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: favoriteIds && favoriteIds.has(selectedPlace.id) ? '#f59e0b' : (dark ? '#e5e7eb' : undefined), padding: '6px 10px', borderRadius: 4, lineHeight: 1 }}
                                         >
-                                            <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 18 }}>
-                                                {favoriteIds && favoriteIds.has(selectedPlace.id) ? 'star' : 'star_outline'}
+                                            <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 14 }}>
+                                                {favoriteIds && favoriteIds.has(selectedPlace.id) ? 'heart_plus' : 'heart_minus'}
                                             </span>
                                         </Button>
                                     </Tooltip>
