@@ -53,7 +53,11 @@ export default function MapUI(props) {
         addingPos,
         addingPrefill,
         onAddCancel,
-        onAddSubmit
+        onAddSubmit,
+        favoriteIds,
+        favoriteLoading,
+        onToggleFavorite,
+        isAuthenticated
     } = props;
 
     const [searchOpen, setSearchOpen] = useState(false);
@@ -413,6 +417,22 @@ export default function MapUI(props) {
                                 <Button onClick={openCommentPanel} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: dark ? '#e5e7eb' : undefined, padding: '6px 10px', borderRadius: 4 }}>评论</Button>
                             </Tooltip>
                             <span style={{ padding: 4 }}></span> */ }
+                            {selectedPlace.isMarked !== false && (
+                                <>
+                                    <Tooltip text={favoriteIds && favoriteIds.has(selectedPlace.id) ? '取消收藏' : (isAuthenticated ? '收藏此地点' : '登录后可收藏')}>
+                                        <Button
+                                            onClick={() => onToggleFavorite && onToggleFavorite(selectedPlace)}
+                                            disabled={favoriteLoading}
+                                            style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: favoriteIds && favoriteIds.has(selectedPlace.id) ? '#f59e0b' : (dark ? '#e5e7eb' : undefined), padding: '6px 10px', borderRadius: 4, lineHeight: 1 }}
+                                        >
+                                            <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 18 }}>
+                                                {favoriteIds && favoriteIds.has(selectedPlace.id) ? 'star' : 'star_outline'}
+                                            </span>
+                                        </Button>
+                                    </Tooltip>
+                                    <span style={{ padding: 4 }}></span>
+                                </>
+                            )}
                             <Tooltip text={selectedPlace.isMarked === false ? '创建此地点' : '管理此地点'}>
                                 {selectedPlace.isMarked === false ? (
                                     <Button onClick={openCreateFromPoi} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: dark ? '#e5e7eb' : undefined, padding: '6px 10px', borderRadius: 4 }}>创建</Button>

@@ -229,6 +229,20 @@ function init() {
             console.warn('Failed to create DinnerEvent indexes:', e.message);
         }
 
+        rawDb.exec(`CREATE TABLE IF NOT EXISTS "Favorite" (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            place_id INTEGER NOT NULL,
+            created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, place_id)
+        );`);
+        try {
+            rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_favorite_user_id ON Favorite(user_id);`);
+            rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_favorite_place_id ON Favorite(place_id);`);
+        } catch (e) {
+            console.warn('Failed to create Favorite indexes:', e.message);
+        }
+
     } catch (e) {
         console.error('DB init failed:', e && e.message);
         throw e;

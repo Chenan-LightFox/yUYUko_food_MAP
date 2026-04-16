@@ -155,3 +155,36 @@ export async function deleteDinner(backendUrl, token, id) {
 
     throw (lastError || new Error('删除聚餐失败 404'));
 }
+
+// -------- Favorites --------
+
+export async function fetchFavorites(backendUrl, token) {
+    const res = await fetch(`${backendUrl}/api/favorites`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `获取收藏列表失败 ${res.status}`);
+    }
+    return res.json();
+}
+
+export async function addFavorite(backendUrl, token, placeId) {
+    const res = await fetch(`${backendUrl}/api/favorites/${placeId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `收藏失败 ${res.status}`);
+    return data;
+}
+
+export async function removeFavorite(backendUrl, token, placeId) {
+    const res = await fetch(`${backendUrl}/api/favorites/${placeId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `取消收藏失败 ${res.status}`);
+    return data;
+}
