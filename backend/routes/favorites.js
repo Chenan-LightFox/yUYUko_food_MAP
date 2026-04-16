@@ -13,7 +13,7 @@ router.get('/', (req, res) => {
         `SELECT f.place_id, f.created_time,
                 p.name, p.longitude, p.latitude, p.category, p.description
          FROM Favorite f
-         INNER JOIN Place p ON f.place_id = p.id
+         LEFT JOIN Place p ON f.place_id = p.id
          WHERE f.user_id = ?
          ORDER BY f.created_time DESC`,
         [userId],

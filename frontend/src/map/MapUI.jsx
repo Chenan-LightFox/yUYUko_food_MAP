@@ -106,6 +106,8 @@ export default function MapUI(props) {
         return () => { active = false; };
     }, [favPageOpen, isAuthenticated, token, backendUrl]);
 
+    const FAVORITE_LOCATION_ZOOM_LEVEL = 16;
+
     const hexToRgba = (hex, a = 1) => {
         try {
             let h = (hex || '').replace('#', '');
@@ -350,7 +352,7 @@ export default function MapUI(props) {
                             <Button
                                 onClick={() => setFavPageOpen(v => !v)}
                                 disabled={!mapReady}
-                                aria-label="展开收藏夹"
+                                aria-label={favPageOpen ? '关闭收藏夹' : '展开收藏夹'}
                                 style={{
                                     width: 44,
                                     height: 44,
@@ -579,7 +581,7 @@ export default function MapUI(props) {
                                     onClick={() => {
                                         if (item.longitude && item.latitude && mapRef?.current) {
                                             mapRef.current.setCenter([item.longitude, item.latitude]);
-                                            mapRef.current.setZoom(16);
+                                            mapRef.current.setZoom(FAVORITE_LOCATION_ZOOM_LEVEL);
                                         }
                                         setFavPageOpen(false);
                                     }}
@@ -593,13 +595,13 @@ export default function MapUI(props) {
                                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = dark ? '#1f2937' : '#f9fafb'}
                                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                 >
-                                    <span style={{ fontSize: 14, color: dark ? '#f3f4f6' : '#111827', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {item.name || `地点 #${item.place_id}`}
+                                    <span style={{ fontSize: 14, color: item.name ? (dark ? '#f3f4f6' : '#111827') : (dark ? '#9ca3af' : '#6b7280'), fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {item.name || `地点 #${item.place_id}（已删除）`}
                                     </span>
                                     {item.category && (
                                         <span style={{ fontSize: 12, color: dark ? '#9ca3af' : '#6b7280', marginTop: 2 }}>{item.category}</span>
                                     )}
-                                    {(!item.longitude || !item.latitude) && (
+                                    {item.name && (!item.longitude || !item.latitude) && (
                                         <span style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>坐标缺失，无法定位</span>
                                     )}
                                 </div>
