@@ -320,6 +320,33 @@ export default function MapUI(props) {
 
             <div style={{ position: "absolute", right: 8, bottom: 8, zIndex: 2000 }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+                    <Tooltip text={authPending ? '正在验证登录状态，请稍候再试' : '展开收藏夹'} placement="top">
+                        <div style={{ display: "inline-block" }}>
+                            <Button
+                                onClick={FavPageOpen}
+                                disabled={!mapReady || FavPageOpen}
+                                aria-label="点击获取当前位置并添加标记点"
+                                style={{
+                                    width: 44,
+                                    height: 44,
+                                    padding: 0,
+                                    borderRadius: '50%',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: FavPageOpen ? '#089938' : customThemeColor,
+                                    color: '#fff',
+                                    border: 'none',
+                                    transition: 'background 180ms ease, transform 220ms ease',
+                                    cursor: (!mapReady || authPending) ? 'not-allowed' : 'pointer',
+                                    opacity: (!mapReady || authPending) ? 0.6 : 1
+                                }}
+                            >
+                                <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 30 }}>heart</span>
+                            </Button>
+                        </div>
+                    </Tooltip>
+
                     <Tooltip text={authPending ? '正在验证登录状态，请稍候再试' : '定位/我的位置'} placement="top">
                         <div style={{ display: "inline-block" }}>
                             <Button
@@ -337,7 +364,6 @@ export default function MapUI(props) {
                                     background: locating ? '#089938' : customThemeColor,
                                     color: '#fff',
                                     border: 'none',
-                                    boxShadow: addMode ? '0 4px 12px rgba(224,36,36,0.2)' : '0 4px 12px rgba(0,47,167,0.2)',
                                     transition: 'background 180ms ease, transform 220ms ease',
                                     cursor: (!mapReady || authPending) ? 'not-allowed' : 'pointer',
                                     opacity: (!mapReady || authPending) ? 0.6 : 1
