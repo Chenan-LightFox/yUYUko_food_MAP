@@ -423,9 +423,11 @@ export default function MapUI(props) {
                                         <Button
                                             onClick={() => onToggleFavorite && onToggleFavorite(selectedPlace)}
                                             disabled={favoriteLoading}
-                                            style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: favoriteIds && favoriteIds.has(selectedPlace.id) ? '#f59e0b' : (dark ? '#e5e7eb' : undefined), padding: '6px 10px', borderRadius: 4, fontSize: 16 }}
+                                            style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: favoriteIds && favoriteIds.has(selectedPlace.id) ? '#f59e0b' : (dark ? '#e5e7eb' : undefined), padding: '6px 10px', borderRadius: 4, lineHeight: 1 }}
                                         >
-                                            {favoriteIds && favoriteIds.has(selectedPlace.id) ? '★' : '☆'}
+                                            <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 18 }}>
+                                                {favoriteIds && favoriteIds.has(selectedPlace.id) ? 'star' : 'star_outline'}
+                                            </span>
                                         </Button>
                                     </Tooltip>
                                     <span style={{ padding: 4 }}></span>
