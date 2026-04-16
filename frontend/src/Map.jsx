@@ -242,15 +242,19 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
             setFavoriteIds(new Set());
             return;
         }
+        let active = true;
         (async () => {
             try {
                 const rows = await Api.fetchFavorites(backendUrl, token);
-                const ids = new Set((rows || []).map(r => r.place_id));
-                setFavoriteIds(ids);
+                if (active) {
+                    const ids = new Set((rows || []).map(r => r.place_id));
+                    setFavoriteIds(ids);
+                }
             } catch (e) {
                 console.warn('加载收藏列表失败', e);
             }
         })();
+        return () => { active = false; };
     }, [token, isAuthenticated, backendUrl]);
 
     // 当 token 可用时尝试获取当前用户（用于判断是否有 admin 权限 / id）
