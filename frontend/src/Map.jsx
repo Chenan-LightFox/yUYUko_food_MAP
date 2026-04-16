@@ -83,6 +83,9 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     const [manageSubmitting, setManageSubmitting] = useState(false);
     const [manageMessage, setManageMessage] = useState("");
 
+    const [favoriteIds, setFavoriteIds] = useState(new Set());
+    const [favoriteLoading, setFavoriteLoading] = useState(false);
+
     const searchResultsRef = useRef(null);
     useEffect(() => { searchResultsRef.current = searchResults; }, [searchResults]);
     const loadPlacesRef = useRef(null);
@@ -232,6 +235,23 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         if (addMode) setAddMode(false);
         if (addingPos) setAddingPos(null);
     }, [canWrite, addMode, addingPos]);
+
+    // Load favorites when user authenticates; clear when logged out
+    useEffect(() => {
+        if (!token || !isAuthenticated) {
+            setFavoriteIds(new Set());
+            return;
+        }
+        (async () => {
+            try {
+                const rows = await Api.fetchFavorites(backendUrl, token);
+                const ids = new Set((rows || []).map(r => r.place_id));
+                setFavoriteIds(ids);
+            } catch (e) {
+                console.warn('加载收藏列表失败', e);
+            }
+        })();
+    }, [token, isAuthenticated, backendUrl]);
 
     // 当 token 可用时尝试获取当前用户（用于判断是否有 admin 权限 / id）
     useEffect(() => {
@@ -547,7 +567,47 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     };
     loadPlacesRef.current = loadPlaces;
 
-    // 用于展示自定义弹窗
+    // Toggle favorite for a place
+    const handleToggleFavorite = async (place) => {
+        if (!place || place.isMarked === false) return;
+        if (!token || !isAuthenticated) {
+            showTip('登录后可收藏');
+            onRequireAuth && onRequireAuth();
+            return;
+        }
+        if (isBanned) {
+            showTip('您的账号已被封禁，无法收藏');
+            return;
+        }
+        const placeId = place.id;
+        const isFav = favoriteIds.has(placeId);
+        // Optimistic update
+        setFavoriteIds(prev => {
+            const next = new Set(prev);
+            if (isFav) next.delete(placeId);
+            else next.add(placeId);
+            return next;
+        });
+        setFavoriteLoading(true);
+        try {
+            if (isFav) {
+                await Api.removeFavorite(backendUrl, token, placeId);
+            } else {
+                await Api.addFavorite(backendUrl, token, placeId);
+            }
+        } catch (e) {
+            // Rollback on error
+            setFavoriteIds(prev => {
+                const next = new Set(prev);
+                if (isFav) next.add(placeId);
+                else next.delete(placeId);
+                return next;
+            });
+            showTip((isFav ? '取消收藏失败：' : '收藏失败：') + (e.message || e));
+        } finally {
+            setFavoriteLoading(false);
+        }
+    };
     // 优先在 React 层绘制
     // 若计算容器坐标失败则回退到 InfoWindow
     const showPopup = (p, lnglatObj) => {
@@ -1158,6 +1218,10 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 addingPrefill={addingPrefill}
                 onAddCancel={() => { setAddingPos(null); setAddMode(false); setAddingPrefill(null); }}
                 onAddSubmit={submitPlace}
+                favoriteIds={favoriteIds}
+                favoriteLoading={favoriteLoading}
+                onToggleFavorite={handleToggleFavorite}
+                isAuthenticated={isAuthenticated}
             />
 
             {commentOpen && selectedPlace && (
