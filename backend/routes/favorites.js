@@ -6,11 +6,16 @@ const { requireAuth } = require('../middleware/auth');
 // All favorites routes require authentication
 router.use(requireAuth);
 
-// GET /api/favorites - return list of place_ids favorited by the current user
+// GET /api/favorites - return list of favorited places (with full place details) for the current user
 router.get('/', (req, res) => {
     const userId = req.user.id;
     db.all(
-        'SELECT place_id, created_time FROM Favorite WHERE user_id = ? ORDER BY created_time DESC',
+        `SELECT f.place_id, f.created_time,
+                p.name, p.longitude, p.latitude, p.category, p.description
+         FROM Favorite f
+         INNER JOIN Place p ON f.place_id = p.id
+         WHERE f.user_id = ?
+         ORDER BY f.created_time DESC`,
         [userId],
         (err, rows) => {
             if (err) return res.status(500).json({ error: err.message });

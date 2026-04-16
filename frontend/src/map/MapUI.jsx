@@ -7,6 +7,7 @@ import PlaceDetailPanel from './PlaceDetailPanel';
 import useDarkMode from '../utils/useDarkMode';
 import { useSearchPanel } from './useSearchPanel';
 import ScrollableView from '../components/ScrollableView';
+import { fetchFavorites } from './api';
 
 export default function MapUI(props) {
     const {
@@ -62,6 +63,10 @@ export default function MapUI(props) {
 
     const [searchOpen, setSearchOpen] = useState(false);
     const [detailOpen, setDetailOpen] = useState(false);
+    const [favPageOpen, setFavPageOpen] = useState(false);
+    const [favItems, setFavItems] = useState([]);
+    const [favLoading, setFavLoading] = useState(false);
+    const [favError, setFavError] = useState('');
     const inputRef = useRef(null);
     const dark = useDarkMode();
 
@@ -80,6 +85,26 @@ export default function MapUI(props) {
         document.addEventListener('keydown', onKey);
         return () => document.removeEventListener('keydown', onKey);
     }, [searchOpen]);
+
+    // Load favorites when panel opens
+    useEffect(() => {
+        if (!favPageOpen) return;
+        if (!isAuthenticated || !token) return;
+        let active = true;
+        setFavLoading(true);
+        setFavError('');
+        (async () => {
+            try {
+                const rows = await fetchFavorites(backendUrl, token);
+                if (active) setFavItems(rows || []);
+            } catch (e) {
+                if (active) setFavError('加载收藏失败：' + (e.message || e));
+            } finally {
+                if (active) setFavLoading(false);
+            }
+        })();
+        return () => { active = false; };
+    }, [favPageOpen, isAuthenticated, token, backendUrl]);
 
     const hexToRgba = (hex, a = 1) => {
         try {
@@ -320,12 +345,12 @@ export default function MapUI(props) {
 
             <div style={{ position: "absolute", right: 8, bottom: 8, zIndex: 2000 }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
-                    <Tooltip text={authPending ? '正在验证登录状态，请稍候再试' : '展开收藏夹'} placement="top">
+                    <Tooltip text={authPending ? '正在验证登录状态，请稍候再试' : (favPageOpen ? '关闭收藏夹' : '展开收藏夹')} placement="top">
                         <div style={{ display: "inline-block" }}>
                             <Button
-                                onClick={FavPageOpen}
-                                disabled={!mapReady || FavPageOpen}
-                                aria-label="点击获取当前位置并添加标记点"
+                                onClick={() => setFavPageOpen(v => !v)}
+                                disabled={!mapReady}
+                                aria-label="展开收藏夹"
                                 style={{
                                     width: 44,
                                     height: 44,
@@ -334,7 +359,7 @@ export default function MapUI(props) {
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    background: FavPageOpen ? '#089938' : customThemeColor,
+                                    background: favPageOpen ? '#089938' : customThemeColor,
                                     color: '#fff',
                                     border: 'none',
                                     transition: 'background 180ms ease, transform 220ms ease',
@@ -504,6 +529,84 @@ export default function MapUI(props) {
 
             {detailOpen && selectedPlace && (
                 <PlaceDetailPanel place={selectedPlace} onClose={() => setDetailOpen(false)} />
+            )}
+
+            {favPageOpen && (
+                <div style={{
+                    position: 'absolute', right: 60, bottom: 8,
+                    width: 300, maxHeight: '60vh',
+                    background: dark ? '#0f172a' : '#fff',
+                    color: dark ? '#f8fafc' : '#333',
+                    borderRadius: 8,
+                    boxShadow: dark ? '0 4px 24px rgba(0,0,0,0.6)' : '0 4px 24px rgba(0,0,0,0.2)',
+                    display: 'flex', flexDirection: 'column',
+                    zIndex: 5000
+                }}>
+                    <div style={{
+                        padding: '12px 16px',
+                        borderBottom: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        flexShrink: 0
+                    }}>
+                        <h3 style={{ margin: 0, fontSize: 16, color: dark ? '#f8fafc' : '#111827' }}>我的收藏</h3>
+                        <Button
+                            onClick={() => setFavPageOpen(false)}
+                            style={{ padding: '2px 8px', background: 'transparent', border: 'none', color: dark ? '#e5e7eb' : '#374151', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}
+                        >×</Button>
+                    </div>
+
+                    <ScrollableView style={{ flex: 1 }}>
+                        {!isAuthenticated ? (
+                            <div style={{ padding: 16, textAlign: 'center', color: dark ? '#9ca3af' : '#6b7280', fontSize: 13 }}>
+                                请登录后查看收藏
+                            </div>
+                        ) : favLoading ? (
+                            <div style={{ padding: 16, textAlign: 'center', color: dark ? '#9ca3af' : '#6b7280', fontSize: 13 }}>
+                                加载中...
+                            </div>
+                        ) : favError ? (
+                            <div style={{ padding: 16, textAlign: 'center', color: '#ef4444', fontSize: 13 }}>
+                                {favError}
+                            </div>
+                        ) : favItems.length === 0 ? (
+                            <div style={{ padding: 16, textAlign: 'center', color: dark ? '#9ca3af' : '#6b7280', fontSize: 13 }}>
+                                暂无收藏地点
+                            </div>
+                        ) : (
+                            favItems.map(item => (
+                                <div
+                                    key={item.place_id}
+                                    onClick={() => {
+                                        if (item.longitude && item.latitude && mapRef?.current) {
+                                            mapRef.current.setCenter([item.longitude, item.latitude]);
+                                            mapRef.current.setZoom(16);
+                                        }
+                                        setFavPageOpen(false);
+                                    }}
+                                    style={{
+                                        padding: '10px 16px',
+                                        cursor: (item.longitude && item.latitude) ? 'pointer' : 'default',
+                                        borderBottom: `1px solid ${dark ? '#1f2937' : '#f3f4f6'}`,
+                                        display: 'flex',
+                                        flexDirection: 'column'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = dark ? '#1f2937' : '#f9fafb'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                    <span style={{ fontSize: 14, color: dark ? '#f3f4f6' : '#111827', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {item.name || `地点 #${item.place_id}`}
+                                    </span>
+                                    {item.category && (
+                                        <span style={{ fontSize: 12, color: dark ? '#9ca3af' : '#6b7280', marginTop: 2 }}>{item.category}</span>
+                                    )}
+                                    {(!item.longitude || !item.latitude) && (
+                                        <span style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>坐标缺失，无法定位</span>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </ScrollableView>
+                </div>
             )}
         </>
     );
