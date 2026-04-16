@@ -108,6 +108,12 @@ export default function MapUI(props) {
 
     const FAVORITE_LOCATION_ZOOM_LEVEL = 16;
 
+    const navigateToPlace = (longitude, latitude) => {
+        if (!longitude || !latitude || !mapRef?.current) return;
+        mapRef.current.setCenter([longitude, latitude]);
+        mapRef.current.setZoom(FAVORITE_LOCATION_ZOOM_LEVEL);
+    };
+
     const hexToRgba = (hex, a = 1) => {
         try {
             let h = (hex || '').replace('#', '');
@@ -579,10 +585,7 @@ export default function MapUI(props) {
                                 <div
                                     key={item.place_id}
                                     onClick={() => {
-                                        if (item.longitude && item.latitude && mapRef?.current) {
-                                            mapRef.current.setCenter([item.longitude, item.latitude]);
-                                            mapRef.current.setZoom(FAVORITE_LOCATION_ZOOM_LEVEL);
-                                        }
+                                        navigateToPlace(item.longitude, item.latitude);
                                         setFavPageOpen(false);
                                     }}
                                     style={{
