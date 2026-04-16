@@ -375,7 +375,7 @@ export default function MapUI(props) {
                                     opacity: (!mapReady || authPending) ? 0.6 : 1
                                 }}
                             >
-                                <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 30 }}>heart</span>
+                                <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 30 }}>favorite</span>
                             </Button>
                         </div>
                     </Tooltip>
