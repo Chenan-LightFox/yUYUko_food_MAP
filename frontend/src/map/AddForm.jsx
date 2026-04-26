@@ -99,7 +99,7 @@ export default function AddForm({ backendUrl, token, defaultPos, defaultName = "
 
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                                         {group.items.map(opt => {
-                                            const isSelected = categories.includes(opt);
+                                            const isSelected = category.includes(opt);
                                             return (
                                                 <span
                                                     key={opt}
