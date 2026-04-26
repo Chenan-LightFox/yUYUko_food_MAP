@@ -50,6 +50,10 @@ export default function AddForm({ backendUrl, token, defaultPos, defaultName = "
         onSubmit(payload);
     };
 
+    const saveTagsAndClose = () => {
+        setShowCategoryMenu(false);
+    };
+
     return (
         <div style={{ width: 320 }}>
             <div><strong style={{ color: dark ? '#e5e7eb' : undefined }}>经纬度：</strong><span style={{ color: dark ? '#e5e7eb' : undefined }}>{defaultPos[1].toFixed(6)}, {defaultPos[0].toFixed(6)}</span></div>
@@ -79,7 +83,7 @@ export default function AddForm({ backendUrl, token, defaultPos, defaultName = "
                                 <div style={{ fontSize: 13, fontWeight: 'bold', color: dark ? '#cbd5e1' : '#475569', marginBottom: 4 }}>
                                     {group.group}
                                 </div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, overflowY: 'auto', height: '100%', paddingBottom: 88 }}>
                                     {group.items.map(opt => {
                                         const isSelected = category.split(',').map(s => s.trim()).includes(opt);
                                         let selBg = '#3b82f6';
@@ -111,8 +115,30 @@ export default function AddForm({ backendUrl, token, defaultPos, defaultName = "
                                             >
                                                 {opt}
                                             </span>
+
                                         );
                                     })}
+                                </div>
+                                <div style={{
+                                    position: 'fixed',
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    zIndex: 1001,
+                                    padding: '10px 12px calc(env(safe-area-inset-bottom, 0px) + 10px)',
+                                    background: dark ? '#0f172a' : '#fff',
+                                    borderTop: `1px solid ${dark ? '#334155' : '#e5e7eb'}`,
+                                    display: 'flex',
+                                    gap: 8,
+                                }}>
+                                    <Button
+                                        themeAware
+                                        type="button"
+                                        onClick={saveTagsAndClose}
+                                        style={{ flex: 1 }}
+                                    >
+                                        返回
+                                    </Button>
                                 </div>
                             </div>
                         ))}

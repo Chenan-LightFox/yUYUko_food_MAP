@@ -46,6 +46,10 @@ export default function ManagePanel({
         setManageEdit(me => ({ ...me, category: current.join(', ') }));
     };
 
+    const saveTagsAndClose = () => {
+        setShowCategoryMenu(false);
+    };
+
     return (
         <div style={{
             position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
@@ -83,10 +87,9 @@ export default function ManagePanel({
                                         <div style={{ fontSize: 13, fontWeight: 'bold', color: dark ? '#cbd5e1' : '#475569', marginBottom: 4 }}>
                                             {group.group}
                                         </div>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, overflowY: 'auto', height: '100%', paddingBottom: 88 }}>
                                             {group.items.map(opt => {
-                                                const catStr = manageEdit.category || '';
-                                                const isSelected = catStr.split(',').map(s => s.trim()).includes(opt);
+                                                const isSelected = category.split(',').map(s => s.trim()).includes(opt);
                                                 let selBg = '#3b82f6';
                                                 let selBorder = '#2563eb';
                                                 let selColor = '#fff';
@@ -116,8 +119,30 @@ export default function ManagePanel({
                                                     >
                                                         {opt}
                                                     </span>
+
                                                 );
                                             })}
+                                        </div>
+                                        <div style={{
+                                            position: 'fixed',
+                                            left: 0,
+                                            right: 0,
+                                            bottom: 0,
+                                            zIndex: 1001,
+                                            padding: '10px 12px calc(env(safe-area-inset-bottom, 0px) + 10px)',
+                                            background: dark ? '#0f172a' : '#fff',
+                                            borderTop: `1px solid ${dark ? '#334155' : '#e5e7eb'}`,
+                                            display: 'flex',
+                                            gap: 8,
+                                        }}>
+                                            <Button
+                                                themeAware
+                                                type="button"
+                                                onClick={saveTagsAndClose}
+                                                style={{ flex: 1 }}
+                                            >
+                                                返回
+                                            </Button>
                                         </div>
                                     </div>
                                 ))}
