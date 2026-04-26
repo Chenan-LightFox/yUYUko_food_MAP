@@ -96,8 +96,7 @@ export default function ManagePanel({
                                     style={{
                                         maxHeight: 220,
                                         overflowY: 'auto',
-                                        padding: 8,
-                                        paddingBottom: 72 // 给底部按钮留空间
+                                        padding: 8
                                     }}
                                 >
                                     {CATEGORY_DATA.map(group => (
