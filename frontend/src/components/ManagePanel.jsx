@@ -55,20 +55,6 @@ export default function ManagePanel({
         .map(s => s.trim())
         .filter(Boolean);
 
-    const toggleCategory = (opt) => {
-        const current = (manageEdit?.category || '')
-            .split(',')
-            .map(s => s.trim())
-            .filter(Boolean);
-
-        const next = current.includes(opt)
-            ? current.filter(x => x !== opt)
-            : [...current, opt];
-
-        setManageEdit(me => ({ ...me, category: next.join(', ') }));
-    };
-
-
     return (
         <div style={{
             position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
