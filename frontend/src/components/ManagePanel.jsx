@@ -50,6 +50,25 @@ export default function ManagePanel({
         setShowCategoryMenu(false);
     };
 
+    const selectedCategories = (manageEdit?.category || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+    const toggleCategory = (opt) => {
+        const current = (manageEdit?.category || '')
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
+
+        const next = current.includes(opt)
+            ? current.filter(x => x !== opt)
+            : [...current, opt];
+
+        setManageEdit(me => ({ ...me, category: next.join(', ') }));
+    };
+
+
     return (
         <div style={{
             position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
@@ -73,80 +92,85 @@ export default function ManagePanel({
                             placeholder="请选择分类（可多选）"
                         />
                         {showCategoryMenu && (
-                            <ScrollableView style={{
-                                position: 'absolute', top: '100%', left: 0, width: '100%',
-                                background: dark ? '#1e293b' : '#fff',
-                                border: `1px solid ${dark ? '#334155' : '#ccc'}`,
-                                borderRadius: 4, zIndex: 10,
-                                maxHeight: 150, overflowY: 'auto',
-                                padding: 8, display: 'flex', flexWrap: 'wrap', gap: 6,
-                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                            }}>
-                                {CATEGORY_DATA.map(group => (
-                                    <div key={group.group} style={{ width: '100%', marginBottom: 6 }}>
-                                        <div style={{ fontSize: 13, fontWeight: 'bold', color: dark ? '#cbd5e1' : '#475569', marginBottom: 4 }}>
-                                            {group.group}
-                                        </div>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, overflowY: 'auto', height: '100%', paddingBottom: 88 }}>
-                                            {group.items.map(opt => {
-                                                const isSelected = category.split(',').map(s => s.trim()).includes(opt);
-                                                let selBg = '#3b82f6';
-                                                let selBorder = '#2563eb';
-                                                let selColor = '#fff';
-                                                if (group.group === '休闲餐饮店') {
-                                                    selBg = '#4ade80'; // 浅绿色
-                                                    selBorder = '#22c55e';
-                                                } else if (group.group === '宵夜小吃') {
-                                                    selBg = '#eab308'; // 亮黄色
-                                                    selBorder = '#ca8a04';
-                                                } else if (group.group === '避雷') {
-                                                    selBg = '#ef4444'; // 红色
-                                                    selBorder = '#dc2626';
-                                                }
-                                                return (
-                                                    <span
-                                                        key={opt}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            toggleCategory(opt);
-                                                        }}
-                                                        style={{
-                                                            padding: '4px 8px', fontSize: 12, borderRadius: 12, cursor: 'pointer',
-                                                            background: isSelected ? selBg : (dark ? '#334155' : '#f1f5f9'),
-                                                            color: isSelected ? selColor : (dark ? '#e2e8f0' : '#333'),
-                                                            border: `1px solid ${isSelected ? selBorder : (dark ? '#475569' : '#cbd5e1')}`
-                                                        }}
-                                                    >
-                                                        {opt}
-                                                    </span>
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    left: 0,
+                                    width: '100%',
+                                    zIndex: 10,
+                                    background: dark ? '#1e293b' : '#fff',
+                                    border: `1px solid ${dark ? '#334155' : '#ccc'}`,
+                                    borderRadius: 4,
+                                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                                    overflow: 'hidden'
+                                }}
+                            >
+                                <ScrollableView
+                                    style={{
+                                        maxHeight: 220,
+                                        overflowY: 'auto',
+                                        padding: 8,
+                                        paddingBottom: 72 // 给底部按钮留空间
+                                    }}
+                                >
+                                    {CATEGORY_DATA.map(group => (
+                                        <div key={group.group} style={{ marginBottom: 8 }}>
+                                            <div style={{ fontSize: 13, fontWeight: 'bold', color: dark ? '#cbd5e1' : '#475569', marginBottom: 6 }}>
+                                                {group.group}
+                                            </div>
 
-                                                );
-                                            })}
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                                {group.items.map(opt => {
+                                                    const isSelected = selectedCategories.includes(opt);
+                                                    return (
+                                                        <span
+                                                            key={opt}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                toggleCategory(opt);
+                                                            }}
+                                                            style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                height: 28,
+                                                                padding: '0 10px',
+                                                                fontSize: 12,
+                                                                lineHeight: '28px',
+                                                                borderRadius: 14,
+                                                                whiteSpace: 'nowrap',
+                                                                cursor: 'pointer',
+                                                                background: isSelected ? '#3b82f6' : (dark ? '#334155' : '#f1f5f9'),
+                                                                color: isSelected ? '#fff' : (dark ? '#e2e8f0' : '#333'),
+                                                                border: `1px solid ${isSelected ? '#2563eb' : (dark ? '#475569' : '#cbd5e1')}`,
+                                                                flex: '0 0 auto'
+                                                            }}
+                                                        >
+                                                            {opt}
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
-                                        <div style={{
-                                            position: 'fixed',
-                                            left: 0,
-                                            right: 0,
-                                            bottom: 0,
-                                            zIndex: 1001,
-                                            padding: '10px 12px calc(env(safe-area-inset-bottom, 0px) + 10px)',
-                                            background: dark ? '#0f172a' : '#fff',
-                                            borderTop: `1px solid ${dark ? '#334155' : '#e5e7eb'}`,
-                                            display: 'flex',
-                                            gap: 8,
-                                        }}>
-                                            <Button
-                                                themeAware
-                                                type="button"
-                                                onClick={saveTagsAndClose}
-                                                style={{ flex: 1 }}
-                                            >
-                                                返回
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </ScrollableView>
+                                    ))}
+                                </ScrollableView>
+
+                                <div
+                                    style={{
+                                        position: 'sticky',
+                                        bottom: 0,
+                                        display: 'flex',
+                                        gap: 8,
+                                        padding: '8px 10px',
+                                        borderTop: `1px solid ${dark ? '#334155' : '#e5e7eb'}`,
+                                        background: dark ? '#0f172a' : '#fff'
+                                    }}
+                                >
+                                    <Button themeAware type="button" onClick={saveTagsAndClose} style={{ flex: 1 }}>
+                                        保存
+                                    </Button>
+                                </div>
+                            </div>
                         )}
                     </div>
                 </div>
