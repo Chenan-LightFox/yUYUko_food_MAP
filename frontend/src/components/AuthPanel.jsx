@@ -219,7 +219,7 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                                 {(isAdmin || isOnAdmin) && (
-                                    <Button variant="menu" full onClick={() => { setOpen(false); if (isOnAdmin) { onGoHome && onGoHome(); } else { onOpenAdmin && onOpenAdmin(); } }} style={{ color: menuTextColor }}>
+                                    <Button themeAware variant="menu" full onClick={() => { setOpen(false); if (isOnAdmin) { onGoHome && onGoHome(); } else { onOpenAdmin && onOpenAdmin(); } }} style={{ color: menuTextColor }}>
                                         {isOnAdmin ? '返回地图' : '管理后台'}
                                     </Button>
                                 )}
@@ -227,17 +227,17 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
                                     <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
                                 )}
 
-                                <Button variant="menu" full onClick={() => { setOpen(false); if (isOnSettings) { onGoHome && onGoHome(); } else { onOpenSettings && onOpenSettings(); } }} style={{ color: menuTextColor }}>
+                                <Button themeAware variant="menu" full onClick={() => { setOpen(false); if (isOnSettings) { onGoHome && onGoHome(); } else { onOpenSettings && onOpenSettings(); } }} style={{ color: menuTextColor }}>
                                     {isOnSettings ? '返回地图' : '设置'}
                                 </Button>
 
                                 <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
-                                <Button variant="menu" full onClick={() => { setOpen(false); if (isOnDinners) { onGoHome && onGoHome(); } else { onOpenDinners && onOpenDinners(); } }} style={{ color: menuTextColor }}>
+                                <Button themeAware variant="menu" full onClick={() => { setOpen(false); if (isOnDinners) { onGoHome && onGoHome(); } else { onOpenDinners && onOpenDinners(); } }} style={{ color: menuTextColor }}>
                                     {isOnDinners ? '返回地图' : '聚餐活动'}
                                 </Button>
 
                                 <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
-                                <Button variant="menu" full onClick={() => { setOpen(false); onLogout && onLogout(); }} style={{ color: dark ? '#ff8a93' : '#b00020' }}>
+                                <Button themeAware variant="menu" full onClick={() => { setOpen(false); onLogout && onLogout(); }} style={{ color: dark ? '#ff8a93' : '#b00020' }}>
                                     注销
                                 </Button>
                             </div>
@@ -246,9 +246,9 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                             <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
-                            <Button variant="menu" full onClick={() => { setOpen(false); onOpenDinners && onOpenDinners(); }}>聚餐活动</Button>
+                            <Button themeAware variant="menu" full onClick={() => { setOpen(false); onOpenDinners && onOpenDinners(); }}>聚餐活动</Button>
                             <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
-                            <Button variant="menu" full onClick={() => { setOpen(false); onOpenAuth && onOpenAuth(); }}>登录 / 注册</Button>
+                            <Button themeAware variant="menu" full onClick={() => { setOpen(false); onOpenAuth && onOpenAuth(); }}>登录 / 注册</Button>
                             <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
                         </div>
                     )}

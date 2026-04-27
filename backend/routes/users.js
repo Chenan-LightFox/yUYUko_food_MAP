@@ -47,12 +47,12 @@ router.post("/register", (req, res) => {
 
             // 检验通过，用户注册逻辑
             const hashPwd = hashPassword(password);
+            const userId = crypto.randomUUID();
             db.run(
-                "INSERT INTO User (username, password, qq) VALUES (?, ?, ?)",
-                [username, hashPwd, qq],
+                "INSERT INTO User (id, username, password, qq) VALUES (?, ?, ?, ?)",
+                [userId, username, hashPwd, qq],
                 function (err3) {
                     if (err3) return res.status(500).json({ error: err3.message });
-                    const userId = this.lastID;
                     const token = jwt.sign({ id: userId, username }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
                     // 将 token 存入 Redis，key: session:<userId>，TTL 与 JWT 一致

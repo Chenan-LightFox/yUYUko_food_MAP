@@ -2,6 +2,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
 
 const dbFile = path.join(__dirname, 'data.sqlite');
+const SQLITE_UUID_EXPR = "lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6)))";
 
 let rawDb;
 try {
@@ -88,10 +89,71 @@ const db = {
     _raw: rawDb
 };
 
+function migrateUserTableToUuidIfNeeded() {
+    const table = rawDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='User'").get();
+    if (!table) return;
+
+    const cols = rawDb.prepare("PRAGMA table_info('User')").all();
+    const idCol = cols.find((c) => c.name === 'id');
+    const idType = String((idCol && idCol.type) || '').toUpperCase();
+    const isUuidPrimaryKey = !!idCol && idCol.pk === 1 && idType.includes('TEXT');
+    if (isUuidPrimaryKey) return;
+
+    const colNames = new Set(cols.map((c) => c.name));
+    const hasCol = (name) => colNames.has(name);
+
+    const selectExpr = [
+        `CASE WHEN typeof(id) = 'text' AND length(trim(id)) > 0 THEN id ELSE ${SQLITE_UUID_EXPR} END AS id`,
+        `${hasCol('username') ? 'username' : 'NULL'} AS username`,
+        `${hasCol('password') ? 'password' : 'NULL'} AS password`,
+        `${hasCol('avatar') ? 'avatar' : 'NULL'} AS avatar`,
+        `${hasCol('admin_level') ? 'admin_level' : 'NULL'} AS admin_level`,
+        `${hasCol('created_time') ? 'created_time' : 'CURRENT_TIMESTAMP'} AS created_time`,
+        `${hasCol('is_banned') ? 'is_banned' : '0'} AS is_banned`,
+        `${hasCol('ban_reason') ? 'ban_reason' : 'NULL'} AS ban_reason`,
+        `${hasCol('ban_expires') ? 'ban_expires' : 'NULL'} AS ban_expires`,
+        `${hasCol('map_settings') ? 'map_settings' : 'NULL'} AS map_settings`,
+        `${hasCol('qq') ? 'qq' : 'NULL'} AS qq`,
+        `${hasCol('avatar_blob') ? 'avatar_blob' : 'NULL'} AS avatar_blob`
+    ].join(', ');
+
+    console.log('Migrating User.id to TEXT UUID primary key...');
+    rawDb.exec('BEGIN');
+    try {
+        rawDb.exec(`CREATE TABLE IF NOT EXISTS "__User_uuid_migration" (
+            id TEXT PRIMARY KEY,
+            username TEXT UNIQUE,
+            password TEXT,
+            avatar TEXT,
+            admin_level TEXT,
+            created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            is_banned INTEGER DEFAULT 0,
+            ban_reason TEXT,
+            ban_expires DATETIME,
+            map_settings TEXT,
+            qq TEXT,
+            avatar_blob BLOB
+        );`);
+
+        rawDb.exec(`INSERT INTO "__User_uuid_migration" (id, username, password, avatar, admin_level, created_time, is_banned, ban_reason, ban_expires, map_settings, qq, avatar_blob)
+                    SELECT ${selectExpr} FROM User;`);
+
+        rawDb.exec('DROP TABLE User;');
+        rawDb.exec('ALTER TABLE "__User_uuid_migration" RENAME TO User;');
+        rawDb.exec('COMMIT');
+        console.log('Migration complete: User.id is now UUID text primary key.');
+    } catch (e) {
+        rawDb.exec('ROLLBACK');
+        throw e;
+    }
+}
+
 function init() {
     try {
+        migrateUserTableToUuidIfNeeded();
+
         rawDb.exec(`CREATE TABLE IF NOT EXISTS "User" (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id TEXT PRIMARY KEY,
             username TEXT UNIQUE,
             password TEXT,
             avatar TEXT,

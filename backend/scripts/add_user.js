@@ -1,62 +1,26 @@
-const { db } = require('../db');
+const { db, init } = require('../db');
 const crypto = require('crypto');
 
 const users = [
-    { id: 864, username: 'dev', password: '12345679', admin_level: 'YUYUKO' },
-    { id: 126, username: 'dev1', password: '12341234', admin_level: null }
+    { username: 'dev', password: '12345679', admin_level: 'YUYUKO' },
+    { username: 'dev1', password: '12341234', admin_level: null }
 ];
 
 function hashPassword(password) {
     return crypto.createHash('sha256').update(password).digest('hex');
 }
 
+init();
+
 function ensureSchema(cb) {
-    db.serialize(() => {
-        // 确保 User 表存在
-        db.run(`CREATE TABLE IF NOT EXISTS "User" (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
-            password TEXT,
-            avatar TEXT
-        );`, (err) => {
-            if (err) return cb(err);
-
-            // 检查 User 表的列，添加缺失的列
-            db.all("PRAGMA table_info('User')", [], (err2, rows) => {
-                if (err2) return cb(err2);
-                const cols = (rows || []).map(r => r.name);
-                const tasks = [];
-
-                if (!cols.includes('admin_level')) {
-                    tasks.push(cbAddColumn.bind(null, "admin_level TEXT"));
-                }
-                if (!cols.includes('created_time')) {
-                    tasks.push(cbAddColumn.bind(null, "created_time DATETIME DEFAULT CURRENT_TIMESTAMP"));
-                }
-
-                function runTasks(i) {
-                    if (i >= tasks.length) return cb(null);
-                    tasks[i]((err3) => {
-                        if (err3) return cb(err3);
-                        runTasks(i + 1);
-                    });
-                }
-
-                runTasks(0);
-            });
-        });
-    });
-}
-
-function cbAddColumn(def, cb) {
-    const sql = `ALTER TABLE User ADD COLUMN ${def}`;
-    db.run(sql, [], (err) => {
-        if (err) {
-            // If column already exists or another error, report
-            console.error('Failed to add column', def, err.message);
-            return cb(err);
+    db.all("PRAGMA table_info('User')", [], (err, rows) => {
+        if (err) return cb(err);
+        const cols = (rows || []).map(r => r.name);
+        const required = ['id', 'username', 'password', 'admin_level', 'created_time'];
+        const missing = required.filter(c => !cols.includes(c));
+        if (missing.length > 0) {
+            return cb(new Error(`User 表字段不完整，缺少: ${missing.join(', ')}`));
         }
-        console.log('Added column:', def);
         cb(null);
     });
 }
@@ -68,9 +32,12 @@ ensureSchema((err) => {
         process.exit(1);
     }
 
-    // 插入或替换用户记录
-    const sql = `INSERT OR REPLACE INTO User (id, username, password, avatar, admin_level, created_time)
-                 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
+    const sql = `INSERT INTO User (id, username, password, avatar, admin_level, created_time)
+                                 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                                 ON CONFLICT(username) DO UPDATE SET
+                                     password = excluded.password,
+                                     avatar = excluded.avatar,
+                                     admin_level = excluded.admin_level`;
 
     function insertUser(i) {
         if (i >= users.length) {
@@ -79,15 +46,16 @@ ensureSchema((err) => {
             return;
         }
         const u = users[i];
+        const userId = crypto.randomUUID();
         const hashed = hashPassword(u.password);
         const adminVal = u.admin_level === null ? null : u.admin_level;
-        db.run(sql, [u.id, u.username, hashed, null, adminVal], function (err) {
+        db.run(sql, [userId, u.username, hashed, null, adminVal], function (err) {
             if (err) {
                 console.error(`Insert failed for ${u.username}:`, err.message);
                 process.exitCode = 2;
                 // continue with next
             } else {
-                console.log(`User inserted/updated with id=${u.id}, username=${u.username}, admin_level=${adminVal}`);
+                console.log(`User inserted/updated with id=${userId}, username=${u.username}, admin_level=${adminVal}`);
             }
             insertUser(i + 1);
         });

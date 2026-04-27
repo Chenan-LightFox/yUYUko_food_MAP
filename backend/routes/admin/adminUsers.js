@@ -30,7 +30,7 @@ router.post("/set-level", requireAdmin("manage_users"), (req, res) => {
     }
 
     // 不能修改自身权限
-    if (Number(userId) === Number(actingAdminId)) {
+    if (String(userId) === String(actingAdminId)) {
         return res.status(403).json({ error: "不可操作自身管理员权限" });
     }
 
@@ -83,7 +83,7 @@ router.post('/ban', requireAdmin('manage_users'), (req, res) => {
     const { userId, reason, durationDays } = req.body;
     const actingAdminId = req.user && req.user.id;
     if (!userId) return res.status(400).json({ error: '缺少 userId' });
-    if (Number(userId) === Number(actingAdminId)) return res.status(403).json({ error: '不可封禁自身账号' });
+    if (String(userId) === String(actingAdminId)) return res.status(403).json({ error: '不可封禁自身账号' });
 
     db.get('SELECT id, is_banned FROM User WHERE id = ?', [userId], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -128,7 +128,7 @@ router.delete("/:id", requireAdmin("manage_users"), (req, res) => {
     const targetId = req.params.id;
     const actingAdminId = req.user && req.user.id;
 
-    if (Number(targetId) === Number(actingAdminId)) {
+    if (String(targetId) === String(actingAdminId)) {
         return res.status(403).json({ error: "不可删除自身账号" });
     }
 
