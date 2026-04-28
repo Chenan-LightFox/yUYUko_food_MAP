@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import Button from '../components/Button';
 import useDarkMode from '../utils/useDarkMode';
+import ResponsiveTable from '../components/ResponsiveTable';
+import ScrollableView from '../components/ScrollableView';
 import { getThemeColor } from '../utils/theme';
 import JsonTable from '../components/JsonTable';
 
@@ -55,12 +57,14 @@ export default function AdminAuditModal({ open, onClose, backendUrl, token }) {
 
     return (
         <div style={{ position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', zIndex: 6000 }}>
-            <div style={{
+            <ScrollableView style={{
                 background: dark ? '#0b1220' : '#fff',
                 padding: 12,
+                boxSizing: 'border-box',
                 borderRadius: 6,
-                minWidth: 640,
-                maxWidth: '95%',
+                width: 'min(640px, calc(100vw - 24px))',
+                minWidth: 0,
+                maxWidth: 'calc(100vw - 24px)',
                 maxHeight: '80vh',
                 overflowY: 'auto',
                 boxShadow: dark ? '0 6px 24px rgba(0,0,0,0.6)' : '0 8px 40px rgba(0,0,0,0.25)',
@@ -80,22 +84,22 @@ export default function AdminAuditModal({ open, onClose, backendUrl, token }) {
                             {logs.length === 0 ? (
                                 <div style={{ color: dark ? '#9ca3af' : '#666' }}>暂无操作记录</div>
                             ) : (
-                                <table cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
+                                <ResponsiveTable minWidth={900} cellPadding="8" style={{ border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
                                     <thead>
                                         <tr>
-                                            <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
-                                            <th style={{ textAlign: 'left', padding: 8 }}>管理员ID</th>
+                                            <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>ID</th>
+                                            <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>管理员ID</th>
                                             <th style={{ textAlign: 'left', padding: 8 }}>动作</th>
-                                            <th style={{ textAlign: 'left', padding: 8 }}>目标用户</th>
+                                            <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>目标用户</th>
                                             <th style={{ textAlign: 'left', padding: 8 }}>详情</th>
-                                            <th style={{ textAlign: 'left', padding: 8 }}>时间</th>
+                                            <th style={{ textAlign: 'left', padding: 8, minWidth: 100 }}>时间</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {logs.map((l, idx) => (
                                             <tr key={l.id} style={{ borderTop: dark ? '1px solid rgba(255,255,255,0.04)' : undefined, background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
-                                                <td style={{ padding: 8 }}>{l.id}</td>
-                                                <td style={{ padding: 8 }}>{l.admin_id}</td>
+                                                <td style={{ padding: 8, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.id}>{l.id}</td>
+                                                <td style={{ padding: 8, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.admin_id}>{l.admin_id}</td>
                                                 <td style={{ padding: 8 }}>{l.action}</td>
                                                 <td style={{ padding: 8 }}>{l.target_user_id || '-'}</td>
                                                 <td style={{ padding: 8, maxWidth: 320, verticalAlign: 'top' }}>
@@ -109,12 +113,12 @@ export default function AdminAuditModal({ open, onClose, backendUrl, token }) {
                                             </tr>
                                         ))}
                                     </tbody>
-                                </table>
+                                </ResponsiveTable>
                             )}
                         </div>
                     )}
                 </div>
-            </div>
+            </ScrollableView>
         </div>
     );
 }

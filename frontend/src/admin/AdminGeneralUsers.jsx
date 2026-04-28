@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import { useAuth } from "../AuthContext";
 import useDarkMode from "../utils/useDarkMode";
+import ResponsiveTable from "../components/ResponsiveTable";
 import { useTips } from "../components/Tips";
 import { useConfirm } from "../components/Confirm";
 import defaultAvatar from '../img/default.png';
@@ -166,20 +167,20 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                     {filteredUsers.length === 0 ? (
                         <div>当前没有匹配的普通用户记录。</div>
                     ) : (
-                        <table cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
+                        <ResponsiveTable minWidth={750} cellPadding="8" style={{ border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
                             <thead>
                                 <tr>
-                                    <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
+                                    <th style={{ textAlign: 'left', padding: 8, minWidth: 100 }}>ID</th>
                                     <th style={{ textAlign: 'left', padding: 8 }}>用户名</th>
                                     <th style={{ textAlign: 'left', padding: 8 }}>QQ号</th>
                                     <th style={{ textAlign: 'left', padding: 8 }}>头像</th>
-                                    <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
+                                    <th style={{ textAlign: 'left', padding: 8, minWidth: 100 }}>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredUsers.map((u, idx) => (
                                     <tr key={u.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
-                                        <td>{u.id}</td>
+                                        <td style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={u.id}>{u.id}</td>
                                         <td>{u.username}</td>
                                         <td>{u.qq || '-'}</td>
                                         <td>
@@ -189,13 +190,13 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                                                 <img src={defaultAvatar} alt="default avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
                                             )}
                                         </td>
-                                        <td>
-                                            <Button themeAware onClick={() => deleteUser(u.id)} disabled={processing[u.id]} style={{ background: '#e02424', color: '#ffffff' }}>删除</Button>
+                                        <td style={{ minWidth: 100 }}>
+                                            <Button themeAware onClick={() => deleteUser(u.id)} disabled={processing[u.id]} style={{ background: '#e02424', color: '#ffffff', fontSize: 12, padding: '4px 6px' }}>删除</Button>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
-                        </table>
+                        </ResponsiveTable>
                     )}
                 </div>
             )}

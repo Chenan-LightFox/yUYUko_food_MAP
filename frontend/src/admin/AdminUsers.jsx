@@ -4,6 +4,7 @@ import { useAuth } from "../AuthContext";
 import AdminBanModal from "./AdminBanModal";
 import SelectInput from '../components/SelectInput';
 import useDarkMode from "../utils/useDarkMode";
+import ResponsiveTable from "../components/ResponsiveTable";
 import TextInput from "../components/TextInput";
 import { useTips } from "../components/Tips";
 import { useConfirm } from "../components/Confirm";
@@ -298,15 +299,15 @@ export default function AdminUsers({ backendUrl = null }) {
             ) : filtered.length === 0 ? (
                 <div>未找到匹配的用户。</div>
             ) : (
-                <table cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
+                <ResponsiveTable minWidth={900} cellPadding="8" style={{ border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
                     <thead>
                         <tr>
-                            <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
+                            <th style={{ textAlign: 'left', padding: 8, minWidth: 100 }}>ID</th>
                             <th style={{ textAlign: 'left', padding: 8 }}>用户名</th>
                             <th style={{ textAlign: 'left', padding: 8 }}>QQ号</th>
                             <th style={{ textAlign: 'left', padding: 8 }}>头像</th>
                             <th style={{ textAlign: 'left', padding: 8 }}>等级</th>
-                            <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
+                            <th style={{ textAlign: 'left', padding: 8, maxWidth: 100 }}>操作</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -315,7 +316,7 @@ export default function AdminUsers({ backendUrl = null }) {
                             const isSuper = u.admin_level === "YUYUKO";
                             return (
                                 <tr key={u.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
-                                    <td>{u.id}</td>
+                                    <td style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={u.id}>{u.id}</td>
                                     <td>{u.username}</td>
                                     <td>{u.qq || "-"}</td>
                                     <td>
@@ -336,24 +337,45 @@ export default function AdminUsers({ backendUrl = null }) {
                                             <option value="">普通用户</option>
                                         </SelectInput>
                                     </td>
-                                    <td>
-                                        {u.is_banned ? (
-                                            <Button themeAware onClick={() => unbanUser(u.id)} disabled={isSelf || processing[u.id]} style={{ marginRight: 8 }}>解除封禁</Button>
-                                        ) : (
-                                            !isSuper && (
-                                                <Button themeAware onClick={() => onBanClick(u)} disabled={isSelf || processing[u.id]} style={{ marginRight: 8, background: '#a04400', color: '#fff' }}>封禁</Button>
-                                            )
-                                        )}
-
-                                        {isSuper ? null : (
-                                            <Button themeAware onClick={() => deleteUser(u.id)} disabled={isSelf || processing[u.id]} style={{ background: '#e02424', color: '#ffffff' }}>删除</Button>
-                                        )}
+                                    <td style={{ whiteSpace: 'normal', maxWidth: 100 }}>
+                                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                            {u.is_banned ? (
+                                                <Button
+                                                    themeAware
+                                                    onClick={() => unbanUser(u.id)}
+                                                    disabled={isSelf || isSuper || processing[u.id]}
+                                                    title={isSuper ? '超级管理员不可操作' : (isSelf ? '不可操作自己' : '')}
+                                                    style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap', minWidth: 72 }}
+                                                >
+                                                    解除封禁
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    themeAware
+                                                    onClick={() => onBanClick(u)}
+                                                    disabled={isSelf || isSuper || processing[u.id]}
+                                                    title={isSuper ? '超级管理员不可操作' : (isSelf ? '不可操作自己' : '')}
+                                                    style={{ background: '#a04400', color: '#fff', fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap', minWidth: 60 }}
+                                                >
+                                                    封禁
+                                                </Button>
+                                            )}
+                                            <Button
+                                                themeAware
+                                                onClick={() => deleteUser(u.id)}
+                                                disabled={isSelf || isSuper || processing[u.id]}
+                                                title={isSuper ? '超级管理员不可操作' : (isSelf ? '不可操作自己' : '')}
+                                                style={{ background: '#e02424', color: '#ffffff', fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap', minWidth: 60 }}
+                                            >
+                                                删除
+                                            </Button>
+                                        </div>
                                     </td>
                                 </tr>
                             )
                         })}
                     </tbody>
-                </table>
+                </ResponsiveTable>
             )}
 
             {!loading && filtered.length > 0 && (

@@ -2,6 +2,7 @@ import React from 'react';
 import Button from '../components/Button';
 import TextArea from '../components/TextArea';
 import useDarkMode from '../utils/useDarkMode';
+import ScrollableView from './ScrollableView';
 
 export default function CommentPanel({
     place,
@@ -32,7 +33,7 @@ export default function CommentPanel({
                 </div>
             </div>
 
-            <div style={{ marginTop: 8, maxHeight: 320, overflowY: 'auto', borderTop: dark ? '1px solid #1f2937' : '1px solid #eee', paddingTop: 8 }}>
+            <ScrollableView style={{ marginTop: 8, maxHeight: 320, overflowY: 'auto', borderTop: dark ? '1px solid #1f2937' : '1px solid #eee', paddingTop: 8 }}>
                 {loading ? (
                     <div>加载中…</div>
                 ) : (
@@ -49,7 +50,7 @@ export default function CommentPanel({
                         )}
                     </div>
                 )}
-            </div>
+            </ScrollableView>
 
             <div style={{ marginTop: 8 }}>
                 {message && <div style={{ color: '#c33', marginBottom: 8 }}>{message}</div>}

@@ -5,6 +5,7 @@ import { useTips } from "../components/Tips";
 import { useConfirm } from "../components/Confirm";
 import { useAuth } from "../AuthContext";
 import JsonTable from "../components/JsonTable";
+import ResponsiveTable from "../components/ResponsiveTable";
 import useDarkMode from "../utils/useDarkMode";
 import { getThemeColor } from "../utils/theme";
 
@@ -209,40 +210,40 @@ export default function AdminPlaces({ backendUrl = null }) {
                                 <div>当前没有匹配的待处理申请。</div>
                             ) : (
                                 <div>
-                                    <table cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
+                                    <ResponsiveTable minWidth={950} cellPadding="8" style={{ border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
                                         <thead>
                                             <tr>
-                                                <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
-                                                <th style={{ textAlign: 'left', padding: 8 }}>地点ID</th>
-                                                <th style={{ textAlign: 'left', padding: 8 }}>申请人</th>
-                                                <th style={{ textAlign: 'left', padding: 8 }}>提交时间</th>
+                                                <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>ID</th>
+                                                <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>地点ID</th>
+                                                <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>申请人</th>
+                                                <th style={{ textAlign: 'left', padding: 8, minWidth: 100 }}>提交时间</th>
                                                 <th style={{ textAlign: 'left', padding: 8 }}>当前状态</th>
                                                 <th style={{ textAlign: 'left', padding: 8 }}>提议内容</th>
-                                                <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
+                                                <th style={{ textAlign: 'left', padding: 8, minWidth: 140 }}>操作</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {pageItems.map((r, idx) => (
                                                 <tr key={r.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
-                                                    <td>{r.id}</td>
-                                                    <td>{r.place_id}</td>
-                                                    <td>{r.requester_id}</td>
-                                                    <td>{r.created_time}</td>
+                                                    <td style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.id}>{r.id}</td>
+                                                    <td style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.place_id}>{r.place_id}</td>
+                                                    <td style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.requester_id}>{r.requester_id}</td>
+                                                    <td style={{ minWidth: 100 }}>{r.created_time}</td>
                                                     <td>{r.status}</td>
                                                     <td style={{ maxWidth: 420, verticalAlign: 'top' }}>
                                                         <JsonTable value={r.proposed} />
                                                         {r.note ? <div style={{ color: '#666', marginTop: 6 }}>备注: {r.note}</div> : null}
                                                     </td>
-                                                    <td style={{ whiteSpace: 'nowrap' }}>
-                                                        <>
-                                                            <Button themeAware onClick={() => review(r.id, 'approve')} disabled={processing[r.id]} style={{ marginRight: 6 }}>通过</Button>
-                                                            <Button themeAware onClick={() => review(r.id, 'reject')} disabled={processing[r.id]} style={{ background: '#e02424', color: '#fff' }}>驳回</Button>
-                                                        </>
+                                                    <td style={{ minWidth: 140 }}>
+                                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                                            <Button themeAware onClick={() => review(r.id, 'approve')} disabled={processing[r.id]} style={{ fontSize: 12, padding: '4px 6px' }}>通过</Button>
+                                                            <Button themeAware onClick={() => review(r.id, 'reject')} disabled={processing[r.id]} style={{ background: '#e02424', color: '#fff', fontSize: 12, padding: '4px 6px' }}>驳回</Button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}
                                         </tbody>
-                                    </table>
+                                    </ResponsiveTable>
 
                                     <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <div>共 {filtered.length} 条 — 第 {page} / {totalPages} 页</div>

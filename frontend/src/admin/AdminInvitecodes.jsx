@@ -5,6 +5,7 @@ import { useTips } from "../components/Tips";
 import { useConfirm } from "../components/Confirm";
 import { useAuth } from "../AuthContext";
 import useDarkMode from "../utils/useDarkMode";
+import ResponsiveTable from "../components/ResponsiveTable";
 
 function resolveBackendUrl() {
     if (typeof window === "undefined") return "http://localhost:2053";
@@ -250,32 +251,32 @@ export default function AdminInvitecode({ backendUrl = null }) {
                     {invites.length === 0 ? (
                         <div>当前没有邀请码记录。</div>
                     ) : (
-                        <table cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
+                        <ResponsiveTable minWidth={900} cellPadding="8" style={{ border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
                             <thead>
                                 <tr>
-                                    <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
-                                    <th style={{ textAlign: 'left', padding: 8 }}>Code (hashed)</th>
+                                    <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>ID</th>
+                                    <th style={{ textAlign: 'left', padding: 8, minWidth: 150 }}>Code (hashed)</th>
                                     <th style={{ textAlign: 'left', padding: 8 }}>Max Uses</th>
                                     <th style={{ textAlign: 'left', padding: 8 }}>Current Uses</th>
-                                    <th style={{ textAlign: 'left', padding: 8 }}>创建时间</th>
-                                    <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
+                                    <th style={{ textAlign: 'left', padding: 8, minWidth: 100 }}>创建时间</th>
+                                    <th style={{ textAlign: 'left', padding: 8, minWidth: 100 }}>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {invites.map((inv, idx) => (
                                     <tr key={inv.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
-                                        <td>{inv.id}</td>
-                                        <td style={{ maxWidth: 320, wordBreak: 'break-all' }}>{inv.code || inv.hashed || "-"}</td>
+                                        <td style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={inv.id}>{inv.id}</td>
+                                        <td style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={inv.code || inv.hashed}>{inv.code || inv.hashed || "-"}</td>
                                         <td>{inv.max_uses != null ? inv.max_uses : (inv.maxUses || "-")}</td>
                                         <td>{inv.current_uses != null ? inv.current_uses : (inv.currentUses || 0)}</td>
                                         <td>{inv.created_time || inv.createdTime || "-"}</td>
-                                        <td>
-                                            <Button themeAware onClick={() => deleteInvite(inv.id)} disabled={processing[inv.id]} style={{ background: '#e02424', color: '#fff' }}>删除</Button>
+                                        <td style={{ minWidth: 100 }}>
+                                            <Button themeAware onClick={() => deleteInvite(inv.id)} disabled={processing[inv.id]} style={{ background: '#e02424', color: '#fff', fontSize: 12, padding: '4px 6px' }}>删除</Button>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
-                        </table>
+                        </ResponsiveTable>
                     )}
                 </div>
             )}

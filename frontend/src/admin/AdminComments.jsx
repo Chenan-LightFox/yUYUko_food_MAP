@@ -5,6 +5,7 @@ import { useTips } from "../components/Tips";
 import { useConfirm } from "../components/Confirm";
 import { useAuth } from "../AuthContext";
 import useDarkMode from "../utils/useDarkMode";
+import ResponsiveTable from "../components/ResponsiveTable";
 import { getThemeColor } from "../utils/theme";
 
 function resolveBackendUrl() {
@@ -185,34 +186,34 @@ export default function AdminComments({ backendUrl = null }) {
 
                             return (
                                 <div>
-                                    <table cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%', border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
+                                    <ResponsiveTable minWidth={850} cellPadding="8" style={{ border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
                                         <thead>
                                             <tr>
-                                                <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
-                                                <th style={{ textAlign: 'left', padding: 8 }}>地点ID</th>
-                                                <th style={{ textAlign: 'left', padding: 8 }}>用户ID</th>
+                                                <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>ID</th>
+                                                <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>地点ID</th>
+                                                <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>用户ID</th>
                                                 <th style={{ textAlign: 'left', padding: 8 }}>内容</th>
-                                                <th style={{ textAlign: 'left', padding: 8 }}>创建时间</th>
-                                                <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
+                                                <th style={{ textAlign: 'left', padding: 8, minWidth: 100 }}>创建时间</th>
+                                                <th style={{ textAlign: 'left', padding: 8, minWidth: 100 }}>操作</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {pageItems.map((c, idx) => (
                                                 <tr key={c.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
-                                                    <td>{c.id}</td>
-                                                    <td>{c.place_id || c.placeId || '-'}</td>
-                                                    <td>{c.user_id || c.userId || '-'}</td>
+                                                    <td style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.id}>{c.id}</td>
+                                                    <td style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.place_id || c.placeId}>{c.place_id || c.placeId || '-'}</td>
+                                                    <td style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.user_id || c.userId}>{c.user_id || c.userId || '-'}</td>
                                                     <td style={{ maxWidth: 420 }}>
                                                         <div style={{ whiteSpace: 'pre-wrap' }}>{c.content || c.text || ''}</div>
                                                     </td>
                                                     <td>{c.created_time || c.createdTime || '-'}</td>
-                                                    <td>
-                                                        <Button themeAware onClick={() => deleteComment(c.id)} disabled={processing[c.id]} style={{ background: '#e02424', color: '#fff' }}>删除</Button>
+                                                    <td style={{ minWidth: 100 }}>
+                                                        <Button themeAware onClick={() => deleteComment(c.id)} disabled={processing[c.id]} style={{ background: '#e02424', color: '#fff', fontSize: 12, padding: '4px 6px' }}>删除</Button>
                                                     </td>
                                                 </tr>
                                             ))}
                                         </tbody>
-                                    </table>
+                                    </ResponsiveTable>
 
                                     <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <div>共 {filtered.length} 条 — 第 {page} / {totalPages} 页</div>

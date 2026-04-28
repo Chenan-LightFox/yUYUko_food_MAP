@@ -152,10 +152,10 @@ export default function AddForm({ backendUrl, token, defaultPos, defaultName = "
             <div style={{ marginTop: 8 }}>
                 <TextInput placeholder="描述" value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: "100%" }} />
             </div>
-            <div style={{ marginTop: 8, maxHeight: "200px", overflowY: "auto" }} className="custom-scrollbar">
+            <ScrollableView style={{ marginTop: 8, maxHeight: "200px", overflowY: "auto" }}>
                 <PlaceImageInputs backendUrl={backendUrl} token={token} images={exteriorImages} setImages={setExteriorImages} label="外观/招牌图片" />
                 <PlaceImageInputs backendUrl={backendUrl} token={token} images={menuImages} setImages={setMenuImages} label="菜单图片" />
-            </div>
+            </ScrollableView>
             <div style={{ marginTop: 8, textAlign: "right" }}>
                 <Button themeAware onClick={onCancel} style={{ marginRight: 8 }}>取消</Button>
                 <Button themeAware onClick={handle}>提交</Button>

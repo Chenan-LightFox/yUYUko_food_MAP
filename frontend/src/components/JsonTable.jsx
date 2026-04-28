@@ -1,4 +1,5 @@
 import React from 'react';
+import ResponsiveTable from './ResponsiveTable';
 import useDarkMode from '../utils/useDarkMode';
 
 function isJsonString(v) {
@@ -40,7 +41,7 @@ export default function JsonTable({ value, maxWidth = 420 }) {
             const keys = Object.keys(v);
             if (keys.length === 0) return <span style={{ color: dark ? '#9ca3af' : '#666' }}>{'{}'}</span>;
             return (
-                <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                <ResponsiveTable minWidth={320} wrapperStyle={{ maxWidth: '100%' }} style={{ width: '100%' }}>
                     <tbody>
                         {keys.map(k => (
                             <tr key={k}>
@@ -49,7 +50,7 @@ export default function JsonTable({ value, maxWidth = 420 }) {
                             </tr>
                         ))}
                     </tbody>
-                </table>
+                </ResponsiveTable>
             );
         }
         return String(v);
@@ -61,7 +62,7 @@ export default function JsonTable({ value, maxWidth = 420 }) {
     }
 
     return (
-        <div style={{ maxWidth }}>
+        <div style={{ maxWidth: '100%' }}>
             {renderValue(parsed)}
         </div>
     );

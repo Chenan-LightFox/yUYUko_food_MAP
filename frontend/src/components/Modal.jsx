@@ -1,5 +1,6 @@
 import React from 'react';
 import useDarkMode from '../hooks/useDarkMode';
+import ScrollableView from './ScrollableView';
 
 export default function Modal({ title, onClose, children, width = '80%', height = '80%' }) {
     const dark = useDarkMode();
@@ -11,7 +12,7 @@ export default function Modal({ title, onClose, children, width = '80%', height 
 
     return (
         <div style={overlayStyle}>
-            <div style={boxStyle}>
+            <ScrollableView style={boxStyle}>
                 <div style={headerStyle}>
                     <h3 style={{ margin: 0 }}>{title}</h3>
                     <div>
@@ -19,7 +20,7 @@ export default function Modal({ title, onClose, children, width = '80%', height 
                     </div>
                 </div>
                 {children}
-            </div>
+            </ScrollableView>
         </div>
     );
 }

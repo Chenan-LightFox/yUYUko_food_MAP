@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import TextInput from './components/TextInput';
+import ScrollableView from './components/ScrollableView';
 
 const REQUEST_TIMEOUT_MS = 12000;
 const MAX_USERNAME_LENGTH = 64;
@@ -233,7 +234,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
     };
 
     return (
-        <div
+        <ScrollableView
             role="dialog"
             aria-modal="true"
             aria-labelledby="auth-modal-title"
@@ -425,6 +426,6 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                     {message}
                 </p>
             )}
-        </div>
+        </ScrollableView>
     );
 }
