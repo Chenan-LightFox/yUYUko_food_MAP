@@ -76,7 +76,6 @@ export default function PlaceImageInputs({ backendUrl, token, images, setImages,
                 <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     ref={fileInputRef}
                     style={{ display: 'none' }}
                     onChange={handleFileChange}

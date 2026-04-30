@@ -71,6 +71,8 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     const [newComment, setNewComment] = useState("");
     const [commentSubmitting, setCommentSubmitting] = useState(false);
     const selectedPlaceRef = useRef(null);
+    const manageOpenRef = useRef(false);
+    const commentOpenRef = useRef(false);
     const lastFetchedTokenRef = useRef(null);
     const hasToken = !!token;
     const authPending = hasToken && !isAuthenticated;
@@ -88,6 +90,8 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 
     const searchResultsRef = useRef(null);
     useEffect(() => { searchResultsRef.current = searchResults; }, [searchResults]);
+    useEffect(() => { manageOpenRef.current = manageOpen; }, [manageOpen]);
+    useEffect(() => { commentOpenRef.current = commentOpen; }, [commentOpen]);
     const loadPlacesRef = useRef(null);
 
     const DEFAULT_THEME_COLOR = '#002fa7';
@@ -394,9 +398,15 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
             });
 
             handleMapClick = (e) => {
-                if (!addModeRef.current) return;
-                const { lng, lat } = e.lnglat;
-                setAddingPos([lng, lat]);
+                if (addModeRef.current) {
+                    const { lng, lat } = e.lnglat;
+                    setAddingPos([lng, lat]);
+                    return;
+                }
+                if (manageOpenRef.current || commentOpenRef.current) return;
+                if (!selectedPlaceRef.current) return;
+                if (e && e.target && mapRef.current && e.target !== mapRef.current) return;
+                closePopup();
             };
             handleViewChange = () => {
                 schedulePersistMapView();

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import Tooltip from '../components/Tooltip';
 import Button from '../components/Button';
 import ManagePanel from '../components/ManagePanel';
@@ -72,6 +72,8 @@ export default function MapUI(props) {
     const [favLoading, setFavLoading] = useState(false);
     const [favError, setFavError] = useState('');
     const inputRef = useRef(null);
+    const popupRef = useRef(null);
+    const [popupLayout, setPopupLayout] = useState(null);
     const dark = useDarkMode();
 
     const { results: spResults, loading: spLoading } = useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLocationMarkerRef, places);
@@ -80,6 +82,66 @@ export default function MapUI(props) {
     useEffect(() => {
         if (!selectedPlace) setDetailOpen(false);
     }, [selectedPlace]);
+
+    const updatePopupLayout = () => {
+        if (!popupPoint || !popupRef.current) return;
+        const containerEl = containerRef && containerRef.current;
+        const containerWidth = containerEl ? containerEl.clientWidth : window.innerWidth;
+        const containerHeight = containerEl ? containerEl.clientHeight : window.innerHeight;
+        if (!containerWidth || !containerHeight) return;
+
+        const rect = popupRef.current.getBoundingClientRect();
+        const popupWidth = rect.width || popupRef.current.offsetWidth || 0;
+        const popupHeight = rect.height || popupRef.current.offsetHeight || 0;
+        if (!popupWidth || !popupHeight) return;
+
+        const edgePadding = 12;
+        const anchorGap = 10;
+        let left = popupPoint.x - popupWidth / 2;
+        let top = popupPoint.y - popupHeight - anchorGap;
+        let placedAbove = true;
+
+        if (top < edgePadding) {
+            top = popupPoint.y + anchorGap;
+            placedAbove = false;
+        }
+
+        if (left < edgePadding) left = edgePadding;
+        if (left + popupWidth > containerWidth - edgePadding) {
+            left = Math.max(edgePadding, containerWidth - popupWidth - edgePadding);
+        }
+
+        if (top + popupHeight > containerHeight - edgePadding) {
+            const altTop = popupPoint.y - popupHeight - anchorGap;
+            if (!placedAbove && altTop >= edgePadding) {
+                top = altTop;
+                placedAbove = true;
+            } else {
+                top = Math.max(edgePadding, containerHeight - popupHeight - edgePadding);
+            }
+        }
+
+        const next = { left: Math.round(left), top: Math.round(top) };
+        setPopupLayout(prev => (
+            prev && prev.left === next.left && prev.top === next.top ? prev : next
+        ));
+    };
+
+    useLayoutEffect(() => {
+        if (!selectedPlace || !popupPoint) {
+            setPopupLayout(null);
+            return;
+        }
+        const raf = window.requestAnimationFrame(updatePopupLayout);
+        return () => window.cancelAnimationFrame(raf);
+    }, [selectedPlace, popupPoint]);
+
+    useEffect(() => {
+        if (!selectedPlace || !popupPoint) return;
+        const onResize = () => updatePopupLayout();
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, [selectedPlace, popupPoint]);
 
     useEffect(() => {
         if (!searchOpen) return;
@@ -490,7 +552,7 @@ export default function MapUI(props) {
                     )}
 
                     <div style={{ padding: "4px 8px", background: "rgba(0,0,0,0.5)", color: "#fff", borderRadius: "12px", fontSize: "12px", pointerEvents: "none", userSelect: "none" }}>
-                        v1.4.0
+                        v1.4.1
                     </div>
                 </div>
             </div>
@@ -499,14 +561,14 @@ export default function MapUI(props) {
                 <div
                     style={{
                         position: "absolute",
-                        left: popupPoint.x,
-                        top: popupPoint.y,
-                        transform: "translate(-50%, -100%)",
+                        left: popupLayout ? popupLayout.left : popupPoint.x,
+                        top: popupLayout ? popupLayout.top : popupPoint.y,
+                        transform: popupLayout ? "none" : "translate(-50%, -100%)",
                         zIndex: 4000,
                         pointerEvents: "auto"
                     }}
                 >
-                    <div style={{ background: dark ? '#0b1220' : '#fff', padding: 10, borderRadius: 6, boxShadow: dark ? "0 6px 24px rgba(0,0,0,0.6)" : "0 2px 12px rgba(0,0,0,0.25)", minWidth: 200 }}>
+                    <div ref={popupRef} style={{ background: dark ? '#0b1220' : '#fff', padding: 10, borderRadius: 6, boxShadow: dark ? "0 6px 24px rgba(0,0,0,0.6)" : "0 2px 12px rgba(0,0,0,0.25)", minWidth: 200, maxWidth: '85vw' }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <strong style={{ fontSize: 14, color: dark ? '#e5e7eb' : undefined }}>{selectedPlace.name}</strong>
                             <Button onClick={closePopup} style={{ padding: "2px 8px", borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", fontSize: 18, lineHeight: 1, color: dark ? '#e5e7eb' : undefined }} title="关闭">×</Button>
