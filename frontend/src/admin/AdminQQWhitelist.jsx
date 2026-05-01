@@ -31,6 +31,8 @@ export default function AdminQQWhitelist({ backendUrl = null }) {
     const [batchInput, setBatchInput] = useState("");
     const [adding, setAdding] = useState(false);
     const [processing, setProcessing] = useState({});
+    const [searchQuery, setSearchQuery] = useState("");
+    const [page, setPage] = useState(1);
     const fetchIdRef = useRef(0);
     const dark = useDarkMode();
 
@@ -193,10 +195,30 @@ export default function AdminQQWhitelist({ backendUrl = null }) {
 
     if (!canManage) return <div style={{ color: '#b00020' }}>您的账号无权访问此面板。</div>;
 
+    const PAGE_SIZE = 30;
+
+    const filteredEntries = entries.filter(entry => {
+        if (!searchQuery) return true;
+        return String(entry.qq || '').toLowerCase().includes(searchQuery.toLowerCase());
+    });
+
+    const totalPages = Math.max(1, Math.ceil((filteredEntries || []).length / PAGE_SIZE));
+    useEffect(() => {
+        if (page > totalPages) setPage(totalPages);
+    }, [totalPages, page]);
+
+    const pageEntries = (filteredEntries || []).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
     return (
         <div style={{ marginTop: 12 }}>
             <h3>QQ白名单管理</h3>
-            <div style={{ marginBottom: 8 }}>
+            <div style={{ marginBottom: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+                <TextInput
+                    value={searchQuery}
+                    onChange={e => { setSearchQuery(e.target.value); setPage(1); }}
+                    placeholder="搜索QQ号"
+                    style={{ flex: 1 }}
+                />
                 <Button themeAware onClick={fetchEntries} disabled={loading}>刷新</Button>
             </div>
 
@@ -241,7 +263,7 @@ export default function AdminQQWhitelist({ backendUrl = null }) {
                 <div>加载中…</div>
             ) : (
                 <div>
-                    {entries.length === 0 ? (
+                    {filteredEntries.length === 0 ? (
                         <div>当前白名单为空，请先添加QQ号。</div>
                     ) : (
                         <ResponsiveTable minWidth={600} cellPadding="8" style={{ border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
@@ -254,7 +276,7 @@ export default function AdminQQWhitelist({ backendUrl = null }) {
                                 </tr>
                             </thead>
                             <tbody>
-                                {entries.map((entry, idx) => (
+                                {pageEntries.map((entry, idx) => (
                                     <tr key={entry.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
                                         <td>{entry.id}</td>
                                         <td>{entry.qq}</td>
@@ -274,6 +296,18 @@ export default function AdminQQWhitelist({ backendUrl = null }) {
                             </tbody>
                         </ResponsiveTable>
                     )}
+                </div>
+            )}
+
+            {!loading && filteredEntries.length > 0 && (
+                <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>共 {filteredEntries.length} 条 — 第 {page} / {totalPages} 页</div>
+                    <div>
+                        <Button themeAware onClick={() => setPage(1)} disabled={page === 1} style={{ marginRight: 6 }}>首页</Button>
+                        <Button themeAware onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ marginRight: 6 }}>上一页</Button>
+                        <Button themeAware onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ marginRight: 6 }}>下一页</Button>
+                        <Button themeAware onClick={() => setPage(totalPages)} disabled={page === totalPages}>尾页</Button>
+                    </div>
                 </div>
             )}
         </div>

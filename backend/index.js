@@ -68,7 +68,6 @@ app.use(cors({
     origin: (origin, callback) => {
         // origin 为空时（例如某些本地请求或 curl），允许通过
         if (!origin) {
-            console.log('CORS: request with no Origin header (allowing)');
             return callback(null, true);
         }
         const allowed = isAllowedOrigin(origin);
