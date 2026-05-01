@@ -4,7 +4,7 @@ const https = require('https');
 const { db } = require('../db');
 const { fuzzySearch } = require('../utils/fuzzySearch'); // 模糊搜索，保留字段
 
-const DEFAULT_NEARBY_RADIUS_METERS = 10000;
+const DEFAULT_NEARBY_RADIUS_METERS = 5000;
 const DEFAULT_NEARBY_MIN_COUNT = 5;
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 const DEEPSEEK_BASE_URL = (process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com').replace(/\/$/, '');
@@ -115,7 +115,7 @@ async function expandQueriesWithDeepseek(query, maxSuggestions = DEFAULT_DEEPSEE
     const content = await deepseekChat([
         {
             role: 'system',
-            content: 'You are a food search query expander. Given a user query, generate 3-6 SPECIFIC alternative Chinese keywords that describe the SAME dish/cuisine. Use synonyms, regional names, or ingredient-based terms. NEVER generate generic terms like 餐厅, 美食, 料理, 饭店, 好吃, 推荐. Return ONLY a JSON array of strings.'
+            content: 'You are a food search query expander. Strip adjectives like 地道, 正宗, 好吃, 推荐, 附近, 最好 from the query and focus on the CORE cuisine/dish. Generate 3-6 keywords: the core cuisine name, common synonyms, and regional variations. NEVER generate terms with modifiers or generic words like 餐厅, 美食, 料理. Return ONLY a JSON array of strings.'
         },
         {
             role: 'user',
@@ -180,14 +180,18 @@ function makeAgentCandidateKey(place, index) {
     return `idx:${index}`;
 }
 
+const MIN_AGENT_RADIUS_METERS = 3000;
+
 function buildAgentCandidates(places, center, maxCandidates, radiusMeters) {
     const list = [];
     const cap = Number.isFinite(maxCandidates) && maxCandidates > 0
         ? Math.floor(maxCandidates)
         : DEFAULT_AGENT_MAX_CANDIDATES;
-    const radius = Number.isFinite(radiusMeters) && radiusMeters > 0
+    const rawRadius = Number.isFinite(radiusMeters) && radiusMeters > 0
         ? radiusMeters
         : DEFAULT_AGENT_RADIUS_METERS;
+    // 确保 agent 始终有足够的附近候选点，即使前端屏幕范围很小
+    const radius = Math.max(rawRadius, MIN_AGENT_RADIUS_METERS);
     const enforceRadius = !!center && Number.isFinite(radius) && radius > 0;
     for (let i = 0; i < (places || []).length && list.length < cap; i += 1) {
         const p = places[i];
