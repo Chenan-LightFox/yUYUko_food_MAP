@@ -9,18 +9,51 @@ import { useSearchPanel } from './useSearchPanel';
 import ScrollableView from '../components/ScrollableView';
 import Notice from '../components/Notice';
 import { fetchFavorites } from './api';
-function buildNavigationUrls(place) {
+
+function buildNavigationTargets(place) {
     const latitude = Number(place?.latitude);
     const longitude = Number(place?.longitude);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return [];
 
-    const label = encodeURIComponent((place?.name || place?.address || '目的地').trim());
+    const rawLabel = (place?.name || place?.address || '目的地').trim();
+    const label = encodeURIComponent(rawLabel);
 
-    return {
-        ios: `http://maps.apple.com/?daddr=${latitude},${longitude}&q=${label}`,
-        android: `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`,
-        web: `https://uri.amap.com/navigation?to=${longitude},${latitude},${label}&mode=car&src=yUYUko_food_MAP`
-    };
+    return [
+        {
+            id: 'system-default',
+            name: '系统默认地图',
+            url: `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`,
+            mobileOnly: true,
+            prefersLocationHref: true
+        },
+        {
+            id: 'apple-maps',
+            name: 'Apple 地图',
+            url: `http://maps.apple.com/?daddr=${latitude},${longitude}&q=${label}`,
+            iosOnly: true,
+            prefersLocationHref: true
+        },
+        {
+            id: 'amap',
+            name: '高德地图',
+            url: `https://uri.amap.com/navigation?to=${longitude},${latitude},${label}&mode=car&src=yUYUko_food_MAP`
+        },
+        {
+            id: 'baidu',
+            name: '百度地图',
+            url: `https://api.map.baidu.com/direction?destination=latlng:${latitude},${longitude}|name:${label}&mode=driving&region=中国&output=html&src=webapp.yUYUko_food_MAP`
+        },
+        {
+            id: 'tencent',
+            name: '腾讯地图',
+            url: `https://apis.map.qq.com/uri/v1/routeplan?type=drive&tocoord=${latitude},${longitude}&to=${label}&policy=0&referer=yUYUko_food_MAP`
+        },
+        {
+            id: 'google',
+            name: 'Google Maps',
+            url: `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
+        }
+    ];
 }
 
 export default function MapUI(props) {
@@ -80,24 +113,34 @@ export default function MapUI(props) {
         onPickerClose
     } = props;
 
-    const navigationUrls = selectedPlace ? buildNavigationUrls(selectedPlace) : null;
-    const hasNavigationTarget = !!navigationUrls;
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/i.test(ua);
+    const isAndroid = /Android/i.test(ua);
+    const isMobile = isIOS || isAndroid;
 
-    const handleNavigate = () => {
-        if (!navigationUrls) return;
+    const navigationTargets = (selectedPlace ? buildNavigationTargets(selectedPlace) : []).filter((item) => {
+        if (item.iosOnly && !isIOS) return false;
+        if (item.mobileOnly && !isMobile) return false;
+        return true;
+    });
 
-        const ua = navigator.userAgent || '';
-        const isIOS = /iPad|iPhone|iPod/i.test(ua);
-        const isAndroid = /Android/i.test(ua);
+    const hasNavigationTarget = navigationTargets.length > 0;
 
-        const targetUrl = isIOS ? navigationUrls.ios : (isAndroid ? navigationUrls.android : navigationUrls.web);
+    const openNavigationTarget = (target) => {
+        if (!target || !target.url) return;
 
-        if (isIOS || isAndroid) {
-            window.location.href = targetUrl;
+        if (isMobile && target.prefersLocationHref) {
+            window.location.href = target.url;
             return;
         }
 
-        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+        window.open(target.url, '_blank', 'noopener,noreferrer');
+    };
+
+    const handleNavigate = () => {
+        if (!hasNavigationTarget) return;
+
+        setNavPickerOpen(true);
     };
 
     const [searchOpen, setSearchOpen] = useState(false);
@@ -107,11 +150,16 @@ export default function MapUI(props) {
     const [favItems, setFavItems] = useState([]);
     const [favLoading, setFavLoading] = useState(false);
     const [favError, setFavError] = useState('');
+    const [navPickerOpen, setNavPickerOpen] = useState(false);
     const inputRef = useRef(null);
     const popupRef = useRef(null);
     const [popupLayout, setPopupLayout] = useState(null);
     const dark = useDarkMode();
     const hideNonSearchButtons = searchOpen;
+
+    useEffect(() => {
+        if (!selectedPlace) setNavPickerOpen(false);
+    }, [selectedPlace]);
 
     const { results: spResults, loading: spLoading } = useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLocationMarkerRef, places);
 
@@ -758,6 +806,57 @@ export default function MapUI(props) {
                     onDelete={onManageDelete}
                     onSubmitRequest={onManageSubmitRequest}
                 />
+            )}
+
+            {navPickerOpen && (
+                <div style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: dark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.35)',
+                    zIndex: 5600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 16
+                }}>
+                    <div style={{
+                        width: 'min(420px, 92vw)',
+                        background: dark ? '#0b1220' : '#fff',
+                        borderRadius: 10,
+                        boxShadow: dark ? '0 8px 32px rgba(0,0,0,0.65)' : '0 8px 32px rgba(0,0,0,0.24)',
+                        border: dark ? '1px solid #334155' : '1px solid #e5e7eb',
+                        color: dark ? '#e5e7eb' : '#111827',
+                        padding: 14
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                            <strong style={{ fontSize: 15 }}>选择导航应用</strong>
+                            <Button onClick={() => setNavPickerOpen(false)} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: 'transparent', fontSize: 18, lineHeight: 1, color: dark ? '#e5e7eb' : undefined }}>×</Button>
+                        </div>
+
+                        <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#6b7280', marginBottom: 10 }}>
+                            将前往: {selectedPlace?.name || '该地点'}
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {navigationTargets.map((target) => (
+                                <Button
+                                    key={target.id}
+                                    onClick={() => {
+                                        setNavPickerOpen(false);
+                                        openNavigationTarget(target);
+                                    }}
+                                    style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.08)' : '2px solid rgba(0,0,0,0.12)', color: dark ? '#e5e7eb' : undefined, padding: '8px 10px', borderRadius: 6, textAlign: 'left' }}
+                                    full
+                                >
+                                    {target.name}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             )}
 
             {!hideNonSearchButtons && !pickerMode && addingPos && (
