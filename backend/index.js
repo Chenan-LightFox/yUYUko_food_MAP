@@ -4,6 +4,7 @@ const bodyParser = require("body-parser");
 const fs = require("fs");
 const https = require("https");
 const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { init } = require("./db");
 
 const placesRouter = require("./routes/places");

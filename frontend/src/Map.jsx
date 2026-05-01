@@ -95,6 +95,11 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 
     const searchResultsRef = useRef(null);
     useEffect(() => { searchResultsRef.current = searchResults; }, [searchResults]);
+    const searchTermRef = useRef(searchTerm);
+    useEffect(() => { searchTermRef.current = searchTerm; }, [searchTerm]);
+    const searchingRef = useRef(searching);
+    useEffect(() => { searchingRef.current = searching; }, [searching]);
+    const searchServerRef = useRef(null);
     useEffect(() => { manageOpenRef.current = manageOpen; }, [manageOpen]);
     useEffect(() => { commentOpenRef.current = commentOpen; }, [commentOpen]);
     const loadPlacesRef = useRef(null);
@@ -330,6 +335,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         let handleMapStyleChange = null;
         let resizeObserver = null;
         let loadTimer = null;
+        let searchTimer = null;
 
         const getCurrentMapView = () => {
             if (!mapRef.current) return null;
@@ -443,6 +449,23 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                         loadPlacesRef.current(false);
                     }
                 }, 300);
+
+                const term = (searchTermRef.current || "").trim();
+                if (!term || !mapRef.current || !searchServerRef.current) return;
+                if (searchTimer) {
+                    window.clearTimeout(searchTimer);
+                }
+                searchTimer = window.setTimeout(() => {
+                    searchTimer = null;
+                    if (!mapRef.current || !searchServerRef.current) return;
+                    const centerNode = normalizeLngLat(mapRef.current.getCenter());
+                    if (!centerNode) return;
+                    if (searchingRef.current) return;
+                    searchServerRef.current({
+                        q: term,
+                        center: { lat: centerNode.lat, lng: centerNode.lng }
+                    });
+                }, 350);
             };
             handlePageHide = () => {
                 persistCurrentMapView(true);
@@ -526,6 +549,10 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
             if (loadTimer) {
                 window.clearTimeout(loadTimer);
                 loadTimer = null;
+            }
+            if (searchTimer) {
+                window.clearTimeout(searchTimer);
+                searchTimer = null;
             }
             if (mapRef.current) {
                 if (handleMapClick) mapRef.current.off("click", handleMapClick);
@@ -803,13 +830,16 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 
     // 使用后端 /api/places/search 接口进行搜索，并混合高德地图 API 非标记点结果
     const searchServer = async ({ q = "", center = undefined, limit = 200 } = {}) => {
-        if (!mapRef.current && !center) {
+        const userLocPos = userLocationMarkerRef?.current ? userLocationMarkerRef.current.getPosition() : null;
+        const mapCenter = mapRef.current ? mapRef.current.getCenter() : null;
+        const effectiveCenter = center || (userLocPos ? { lat: userLocPos.lat, lng: userLocPos.lng } : (mapCenter ? { lat: mapCenter.lat, lng: mapCenter.lng } : undefined));
+        if (!mapRef.current && !effectiveCenter) {
             console.warn("searchServer: 地图尚未就绪且未传入 center，直接返回");
             return;
         }
         setSearching(true);
         try {
-            const markedData = await Api.searchPlaces(backendUrl, { q, center, limit });
+            const markedData = await Api.searchPlaces(backendUrl, { q, center: effectiveCenter, limit });
 
             let unmarkedData = [];
             if (window.AMap && q && q.trim()) {
@@ -819,7 +849,9 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                             pageSize: 20,
                             pageIndex: 1
                         });
-                        const cpoint = center ? [center.lng, center.lat] : (mapRef.current ? [mapRef.current.getCenter().lng, mapRef.current.getCenter().lat] : null);
+                        const cpoint = effectiveCenter
+                            ? [effectiveCenter.lng, effectiveCenter.lat]
+                            : (mapRef.current ? [mapRef.current.getCenter().lng, mapRef.current.getCenter().lat] : null);
 
                         if (cpoint) {
                             ps.searchNearBy(q.trim(), cpoint, 2000, (status, result) => {
@@ -898,6 +930,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
             setSearching(false);
         }
     };
+    searchServerRef.current = searchServer;
 
     const searchAllMarkers = async () => {
         // 兼容旧名：直接调用后端搜全局（不传 center）
