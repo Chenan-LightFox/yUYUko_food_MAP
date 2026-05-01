@@ -5,7 +5,7 @@ const { db } = require('../db');
 const { fuzzySearch } = require('../utils/fuzzySearch'); // 模糊搜索，保留字段
 
 const DEFAULT_NEARBY_RADIUS_METERS = 5000;
-const DEFAULT_NEARBY_MIN_COUNT = 20;
+const DEFAULT_NEARBY_MIN_COUNT = 5;
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 const DEEPSEEK_BASE_URL = (process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com').replace(/\/$/, '');
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
@@ -115,7 +115,7 @@ async function expandQueriesWithDeepseek(query, maxSuggestions = DEFAULT_DEEPSEE
             role: 'user',
             content: `Query: ${query}`
         }
-    ], { temperature: 0.2, maxTokens: 180 });
+    ], { temperature: 0.1, maxTokens: 180 });
 
     const rawList = parseJsonArray(content);
     const originKey = normalizeText(query);
