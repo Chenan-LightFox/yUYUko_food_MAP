@@ -9,7 +9,10 @@ const DEFAULT_NEARBY_MIN_COUNT = 20;
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 const DEEPSEEK_BASE_URL = (process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com').replace(/\/$/, '');
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
-const DEFAULT_DEEPSEEK_TIMEOUT_MS = 6000;
+const DEFAULT_DEEPSEEK_TIMEOUT_MS = (() => {
+    const n = Number(process.env.DEEPSEEK_TIMEOUT_MS);
+    return Number.isFinite(n) && n > 0 ? n : 15000;
+})();
 const DEFAULT_DEEPSEEK_MIN_SCORE = 0.6;
 const DEFAULT_DEEPSEEK_MAX_SUGGESTIONS = 4;
 const DEFAULT_DEEPSEEK_MIN_QUERY_LENGTH = 2;
@@ -18,6 +21,11 @@ const DEFAULT_AGENT_RECOMMEND_COUNT = 10;
 const DEFAULT_AGENT_MAX_CANDIDATES = 1000;
 const DEFAULT_AGENT_CHUNK_SIZE = 120;
 const DEFAULT_AGENT_MAX_TOKENS = 260;
+const DEFAULT_AGENT_RADIUS_METERS = (() => {
+    const n = Number(process.env.DEEPSEEK_AGENT_RADIUS_METERS);
+    if (Number.isFinite(n) && n > 0) return n;
+    return DEFAULT_NEARBY_RADIUS_METERS;
+})();
 
 function normalizeText(s) {
     return (s || "").toString().trim().toLowerCase();
@@ -166,11 +174,15 @@ function makeAgentCandidateKey(place, index) {
     return `idx:${index}`;
 }
 
-function buildAgentCandidates(places, center, maxCandidates) {
+function buildAgentCandidates(places, center, maxCandidates, radiusMeters) {
     const list = [];
     const cap = Number.isFinite(maxCandidates) && maxCandidates > 0
         ? Math.floor(maxCandidates)
         : DEFAULT_AGENT_MAX_CANDIDATES;
+    const radius = Number.isFinite(radiusMeters) && radiusMeters > 0
+        ? radiusMeters
+        : DEFAULT_AGENT_RADIUS_METERS;
+    const enforceRadius = !!center && Number.isFinite(radius) && radius > 0;
     for (let i = 0; i < (places || []).length && list.length < cap; i += 1) {
         const p = places[i];
         if (!p) continue;
@@ -178,6 +190,9 @@ function buildAgentCandidates(places, center, maxCandidates) {
         let distanceMeters = undefined;
         if (center && center.lat != null && center.lng != null && p.latitude != null && p.longitude != null) {
             distanceMeters = haversineDistance(center.lat, center.lng, p.latitude, p.longitude);
+        }
+        if (enforceRadius) {
+            if (!Number.isFinite(distanceMeters) || distanceMeters > radius) continue;
         }
         list.push({
             key,
@@ -271,7 +286,7 @@ async function recommendPlacesWithAgent(query, places, center, opts = {}) {
     const maxCandidates = Number.isFinite(opts.maxCandidates) && opts.maxCandidates > 0
         ? Math.floor(opts.maxCandidates)
         : DEFAULT_AGENT_MAX_CANDIDATES;
-    const candidates = buildAgentCandidates(places, center, maxCandidates);
+    const candidates = buildAgentCandidates(places, center, maxCandidates, opts.radiusMeters);
     if (!candidates.length) return [];
     const keys = await selectAgentRecommendations(query, candidates, maxCount);
     if (!keys.length) return [];
@@ -420,6 +435,7 @@ async function getAllPlaces(opts = {}) {
     const agentRecommendOnly = opts.agentRecommendOnly !== false;
     const agentRecommendCount = Number.isFinite(opts.agentRecommendCount) ? Math.floor(opts.agentRecommendCount) : undefined;
     const agentMaxCandidates = Number.isFinite(opts.agentMaxCandidates) ? Math.floor(opts.agentMaxCandidates) : undefined;
+    const agentRadiusMeters = Number.isFinite(opts.agentRadiusMeters) ? Math.floor(opts.agentRadiusMeters) : undefined;
 
     // 获取所有地点数据（附带创建者和最后修改者姓名）
     const rows = await new Promise((resolve, reject) => {
@@ -490,7 +506,8 @@ async function getAllPlaces(opts = {}) {
     if (agentRecommend) {
         const recommended = await recommendPlacesWithAgent(q, results, center, {
             maxCount: agentRecommendCount,
-            maxCandidates: agentMaxCandidates
+            maxCandidates: agentMaxCandidates,
+            radiusMeters: agentRadiusMeters
         });
         if (recommended.length > 0) {
             if (agentRecommendOnly) {
@@ -523,7 +540,7 @@ async function getAllPlaces(opts = {}) {
     return results;
 }
 
-// GET /places/search?q=关键字&limit=50&centerLat=...&centerLng=...&nearbyRadius=2000&nearbyMin=20&agentRecommend=1&agentRecommendOnly=1
+// GET /places/search?q=关键字&limit=50&centerLat=...&centerLng=...&nearbyRadius=2000&nearbyMin=20&agentRecommend=1&agentRecommendOnly=1&agentRadius=5000
 router.get('/places/search', async (req, res) => {
     try {
         const q = req.query.q || "";
@@ -537,6 +554,7 @@ router.get('/places/search', async (req, res) => {
         const agentRecommendOnly = req.query.agentRecommendOnly ? req.query.agentRecommendOnly !== '0' : undefined;
         const agentRecommendCount = req.query.agentRecommendCount ? parseInt(req.query.agentRecommendCount, 10) : undefined;
         const agentMaxCandidates = req.query.agentMaxCandidates ? parseInt(req.query.agentMaxCandidates, 10) : undefined;
+        const agentRadiusMeters = req.query.agentRadius ? parseInt(req.query.agentRadius, 10) : undefined;
 
         const places = await getAllPlaces({
             q,
@@ -547,7 +565,8 @@ router.get('/places/search', async (req, res) => {
             agentRecommend,
             agentRecommendOnly,
             agentRecommendCount,
-            agentMaxCandidates
+            agentMaxCandidates,
+            agentRadiusMeters
         });
         res.json(places);
     } catch (err) {
