@@ -39,11 +39,6 @@ function buildNavigationTargets(place) {
             url: `https://uri.amap.com/navigation?to=${longitude},${latitude},${label}&mode=car&src=yUYUko_food_MAP`
         },
         {
-            id: 'baidu',
-            name: '百度地图',
-            url: `https://api.map.baidu.com/direction?destination=latlng:${latitude},${longitude}|name:${label}&mode=driving&region=中国&output=html&src=webapp.yUYUko_food_MAP`
-        },
-        {
             id: 'tencent',
             name: '腾讯地图',
             url: `https://apis.map.qq.com/uri/v1/routeplan?type=drive&tocoord=${latitude},${longitude}&to=${label}&policy=0&referer=yUYUko_food_MAP`
@@ -705,7 +700,7 @@ export default function MapUI(props) {
                         )}
 
                         <div style={{ padding: "4px 8px", background: "rgba(0,0,0,0.5)", color: "#fff", borderRadius: "12px", fontSize: "12px", pointerEvents: "none", userSelect: "none" }}>
-                            v1.4.3
+                            v1.5.0
                         </div>
                     </div>
                 </div>
