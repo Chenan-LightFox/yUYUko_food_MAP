@@ -15,6 +15,9 @@ import { applyThemeColor } from './utils/theme';
 const DEFAULT_CENTER = MapUtils.DEFAULT_CENTER;
 const DEFAULT_ZOOM = MapUtils.DEFAULT_ZOOM;
 const { normalizeLngLat, readSavedMapView, shouldPersistMapView, MAP_VIEW_STORAGE_KEY, MAP_VIEW_SAVE_DEBOUNCE_MS, LOCATE_ME_MIN_ZOOM, canUseLocationInCurrentContext, getLocationErrorMessage } = MapUtils;
+const PREFETCH_BOUNDS_RATIO = 1; // prefetch one viewport margin around the visible area
+
+const clampNumber = (value, min, max) => Math.min(Math.max(value, min), max);
 
 
 
@@ -590,7 +593,28 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
             const maxLng = typeof ne.lng !== 'undefined' ? ne.lng : ne.getLng();
             const maxLat = typeof ne.lat !== 'undefined' ? ne.lat : ne.getLat();
 
-            const data = await Api.fetchPlacesNearby(backendUrl, { minLng, minLat, maxLng, maxLat });
+            let targetMinLng = minLng;
+            let targetMinLat = minLat;
+            let targetMaxLng = maxLng;
+            let targetMaxLat = maxLat;
+
+            const lngSpan = maxLng - minLng;
+            const latSpan = maxLat - minLat;
+            if (Number.isFinite(lngSpan) && Number.isFinite(latSpan) && lngSpan > 0 && latSpan > 0) {
+                const marginLng = lngSpan * PREFETCH_BOUNDS_RATIO;
+                const marginLat = latSpan * PREFETCH_BOUNDS_RATIO;
+                targetMinLng = clampNumber(minLng - marginLng, -180, 180);
+                targetMaxLng = clampNumber(maxLng + marginLng, -180, 180);
+                targetMinLat = clampNumber(minLat - marginLat, -90, 90);
+                targetMaxLat = clampNumber(maxLat + marginLat, -90, 90);
+            }
+
+            const data = await Api.fetchPlacesNearby(backendUrl, {
+                minLng: targetMinLng,
+                minLat: targetMinLat,
+                maxLng: targetMaxLng,
+                maxLat: targetMaxLat
+            });
             setPlaces(data);
             if (searchResultsRef.current === null) {
                 renderMarkers(mapRef.current, markersRef, data, showPopup);
