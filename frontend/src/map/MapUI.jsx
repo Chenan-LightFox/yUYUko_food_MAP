@@ -9,6 +9,19 @@ import { useSearchPanel } from './useSearchPanel';
 import ScrollableView from '../components/ScrollableView';
 import Notice from '../components/Notice';
 import { fetchFavorites } from './api';
+function buildNavigationUrls(place) {
+    const latitude = Number(place?.latitude);
+    const longitude = Number(place?.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+
+    const label = encodeURIComponent((place?.name || place?.address || '目的地').trim());
+
+    return {
+        ios: `http://maps.apple.com/?daddr=${latitude},${longitude}&q=${label}`,
+        android: `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`,
+        web: `https://uri.amap.com/navigation?to=${longitude},${latitude},${label}&mode=car&src=yUYUko_food_MAP`
+    };
+}
 
 export default function MapUI(props) {
     const {
@@ -66,6 +79,26 @@ export default function MapUI(props) {
         onPickPlace,
         onPickerClose
     } = props;
+
+    const navigationUrls = selectedPlace ? buildNavigationUrls(selectedPlace) : null;
+    const hasNavigationTarget = !!navigationUrls;
+
+    const handleNavigate = () => {
+        if (!navigationUrls) return;
+
+        const ua = navigator.userAgent || '';
+        const isIOS = /iPad|iPhone|iPod/i.test(ua);
+        const isAndroid = /Android/i.test(ua);
+
+        const targetUrl = isIOS ? navigationUrls.ios : (isAndroid ? navigationUrls.android : navigationUrls.web);
+
+        if (isIOS || isAndroid) {
+            window.location.href = targetUrl;
+            return;
+        }
+
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    };
 
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchResultsVisible, setSearchResultsVisible] = useState(true);
@@ -624,7 +657,7 @@ export default function MapUI(props) {
                         )}
 
                         <div style={{ padding: "4px 8px", background: "rgba(0,0,0,0.5)", color: "#fff", borderRadius: "12px", fontSize: "12px", pointerEvents: "none", userSelect: "none" }}>
-                            v1.4.2
+                            v1.4.3
                         </div>
                     </div>
                 </div>
@@ -666,6 +699,15 @@ export default function MapUI(props) {
                         ) : (
                             !hideNonSearchButtons && (
                                 <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+                                    <Tooltip text={hasNavigationTarget ? '发送到设备地图 App' : '该地点缺少坐标，无法导航'}>
+                                        <Button
+                                            onClick={handleNavigate}
+                                            disabled={!hasNavigationTarget}
+                                            style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : '2px solid rgba(0,0,0,0.1)', color: dark ? '#e5e7eb' : undefined, padding: '6px 10px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                        >
+                                            导航
+                                        </Button>
+                                    </Tooltip>
                                     {/* 评论功能暂不开放，待敏感词机制完善后再开放 */}
                                     { /*<Tooltip text="在这里留下你的评论">
                                     <Button onClick={openCommentPanel} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: dark ? '#e5e7eb' : undefined, padding: '6px 10px', borderRadius: 4 }}>评论</Button>
