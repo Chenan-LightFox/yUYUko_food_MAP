@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import MapView from "./Map";
 import AdminDashboard from "./AdminDashboard";
 import Settings from "./Settings";
@@ -89,6 +89,9 @@ export default function App() {
             return '';
         }
     });
+    const authPanelRef = useRef(null);
+    const siteNoticeRef = useRef(null);
+    const [noticeLayout, setNoticeLayout] = useState({ top: 12, banTop: 84 });
 
     const goPath = useCallback((path) => {
         if (typeof window === "undefined") return;
@@ -340,6 +343,72 @@ export default function App() {
     const showMapPage = !showAdminPage && !showSettingsAny && !showAnyDinnerPage;
     const siteNoticeVisible = !!(siteNotice && String(siteNotice.id) !== String(dismissedNoticeId || ''));
 
+    useLayoutEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const updateNoticeLayout = () => {
+            const isMobile = window.matchMedia ? window.matchMedia('(max-width: 768px)').matches : (window.innerWidth <= 768);
+            if (!siteNoticeVisible) {
+                setNoticeLayout((prev) => {
+                    const nextBanTop = siteNoticeVisible ? 84 : 12;
+                    if (prev.top === 12 && prev.banTop === nextBanTop) return prev;
+                    return { top: 12, banTop: nextBanTop };
+                });
+                return;
+            }
+
+            const authRect = authPanelRef.current ? authPanelRef.current.getBoundingClientRect() : null;
+            const noticeRect = siteNoticeRef.current ? siteNoticeRef.current.getBoundingClientRect() : null;
+
+            let nextTop = 12;
+            let nextBanTop = 84;
+
+            if (authRect && noticeRect) {
+                const horizontallyOverlaps = noticeRect.right > authRect.left && noticeRect.left < authRect.right;
+                const verticallyOverlaps = noticeRect.bottom > authRect.top && noticeRect.top < authRect.bottom;
+                if (horizontallyOverlaps && verticallyOverlaps) {
+                    nextTop = Math.ceil(authRect.bottom + 8);
+                }
+            }
+
+            if (siteNoticeRef.current) {
+                const noticeHeight = Math.ceil(siteNoticeRef.current.getBoundingClientRect().height || 0);
+                nextBanTop = Math.max(84, Math.ceil(nextTop + noticeHeight + 8));
+            }
+
+            setNoticeLayout((prev) => {
+                if (prev.top === nextTop && prev.banTop === nextBanTop) return prev;
+                return { top: nextTop, banTop: nextBanTop };
+            });
+        };
+
+        updateNoticeLayout();
+
+        const resizeObserver = typeof ResizeObserver !== 'undefined'
+            ? new ResizeObserver(() => updateNoticeLayout())
+            : null;
+        if (resizeObserver) {
+            if (authPanelRef.current) resizeObserver.observe(authPanelRef.current);
+            if (siteNoticeRef.current) resizeObserver.observe(siteNoticeRef.current);
+        }
+
+        const onResize = () => updateNoticeLayout();
+        window.addEventListener('resize', onResize);
+        window.addEventListener('orientationchange', onResize);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', onResize);
+        }
+
+        return () => {
+            if (resizeObserver) resizeObserver.disconnect();
+            window.removeEventListener('resize', onResize);
+            window.removeEventListener('orientationchange', onResize);
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', onResize);
+            }
+        };
+    }, [siteNoticeVisible, siteNotice, dismissedNoticeId, pathname]);
+
     const authValue = {
         token,
         setToken: (t) => { setToken(t); try { localStorage.setItem('token', t); } catch (e) { } },
@@ -356,9 +425,10 @@ export default function App() {
             <TipsProvider>
                 <ConfirmProvider>
                     <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
-                        <BanNotice style={siteNoticeVisible ? { top: 84 } : undefined} />
+                        <BanNotice style={siteNoticeVisible ? { top: noticeLayout.banTop + 55 } : undefined} />
                         {siteNoticeVisible && (
                             <Notice
+                                ref={siteNoticeRef}
                                 title={siteNotice.title}
                                 backgroundColor={getNoticeColorOption(siteNotice.color_key).backgroundColor}
                                 canClose
@@ -368,7 +438,7 @@ export default function App() {
                                     try { localStorage.setItem('dismissed_notice_id', nextId); } catch (e) { }
                                 }}
                                 zIndex={4000}
-                                style={{ top: 12 }}
+                                style={{ top: noticeLayout.top + 55 }}
                             >
                                 <div style={{ whiteSpace: 'pre-wrap' }}>{siteNotice.content}</div>
                             </Notice>
@@ -543,6 +613,7 @@ export default function App() {
                         )}
 
                         <AuthPanel
+                            ref={authPanelRef}
                             user={user}
                             isAuth={isAuth}
                             isAdmin={isAdmin}

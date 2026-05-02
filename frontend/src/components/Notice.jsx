@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import useDarkMode from '../utils/useDarkMode';
 
 function parseColorToRgb(color) {
@@ -67,7 +67,7 @@ const TONE_COLORS = {
     }
 };
 
-export default function Notice({ title, children, tone = 'info', backgroundColor, canClose = false, onClose, zIndex = 3000, style }) {
+const Notice = forwardRef(function Notice({ title, children, tone = 'info', backgroundColor, canClose = false, onClose, zIndex = 3000, style }, ref) {
     const dark = useDarkMode();
     const palette = (TONE_COLORS[tone] || TONE_COLORS.info)[dark ? 'dark' : 'light'];
     const hasCustomBackground = typeof backgroundColor === 'string' && backgroundColor.trim();
@@ -80,9 +80,10 @@ export default function Notice({ title, children, tone = 'info', backgroundColor
         top: 12,
         left: '50%',
         transform: 'translateX(-50%)',
-        width: '55%',
+        width: 'min(960px, calc(100% - 24px))',
         maxWidth: '960px',
-        minWidth: '280px',
+        minWidth: 0,
+        boxSizing: 'border-box',
         zIndex,
         padding: '12px 16px',
         borderRadius: 8,
@@ -107,7 +108,7 @@ export default function Notice({ title, children, tone = 'info', backgroundColor
     };
 
     return (
-        <div style={rootStyle}>
+        <div ref={ref} style={rootStyle}>
             {canClose && (
                 <button aria-label="关闭" style={closeBtnStyle} onClick={onClose}>×</button>
             )}
@@ -115,4 +116,6 @@ export default function Notice({ title, children, tone = 'info', backgroundColor
             {children && <div style={{ marginTop: title ? 6 : 0 }}>{children}</div>}
         </div>
     );
-}
+});
+
+export default Notice;
