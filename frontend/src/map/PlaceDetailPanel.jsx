@@ -21,7 +21,7 @@ export default function PlaceDetailPanel({ place, onClose }) {
         }}>
             <div style={{ padding: '16px 20px', borderBottom: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2 style={{ margin: 0, fontSize: 18 }}>{place.name} 详情</h2>
-                <Button variant="secondary" onClick={onClose} style={{ padding: '4px 8px', color: dark ? '#e5e7eb' : undefined }} title="关闭">×</Button>
+                <Button variant="secondary" onClick={onClose} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: 'transparent', fontSize: 18, lineHeight: 1, color: dark ? '#e5e7eb' : undefined }} title="关闭">×</Button>
             </div>
 
             <ScrollableView style={{ flex: 1, padding: '20px' }}>
