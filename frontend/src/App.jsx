@@ -9,6 +9,7 @@ import CustomThemes from "./settings/CustomThemes";
 import EditAvatar from "./settings/EditAvatar";
 import AuthPanel from "./components/AuthPanel";
 import AuthModal from "./components/AuthModal";
+import Notice from "./components/Notice";
 import { AuthProvider } from "./AuthContext";
 import BanNotice from "./components/BanNotice";
 import { TipsProvider } from "./components/Tips";
@@ -16,6 +17,7 @@ import { ConfirmProvider } from "./components/Confirm";
 import { applyDarkMode, applyThemeColor } from "./utils/theme";
 import useDarkMode from './utils/useDarkMode';
 import { DinnerCreatePage, DinnerDetailPage, DinnerListPage, isDinnerPath, parseDinnerIdFromPath } from './DinnerPages';
+import { getNoticeColorOption } from './utils/noticeColors';
 
 function normalizeUrl(url) {
     return String(url).replace(/\/+$/, "");
@@ -79,6 +81,14 @@ export default function App() {
     const [token, setToken] = useState(localStorage.getItem("token"));
     const [showAuth, setShowAuth] = useState(!localStorage.getItem("token"));
     const [authPanelDisabled, setAuthPanelDisabled] = useState(false);
+    const [siteNotice, setSiteNotice] = useState(null);
+    const [dismissedNoticeId, setDismissedNoticeId] = useState(() => {
+        try {
+            return localStorage.getItem('dismissed_notice_id') || '';
+        } catch (e) {
+            return '';
+        }
+    });
 
     const goPath = useCallback((path) => {
         if (typeof window === "undefined") return;
@@ -156,6 +166,34 @@ export default function App() {
         const onPopstate = () => setPathname(currentPathname());
         window.addEventListener("popstate", onPopstate);
         return () => window.removeEventListener("popstate", onPopstate);
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadNotice = async () => {
+            try {
+                const res = await fetch(`${BACKEND_URL}/notices/current`);
+                if (!res.ok) return;
+                const data = await res.json().catch(() => ({}));
+                if (cancelled) return;
+                setSiteNotice(data && data.notice ? data.notice : null);
+            } catch (e) {
+                if (!cancelled) {
+                    console.warn('Failed to load site notice', e);
+                }
+            }
+        };
+
+        loadNotice();
+        const timer = window.setInterval(loadNotice, 30000);
+        window.addEventListener('focus', loadNotice);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(timer);
+            window.removeEventListener('focus', loadNotice);
+        };
     }, []);
 
     // Apply dark mode when user or their map_settings change
@@ -300,6 +338,7 @@ export default function App() {
     const showDinnerDetail = Number.isFinite(dinnerId) && dinnerId > 0;
     const showAnyDinnerPage = showDinnerList || showDinnerCreate || showDinnerDetail;
     const showMapPage = !showAdminPage && !showSettingsAny && !showAnyDinnerPage;
+    const siteNoticeVisible = !!(siteNotice && String(siteNotice.id) !== String(dismissedNoticeId || ''));
 
     const authValue = {
         token,
@@ -317,7 +356,23 @@ export default function App() {
             <TipsProvider>
                 <ConfirmProvider>
                     <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
-                        <BanNotice />
+                        <BanNotice style={siteNoticeVisible ? { top: 84 } : undefined} />
+                        {siteNoticeVisible && (
+                            <Notice
+                                title={siteNotice.title}
+                                backgroundColor={getNoticeColorOption(siteNotice.color_key).backgroundColor}
+                                canClose
+                                onClose={() => {
+                                    const nextId = String(siteNotice.id);
+                                    setDismissedNoticeId(nextId);
+                                    try { localStorage.setItem('dismissed_notice_id', nextId); } catch (e) { }
+                                }}
+                                zIndex={4000}
+                                style={{ top: 12 }}
+                            >
+                                <div style={{ whiteSpace: 'pre-wrap' }}>{siteNotice.content}</div>
+                            </Notice>
+                        )}
                         <div style={{ display: showMapPage ? 'block' : 'none', width: '100%', height: '100%' }}>
                             <MapView
                                 backendUrl={BACKEND_URL}

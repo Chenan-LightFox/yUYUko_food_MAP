@@ -1,0 +1,94 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build-frontend-notice-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"frontend",
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "check-backend-notices-modules",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"-e",
+				"require('./backend/routes/admin/adminNotices'); require('./backend/routes/notices'); console.log('backend notice modules loaded');"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "check-backend-notice-syntax",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"--check",
+				"backend/routes/admin/adminNotices.js"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "check-backend-index-syntax",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"--check",
+				"backend/index.js"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "probe-notice-routes",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$tests = @('http://localhost:2053/notices/current','http://localhost:2053/admin/notices'); foreach ($u in $tests) { try { $r = Invoke-WebRequest -Uri $u -Method Get -Headers @{Authorization='Bearer invalid'} -UseBasicParsing -TimeoutSec 5; Write-Output \"$u => $($r.StatusCode)\" } catch { if ($_.Exception.Response) { Write-Output \"$u => $([int]$_.Exception.Response.StatusCode.value__)\" } else { Write-Output \"$u => ERROR $($_.Exception.Message)\" } } }"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "probe-notice-routes-node",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"-e",
+				"const urls=['http://localhost:2053/notices/current','http://localhost:2053/admin/notices']; const http=require('http'); function probe(url){ return new Promise((resolve)=>{ const req=http.get(url,{headers:{Authorization:'Bearer invalid'}},(res)=>{res.resume(); resolve(url+' => '+res.statusCode);}); req.on('error',(err)=>resolve(url+' => ERROR '+err.message)); req.setTimeout(5000,()=>{req.destroy(); resolve(url+' => TIMEOUT');}); }); } (async()=>{ for (const url of urls) console.log(await probe(url)); })();"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "probe-notice-routes-node2",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"-e",
+				"const urls=[\"http://localhost:2053/notices/current\",\"http://localhost:2053/admin/notices\"]; const http=require(\"http\"); function probe(url){ return new Promise((resolve)=>{ const req=http.get(url,{headers:{Authorization:\"Bearer invalid\"}},(res)=>{res.resume(); resolve(url+\" => \"+res.statusCode);}); req.on(\"error\",(err)=>resolve(url+\" => ERROR \"+err.message)); req.setTimeout(5000,()=>{req.destroy(); resolve(url+\" => TIMEOUT\");}); }); } (async()=>{ for (const url of urls) console.log(await probe(url)); })();"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}
