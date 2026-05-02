@@ -377,6 +377,18 @@ export default function MapUI(props) {
         if (typeof closePopup === 'function') closePopup();
     };
 
+    const openDetailPanel = () => {
+        setDetailOpen(true);
+    };
+
+    const getPopupDescriptionPreview = (place) => {
+        const raw = String(place?.description || '').replace(/\s+/g, ' ').trim();
+        if (!raw) return { text: '', hasMore: false };
+        const limit = 80;
+        if (raw.length <= limit) return { text: raw, hasMore: false };
+        return { text: `${raw.slice(0, limit).trimEnd()}…`, hasMore: true };
+    };
+
     return (
         <>
             <div ref={containerRef} id="map" style={{ width: "100%", height: "100%", position: "relative" }}></div>
@@ -700,7 +712,7 @@ export default function MapUI(props) {
                         )}
 
                         <div style={{ padding: "4px 8px", background: "rgba(0,0,0,0.5)", color: "#fff", borderRadius: "12px", fontSize: "12px", pointerEvents: "none", userSelect: "none" }}>
-                            v1.5.1
+                            v1.6.0
                         </div>
                     </div>
                 </div>
@@ -717,14 +729,32 @@ export default function MapUI(props) {
                         pointerEvents: "auto"
                     }}
                 >
-                    <div ref={popupRef} style={{ background: dark ? '#0b1220' : '#fff', padding: 10, borderRadius: 6, boxShadow: dark ? "0 6px 24px rgba(0,0,0,0.6)" : "0 2px 12px rgba(0,0,0,0.25)", minWidth: 200, maxWidth: '85vw' }}>
+                    <div ref={popupRef} style={{ background: dark ? '#0b1220' : '#fff', padding: 10, borderRadius: 6, boxShadow: dark ? "0 6px 24px rgba(0,0,0,0.6)" : "0 2px 12px rgba(0,0,0,0.25)", minWidth: 200, width: 'min(92vw, 320px)', maxWidth: 'min(92vw, 320px)' }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <strong style={{ fontSize: 14, color: dark ? '#e5e7eb' : undefined }}>{selectedPlace.name}</strong>
                             {!hideNonSearchButtons && (
                                 <Button onClick={closePopup} style={{ padding: "2px 8px", borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", fontSize: 18, lineHeight: 1, color: dark ? '#e5e7eb' : undefined }} title="关闭">×</Button>
                             )}
                         </div>
-                        <div style={{ marginTop: 6, fontSize: 13, color: dark ? '#e5e7eb' : undefined }}>{selectedPlace.description || ""}</div>
+                        <div style={{ marginTop: 6, fontSize: 13, color: dark ? '#e5e7eb' : undefined, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                            {(() => {
+                                const { text, hasMore } = getPopupDescriptionPreview(selectedPlace);
+                                return (
+                                    <>
+                                        <span>{text}</span>
+                                        {hasMore && (
+                                            <span
+                                                onClick={openDetailPanel}
+                                                style={{ marginLeft: 4, color: '#9ca3af', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                                title="在详情中查看更多"
+                                            >
+                                                [在详情中查看更多]
+                                            </span>
+                                        )}
+                                    </>
+                                );
+                            })()}
+                        </div>
                         <div style={{ marginTop: 6, color: dark ? '#9ca3af' : '#666', fontSize: 12 }}>分类: {selectedPlace.category || "-"}</div>
 
                         {!pickerMode && (

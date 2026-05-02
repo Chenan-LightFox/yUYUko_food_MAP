@@ -241,14 +241,18 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     };
 
     // 从用户设置或 localStorage 中读取首选样式：优先返回主题专属配置，再回退到通用 map_style
+    // 用户未登录时（currentUser === null）会回退到 localStorage 或默认样式
     const getPreferredCandidates = (isDark) => {
         try {
             let userStyle = null;
-            // 首先尝试主题专属配置
+
+            // 首先尝试用户登录后的设置（currentUser.map_settings）
             if (currentUser && currentUser.map_settings) {
                 userStyle = currentUser.map_settings[isDark ? 'map_style_dark' : 'map_style_light'] || null;
                 if (!userStyle && currentUser.map_settings.map_style) userStyle = currentUser.map_settings.map_style;
             }
+
+            // 回退到 localStorage 中的设置（本地保存）
             if (!userStyle) {
                 try {
                     const raw = window.localStorage.getItem('map_settings');
@@ -261,10 +265,12 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 } catch (e) { /* ignore */ }
             }
 
+            // 使用默认样式列表，如果用户有自定义样式则优先使用
             const base = isDark ? AMAP_STYLE_CANDIDATES_DARK : AMAP_STYLE_CANDIDATES_LIGHT;
             if (userStyle) return [userStyle].concat(base.filter(s => s !== userStyle));
             return base;
         } catch (e) {
+            // 异常时返回默认样式列表
             return isDark ? AMAP_STYLE_CANDIDATES_DARK : AMAP_STYLE_CANDIDATES_LIGHT;
         }
     };
@@ -437,6 +443,11 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         const init = () => {
             if (!containerRef.current) return;
             const savedView = MapUtils.readSavedMapView();
+
+            // 判断是否使用深色模式
+            // 1. 首先检查 document 的 data-theme 属性
+            // 2. 如果没有设置，检查 localStorage 中的 map_settings
+            // 3. 如果都没有，默认为 false（浅色）
             let pageDark = (typeof document !== 'undefined' && document.documentElement && document.documentElement.getAttribute('data-theme') === 'dark');
             if (!pageDark) {
                 try {
@@ -447,6 +458,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                     }
                 } catch (e) { /* ignore */ }
             }
+
             const preferredStyles = getPreferredCandidates(pageDark);
 
             mapRef.current = new AMap.Map(containerRef.current, {
@@ -628,6 +640,20 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
             // ignore style apply errors
         }
     }, [dark, currentUser, mapComplete]);
+
+    // 当用户信息加载完成后，立即强制更新地图样式
+    // 确保用户已登录时使用用户的设置，而不是默认值
+    useEffect(() => {
+        if (!mapRef.current || !mapComplete || !currentUser) return;
+        try {
+            const map = mapRef.current;
+            const isDark = dark;
+            const preferred = getPreferredCandidates(isDark);
+            trySetAnyAmapStyle(map, preferred);
+        } catch (e) {
+            console.warn('更新地图样式失败', e);
+        }
+    }, [currentUser, dark, mapComplete]);
 
     const loadPlaces = async (force = false) => {
         // 如果正在搜索，不请求附近地点，除非强制

@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import Button from './Button';
 import Tooltip from './Tooltip';
 import defaultAvatar from '../img/default.png';
 import useDarkMode from '../utils/useDarkMode';
 
-export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onGoHome, onOpenDinners, onOpenDinnerCreate, pathname, backendUrl, interactionDisabled = false }) {
+const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onGoHome, onOpenDinners, onOpenDinnerCreate, pathname, backendUrl, interactionDisabled = false }, ref) {
     const [open, setOpen] = useState(false);
     const rootRef = useRef(null);
     const menuRef = useRef(null);
@@ -150,7 +150,14 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
 
     return (
         <div
-            ref={rootRef}
+            ref={(node) => {
+                rootRef.current = node;
+                if (typeof ref === 'function') {
+                    ref(node);
+                } else if (ref) {
+                    ref.current = node;
+                }
+            }}
             style={{
                 position: 'absolute',
                 left: 12,
@@ -265,4 +272,6 @@ export default function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth,
             )}
         </div>
     );
-}
+});
+
+export default AuthPanel;

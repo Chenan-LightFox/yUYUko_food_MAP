@@ -1,6 +1,6 @@
 const PERMISSIONS = {
-    YUYUKO: ["manage_users", "manage_places", "manage_invites", "manage_comments"],
-    YOUMU: ["manage_users_general", "manage_places", "manage_invites", "manage_comments"],
+    YUYUKO: ["manage_users", "manage_places", "manage_invites", "manage_comments", "manage_announcements"],
+    YOUMU: ["manage_users_general", "manage_places", "manage_invites", "manage_comments", "manage_announcements"],
     KOMACHI: ["manage_users_general", "manage_comments"]
 };
 

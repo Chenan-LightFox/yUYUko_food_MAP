@@ -23,7 +23,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    limits: { fileSize: 20 * 1024 * 1024 }, // 20MB limit
     fileFilter: function (req, file, cb) {
         if (!file.mimetype.startsWith('image/')) {
             return cb(new Error('仅允许上传图片文件'));
@@ -32,13 +32,22 @@ const upload = multer({
     }
 });
 
-router.post('/', upload.single('image'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: '上传失败或未提供文件' });
-    }
-    // 返回可供前端访问的相对URL
-    const imageUrl = `/uploads/${req.file.filename}`;
-    res.json({ url: imageUrl });
+router.post('/', (req, res) => {
+    upload.single('image')(req, res, (err) => {
+        if (err) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(413).json({ error: '图片过大，最大支持 20MB' });
+            }
+            return res.status(400).json({ error: err.message || '上传失败' });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ error: '上传失败或未提供文件' });
+        }
+        // 返回可供前端访问的相对URL
+        const imageUrl = `/uploads/${req.file.filename}`;
+        res.json({ url: imageUrl });
+    });
 });
 
 module.exports = router;

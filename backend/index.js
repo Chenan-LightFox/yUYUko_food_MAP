@@ -17,9 +17,11 @@ const adminCommentsRouter = require("./routes/admin/adminComments");
 const adminGeneralUsersRouter = require("./routes/admin/adminGeneralUsers");
 const adminAuditRouter = require('./routes/admin/adminAudit');
 const adminQQWhitelistRouter = require('./routes/admin/adminQQWhitelist');
+const adminNoticesRouter = require('./routes/admin/adminNotices');
 const placeRequestsRouter = require("./routes/placeRequests");
 const dinnersRouter = require("./routes/dinners");
 const favoritesRouter = require("./routes/favorites");
+const noticesRouter = require("./routes/notices");
 const { requireAuth } = require("./middleware/auth");
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
@@ -154,6 +156,8 @@ app.use("/admin/comments", requireAuth, adminCommentsRouter);
 app.use("/admin/general-users", requireAuth, adminGeneralUsersRouter);
 app.use("/admin/audit", requireAuth, adminAuditRouter);
 app.use("/admin/qq-whitelist", requireAuth, adminQQWhitelistRouter);
+app.use("/admin/notices", requireAuth, adminNoticesRouter);
+app.use("/api/admin/notices", requireAuth, adminNoticesRouter);
 
 
 init();
@@ -162,6 +166,8 @@ app.use('/api', searchRouter);
 app.use("/places", placesRouter);
 app.use("/comments", commentsRouter);
 app.use("/users", usersRouter);
+app.use("/notices", noticesRouter);
+app.use("/api/notices", noticesRouter);
 app.use("/place-requests", placeRequestsRouter);
 app.use("/api/place-requests", placeRequestsRouter); // 兼容前端或旧接口可能带 /api 前缀
 app.use("/dinners", dinnersRouter);

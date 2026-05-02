@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useAuth } from "../AuthContext";
 import Notice from './Notice';
 
-export default function BanNotice({ canClose = true }) {
+export default function BanNotice({ canClose = true, style }) {
     const { user } = useAuth();
     const [visible, setVisible] = useState(true);
     if (!visible) return null;
@@ -20,6 +20,7 @@ export default function BanNotice({ canClose = true }) {
             canClose={closable}
             onClose={() => setVisible(false)}
             zIndex={9999}
+            style={style}
         >
             <div style={{ fontSize: 13, marginTop: 6 }}>原因：{reason}；到期：{expires}</div>
             <div style={{ fontSize: 13, marginTop: 6 }}>被封禁的账号只能查看内容，无法进行发帖/修改等操作。</div>

@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Button from '../components/Button';
 import useDarkMode from '../utils/useDarkMode';
 import ScrollableView from '../components/ScrollableView';
 
 export default function PlaceDetailPanel({ place, onClose }) {
     const dark = useDarkMode();
+    const [previewImage, setPreviewImage] = useState(null);
     if (!place) return null;
 
     let exteriorImages = [];
@@ -13,56 +14,126 @@ export default function PlaceDetailPanel({ place, onClose }) {
     try { if (place.menu_images) menuImages = JSON.parse(place.menu_images); } catch (e) { }
 
     return (
-        <div style={{
-            position: 'absolute', top: 120, right: 30, width: 350, bottom: 220,
-            background: dark ? '#0f172a' : '#fff', color: dark ? '#f8fafc' : '#333',
-            borderRadius: 8, boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
-            display: 'flex', flexDirection: 'column', zIndex: 5000
-        }}>
-            <div style={{ padding: '16px 20px', borderBottom: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ margin: 0, fontSize: 18 }}>{place.name} 详情</h2>
-                <Button variant="secondary" onClick={onClose} style={{ padding: '4px 8px', color: dark ? '#e5e7eb' : undefined }}>关闭</Button>
+        <>
+            <div style={{
+                position: 'absolute', top: 120, right: 30, width: 350, bottom: 220,
+                background: dark ? '#0f172a' : '#fff', color: dark ? '#f8fafc' : '#333',
+                borderRadius: 8, boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
+                display: 'flex', flexDirection: 'column', zIndex: 5000
+            }}>
+                <div style={{ padding: '16px 20px', borderBottom: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h2 style={{ margin: 0, fontSize: 18 }}>{place.name} 详情</h2>
+                    <Button variant="secondary" onClick={onClose} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: 'transparent', fontSize: 18, lineHeight: 1, color: dark ? '#e5e7eb' : undefined }} title="关闭">×</Button>
+                </div>
+
+                <ScrollableView style={{ flex: 1, padding: '20px' }}>
+                    <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 13, color: dark ? '#94a3b8' : '#64748b', marginBottom: 4 }}>分类</div>
+                        <div>{place.category || '暂无'}</div>
+                    </div>
+
+                    <div style={{ marginBottom: 24 }}>
+                        <div style={{ fontSize: 13, color: dark ? '#94a3b8' : '#64748b', marginBottom: 4 }}>描述</div>
+                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{place.description || '暂无描述'}</div>
+                    </div>
+
+                    {exteriorImages.length > 0 && (
+                        <div style={{ marginBottom: 24 }}>
+                            <div style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 8, color: dark ? '#cbd5e1' : '#475569' }}>外观/招牌</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                {exteriorImages.map((url, i) => (
+                                    <img
+                                        key={i}
+                                        src={url}
+                                        alt={`外观 ${i + 1}`}
+                                        style={{ width: '100%', borderRadius: 6, display: 'block', cursor: 'zoom-in' }}
+                                        loading="lazy"
+                                        onClick={() => setPreviewImage(url)}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {menuImages.length > 0 && (
+                        <div style={{ marginBottom: 24 }}>
+                            <div style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 8, color: dark ? '#cbd5e1' : '#475569' }}>菜单</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                {menuImages.map((url, i) => (
+                                    <img
+                                        key={i}
+                                        src={url}
+                                        alt={`菜单 ${i + 1}`}
+                                        style={{ width: '100%', borderRadius: 6, display: 'block', cursor: 'zoom-in' }}
+                                        loading="lazy"
+                                        onClick={() => setPreviewImage(url)}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {exteriorImages.length === 0 && menuImages.length === 0 && (
+                        <div style={{ color: dark ? '#64748b' : '#94a3b8', fontStyle: 'italic', fontSize: 13, marginTop: 24, textAlign: 'center' }}>
+                            暂无相关图片
+                        </div>
+                    )}
+                </ScrollableView>
             </div>
 
-            <ScrollableView style={{ flex: 1, padding: '20px' }}>
-                <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 13, color: dark ? '#94a3b8' : '#64748b', marginBottom: 4 }}>分类</div>
-                    <div>{place.category || '暂无'}</div>
+            {previewImage && (
+                <div
+                    role="presentation"
+                    onClick={() => setPreviewImage(null)}
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(0, 0, 0, 0.9)',
+                        zIndex: 7000,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 24,
+                    }}
+                >
+                    <button
+                        type="button"
+                        onClick={() => setPreviewImage(null)}
+                        aria-label="关闭大图"
+                        title="关闭"
+                        style={{
+                            position: 'absolute',
+                            top: 20,
+                            right: 20,
+                            width: 40,
+                            height: 40,
+                            borderRadius: 999,
+                            border: 'none',
+                            background: 'rgba(255, 255, 255, 0.14)',
+                            color: '#fff',
+                            fontSize: 26,
+                            lineHeight: '40px',
+                            cursor: 'pointer',
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                    >
+                        ×
+                    </button>
+                    <img
+                        src={previewImage}
+                        alt="图片大图预览"
+                        style={{
+                            maxWidth: '100%',
+                            maxHeight: '100%',
+                            objectFit: 'contain',
+                            boxShadow: '0 16px 60px rgba(0,0,0,0.45)',
+                            borderRadius: 8,
+                            userSelect: 'none',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    />
                 </div>
-
-                <div style={{ marginBottom: 24 }}>
-                    <div style={{ fontSize: 13, color: dark ? '#94a3b8' : '#64748b', marginBottom: 4 }}>描述</div>
-                    <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{place.description || '暂无描述'}</div>
-                </div>
-
-                {exteriorImages.length > 0 && (
-                    <div style={{ marginBottom: 24 }}>
-                        <div style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 8, color: dark ? '#cbd5e1' : '#475569' }}>外观/招牌</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {exteriorImages.map((url, i) => (
-                                <img key={i} src={url} alt={`外观 ${i + 1}`} style={{ width: '100%', borderRadius: 6, display: 'block' }} loading="lazy" />
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {menuImages.length > 0 && (
-                    <div style={{ marginBottom: 24 }}>
-                        <div style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 8, color: dark ? '#cbd5e1' : '#475569' }}>菜单</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {menuImages.map((url, i) => (
-                                <img key={i} src={url} alt={`菜单 ${i + 1}`} style={{ width: '100%', borderRadius: 6, display: 'block' }} loading="lazy" />
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {exteriorImages.length === 0 && menuImages.length === 0 && (
-                    <div style={{ color: dark ? '#64748b' : '#94a3b8', fontStyle: 'italic', fontSize: 13, marginTop: 24, textAlign: 'center' }}>
-                        暂无相关图片
-                    </div>
-                )}
-            </ScrollableView>
-        </div>
+            )}
+        </>
     );
 }

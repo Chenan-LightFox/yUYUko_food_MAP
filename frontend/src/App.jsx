@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import MapView from "./Map";
 import AdminDashboard from "./AdminDashboard";
 import Settings from "./Settings";
@@ -9,6 +9,7 @@ import CustomThemes from "./settings/CustomThemes";
 import EditAvatar from "./settings/EditAvatar";
 import AuthPanel from "./components/AuthPanel";
 import AuthModal from "./components/AuthModal";
+import Notice from "./components/Notice";
 import { AuthProvider } from "./AuthContext";
 import BanNotice from "./components/BanNotice";
 import { TipsProvider } from "./components/Tips";
@@ -16,6 +17,7 @@ import { ConfirmProvider } from "./components/Confirm";
 import { applyDarkMode, applyThemeColor } from "./utils/theme";
 import useDarkMode from './utils/useDarkMode';
 import { DinnerCreatePage, DinnerDetailPage, DinnerListPage, isDinnerPath, parseDinnerIdFromPath } from './DinnerPages';
+import { getNoticeColorOption } from './utils/noticeColors';
 
 function normalizeUrl(url) {
     return String(url).replace(/\/+$/, "");
@@ -79,6 +81,17 @@ export default function App() {
     const [token, setToken] = useState(localStorage.getItem("token"));
     const [showAuth, setShowAuth] = useState(!localStorage.getItem("token"));
     const [authPanelDisabled, setAuthPanelDisabled] = useState(false);
+    const [siteNotice, setSiteNotice] = useState(null);
+    const [dismissedNoticeId, setDismissedNoticeId] = useState(() => {
+        try {
+            return localStorage.getItem('dismissed_notice_id') || '';
+        } catch (e) {
+            return '';
+        }
+    });
+    const authPanelRef = useRef(null);
+    const siteNoticeRef = useRef(null);
+    const [noticeLayout, setNoticeLayout] = useState({ top: 12, banTop: 84 });
 
     const goPath = useCallback((path) => {
         if (typeof window === "undefined") return;
@@ -156,6 +169,34 @@ export default function App() {
         const onPopstate = () => setPathname(currentPathname());
         window.addEventListener("popstate", onPopstate);
         return () => window.removeEventListener("popstate", onPopstate);
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadNotice = async () => {
+            try {
+                const res = await fetch(`${BACKEND_URL}/notices/current`);
+                if (!res.ok) return;
+                const data = await res.json().catch(() => ({}));
+                if (cancelled) return;
+                setSiteNotice(data && data.notice ? data.notice : null);
+            } catch (e) {
+                if (!cancelled) {
+                    console.warn('Failed to load site notice', e);
+                }
+            }
+        };
+
+        loadNotice();
+        const timer = window.setInterval(loadNotice, 30000);
+        window.addEventListener('focus', loadNotice);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(timer);
+            window.removeEventListener('focus', loadNotice);
+        };
     }, []);
 
     // Apply dark mode when user or their map_settings change
@@ -300,6 +341,73 @@ export default function App() {
     const showDinnerDetail = Number.isFinite(dinnerId) && dinnerId > 0;
     const showAnyDinnerPage = showDinnerList || showDinnerCreate || showDinnerDetail;
     const showMapPage = !showAdminPage && !showSettingsAny && !showAnyDinnerPage;
+    const siteNoticeVisible = !!(siteNotice && String(siteNotice.id) !== String(dismissedNoticeId || ''));
+
+    useLayoutEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const updateNoticeLayout = () => {
+            const isMobile = window.matchMedia ? window.matchMedia('(max-width: 768px)').matches : (window.innerWidth <= 768);
+            if (!siteNoticeVisible) {
+                setNoticeLayout((prev) => {
+                    const nextBanTop = siteNoticeVisible ? 84 : 12;
+                    if (prev.top === 12 && prev.banTop === nextBanTop) return prev;
+                    return { top: 12, banTop: nextBanTop };
+                });
+                return;
+            }
+
+            const authRect = authPanelRef.current ? authPanelRef.current.getBoundingClientRect() : null;
+            const noticeRect = siteNoticeRef.current ? siteNoticeRef.current.getBoundingClientRect() : null;
+
+            let nextTop = 12;
+            let nextBanTop = 84;
+
+            if (authRect && noticeRect) {
+                const horizontallyOverlaps = noticeRect.right > authRect.left && noticeRect.left < authRect.right;
+                const verticallyOverlaps = noticeRect.bottom > authRect.top && noticeRect.top < authRect.bottom;
+                if (horizontallyOverlaps && verticallyOverlaps) {
+                    nextTop = Math.ceil(authRect.bottom + 8);
+                }
+            }
+
+            if (siteNoticeRef.current) {
+                const noticeHeight = Math.ceil(siteNoticeRef.current.getBoundingClientRect().height || 0);
+                nextBanTop = Math.max(84, Math.ceil(nextTop + noticeHeight + 8));
+            }
+
+            setNoticeLayout((prev) => {
+                if (prev.top === nextTop && prev.banTop === nextBanTop) return prev;
+                return { top: nextTop, banTop: nextBanTop };
+            });
+        };
+
+        updateNoticeLayout();
+
+        const resizeObserver = typeof ResizeObserver !== 'undefined'
+            ? new ResizeObserver(() => updateNoticeLayout())
+            : null;
+        if (resizeObserver) {
+            if (authPanelRef.current) resizeObserver.observe(authPanelRef.current);
+            if (siteNoticeRef.current) resizeObserver.observe(siteNoticeRef.current);
+        }
+
+        const onResize = () => updateNoticeLayout();
+        window.addEventListener('resize', onResize);
+        window.addEventListener('orientationchange', onResize);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', onResize);
+        }
+
+        return () => {
+            if (resizeObserver) resizeObserver.disconnect();
+            window.removeEventListener('resize', onResize);
+            window.removeEventListener('orientationchange', onResize);
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', onResize);
+            }
+        };
+    }, [siteNoticeVisible, siteNotice, dismissedNoticeId, pathname]);
 
     const authValue = {
         token,
@@ -317,7 +425,24 @@ export default function App() {
             <TipsProvider>
                 <ConfirmProvider>
                     <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
-                        <BanNotice />
+                        <BanNotice style={siteNoticeVisible ? { top: noticeLayout.banTop + 55 } : undefined} />
+                        {siteNoticeVisible && (
+                            <Notice
+                                ref={siteNoticeRef}
+                                title={siteNotice.title}
+                                backgroundColor={getNoticeColorOption(siteNotice.color_key).backgroundColor}
+                                canClose
+                                onClose={() => {
+                                    const nextId = String(siteNotice.id);
+                                    setDismissedNoticeId(nextId);
+                                    try { localStorage.setItem('dismissed_notice_id', nextId); } catch (e) { }
+                                }}
+                                zIndex={4000}
+                                style={{ top: noticeLayout.top + 55 }}
+                            >
+                                <div style={{ whiteSpace: 'pre-wrap' }}>{siteNotice.content}</div>
+                            </Notice>
+                        )}
                         <div style={{ display: showMapPage ? 'block' : 'none', width: '100%', height: '100%' }}>
                             <MapView
                                 backendUrl={BACKEND_URL}
@@ -488,6 +613,7 @@ export default function App() {
                         )}
 
                         <AuthPanel
+                            ref={authPanelRef}
                             user={user}
                             isAuth={isAuth}
                             isAdmin={isAdmin}

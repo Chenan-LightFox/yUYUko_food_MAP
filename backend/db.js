@@ -246,6 +246,21 @@ function init() {
             time DATETIME DEFAULT CURRENT_TIMESTAMP
         );`);
 
+        rawDb.exec(`CREATE TABLE IF NOT EXISTS "SiteNotice" (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            color_key TEXT NOT NULL,
+            created_by INTEGER,
+            is_active INTEGER DEFAULT 1,
+            created_time DATETIME DEFAULT CURRENT_TIMESTAMP
+        );`);
+        try {
+            rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_sitenotice_active_created_time ON SiteNotice(is_active, created_time DESC);`);
+        } catch (e) {
+            console.warn('Failed to create idx_sitenotice_active_created_time:', e.message);
+        }
+
         rawDb.exec(`CREATE TABLE IF NOT EXISTS "PlaceRequest" (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             place_id INTEGER,
