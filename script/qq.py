@@ -1,0 +1,184 @@
+import sqlite3
+import re
+import time
+import os
+import pickle
+from datetime import datetime
+from bs4 import BeautifulSoup
+import schedule
+
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+
+# ================= 配置区 =================
+DB_NAME = "qq_whitelist.db"
+TARGET_URL = "https://qun.qq.com/member.html#gid=871393095"
+COOKIE_FILE = "qq_cookies.pkl" # 用于保存登录状态的文件
+# ==========================================
+
+def init_db():
+    """初始化 SQLite 数据库，如果表不存在则创建"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS QQWhitelist (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            qq TEXT UNIQUE NOT NULL,
+            created_time DATETIME NOT NULL
+        )
+    ''')
+    conn.commit()
+    return conn
+
+def parse_qq_from_html(html_content):
+    """从 HTML 源码中解析出所有 QQ 号"""
+    soup = BeautifulSoup(html_content, 'html.parser')
+    qq_set = set()
+    
+    # 查找所有 class 包含 'mb' 且以 'mb[QQ号]' 结尾的 tr 标签
+    for tr in soup.find_all('tr', class_=re.compile(r'^mb mb\d+')):
+        classes = tr.get('class', [])
+        for cls in classes:
+            if cls.startswith('mb') and len(cls) > 2:
+                qq_num = cls[2:]  
+                qq_set.add(qq_num)
+                
+    return list(qq_set)
+
+def fetch_html_with_selenium():
+    """
+    使用 Selenium 获取带动态加载的群成员页面，并处理自动登录
+    """
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 正在启动浏览器...")
+    
+    # 初始化 Chrome (你可以根据需要添加 options 开启无头模式)
+    options = webdriver.ChromeOptions()
+    # 如果你希望它在后台默默运行，去掉下面这行的注释（但首次运行扫码时必须注释掉）
+    # options.add_argument('--headless') 
+    
+    driver = webdriver.Chrome(options=options)
+    
+    try:
+        # 1. 先访问一下 QQ 的基础域名，这样才能把 Cookie 种进去
+        driver.get("https://qun.qq.com/")
+        
+        # 2. 尝试加载之前保存的 Cookie（实现自动登录）
+        if os.path.exists(COOKIE_FILE):
+            with open(COOKIE_FILE, "rb") as f:
+                cookies = pickle.load(f)
+                for cookie in cookies:
+                    driver.add_cookie(cookie)
+            print("[-] 已加载本地保存的登录状态 (Cookie)。")
+        
+        # 3. 访问真实的群成员目标网址
+        driver.get(TARGET_URL)
+        time.sleep(3) # 稍微等待页面跳转
+        
+        # 4. 判断是否被拦截到了登录页面
+        if "ui.ptlogin2.qq.com" in driver.current_url or "请登录" in driver.title:
+            print("[!] 检测到未登录或 Cookie 失效。")
+            print("[!] 请在弹出的浏览器窗口中【扫码】或【点击头像】完成登录...")
+            print("[!] 程序最多等待 5 分钟...")
+            
+            # 等待直到当前 URL 不再是登录界面的 URL
+            WebDriverWait(driver, 300).until(
+                lambda d: "ui.ptlogin2.qq.com" not in d.current_url
+            )
+            
+            print("[+] 登录成功！正在保存登录状态，下次将自动跳过此步骤...")
+            # 登录成功后，将最新的 Cookie 序列化保存到本地
+            with open(COOKIE_FILE, "wb") as f:
+                pickle.dump(driver.get_cookies(), f)
+        else:
+            print("[+] 自动登录验证通过！")
+
+        # 等待页面主体加载完毕
+        time.sleep(3)
+        
+        # 5. 模拟人类向下滚动，加载所有群成员（解决懒加载问题）
+        print("[-] 正在向下滚动页面以加载完整名单...")
+        last_height = driver.execute_script("return document.body.scrollHeight")
+        while True:
+            # 滚到底部
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(1.5) # 等待网络请求返回新的成员数据
+            
+            # 计算新的高度
+            new_height = driver.execute_script("return document.body.scrollHeight")
+            if new_height == last_height:
+                break # 如果高度不再增加，说明已经到底了
+            last_height = new_height
+            
+        print("[+] 页面滚动完毕，已加载所有成员。")
+        
+        # 6. 获取最终渲染完成的完整 HTML 源码
+        return driver.page_source
+        
+    finally:
+        # 务必关闭浏览器释放内存
+        driver.quit()
+
+def sync_to_database(conn, scraped_qqs):
+    """同步逻辑与原来保持一致"""
+    cursor = conn.cursor()
+    cursor.execute("SELECT qq FROM QQWhitelist")
+    existing_qqs = set(row[0] for row in cursor.fetchall())
+    
+    new_qqs = set(scraped_qqs)
+    
+    if not new_qqs:
+        print("警告：本次未抓取到任何 QQ 号，跳过同步。")
+        return
+
+    to_add = new_qqs - existing_qqs
+    to_delete = existing_qqs - new_qqs
+    
+    if to_delete:
+        cursor.executemany(
+            "DELETE FROM QQWhitelist WHERE qq = ?", 
+            [(qq,) for qq in to_delete]
+        )
+        print(f"[-] 删除了 {len(to_delete)} 个已退群记录。")
+        
+    if to_add:
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.executemany(
+            "INSERT INTO QQWhitelist (qq, created_time) VALUES (?, ?)",
+            [(qq, current_time) for qq in to_add]
+        )
+        print(f"[+] 新增了 {len(to_add)} 个新成员记录。")
+        
+    if not to_add and not to_delete:
+        print("[=] 群成员无变化，数据库无需更新。")
+        
+    conn.commit()
+
+def job():
+    """定时任务主流程"""
+    try:
+        html = fetch_html_with_selenium()
+        if html:
+            qq_list = parse_qq_from_html(html)
+            print(f"[*] 网页解析成功，共发现 {len(qq_list)} 个群成员。")
+            
+            conn = init_db()
+            sync_to_database(conn, qq_list)
+            conn.close()
+    except Exception as e:
+        print(f"[!] 任务执行发生错误: {e}")
+
+if __name__ == "__main__":
+    print("=== QQ 群成员自动同步脚本 (Selenium 自动化版) ===")
+    print("提示：首次运行将弹出浏览器，请手动完成登录。")
+    
+    # 立即执行一次
+    job()
+    
+    # 定时任务：每 2 小时运行一次
+    schedule.every(2).hours.do(job)
+    
+    print("\n已进入定时循环模式... 按 Ctrl+C 退出程序")
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
