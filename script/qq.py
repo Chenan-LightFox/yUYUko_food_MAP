@@ -79,9 +79,9 @@ def fetch_html_with_selenium():
             # 尝试寻找页面上的群标题 (id="groupTit")，只等 5 秒
             # 如果能找到，说明已经登录进去了
             WebDriverWait(driver, 5).until(
-                lambda d: len(d.find_elements(By.CSS_SELECTOR, "tbody.list tr.mb")) > 0
+                lambda d: len(d.find_elements(By.CSS_SELECTOR, "a.logout[cmd='loginoff']")) > 0
             )
-            print("[+] 自动登录验证通过！成功获取到群成员数据。")
+            print("[+] 自动登录验证通过！")
         except:
             # 5 秒内没找到群标题，说明被登录框拦住了
             print("[!] 检测到未登录或 Cookie 失效。")
