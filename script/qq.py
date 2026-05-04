@@ -12,7 +12,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 
 # ================= 配置区 =================
-DB_NAME = "backend/data.sqlite"
+DB_NAME = "../backend/data.sqlite"
 TARGET_URL = "https://qun.qq.com/member.html#gid=871393095"
 COOKIE_FILE = "qq_cookies.pkl" # 用于保存登录状态的文件
 # ==========================================
@@ -50,15 +50,10 @@ def fetch_html_with_selenium():
     """
     使用 Edge 浏览器获取动态页面，并处理自动登录
     """
-    import os # 确保开头 import 了 os
-    os.environ["NO_PROXY"] = "localhost,127.0.0.1" # 防 Bad Gateway 补丁
     
     print(f"[{datetime.now().strftime('%H:%M:%S')}] 正在启动 Edge 浏览器...")
     
     options = webdriver.EdgeOptions()
-    options.add_experimental_option('excludeSwitches', ['enable-logging']) # 屏蔽底层烦人的红字日志
-    options.add_argument('--proxy-server="direct://"')
-    options.add_argument('--proxy-bypass-list=*')
     
     driver = webdriver.Edge(options=options)
     
@@ -84,10 +79,9 @@ def fetch_html_with_selenium():
             # 尝试寻找页面上的群标题 (id="groupTit")，只等 5 秒
             # 如果能找到，说明已经登录进去了
             WebDriverWait(driver, 5).until(
-                lambda d: len(d.find_elements(By.ID, "groupTit")) > 0
+                lambda d: len(d.find_elements(By.CSS_SELECTOR, "tbody.list tr.mb")) > 0
             )
-            print("[+] 自动登录验证通过！")
-            
+            print("[+] 自动登录验证通过！成功获取到群成员数据。")
         except:
             # 5 秒内没找到群标题，说明被登录框拦住了
             print("[!] 检测到未登录或 Cookie 失效。")
