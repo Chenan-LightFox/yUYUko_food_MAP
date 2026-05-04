@@ -48,22 +48,25 @@ def parse_qq_from_html(html_content):
 
 def fetch_html_with_selenium():
     """
-    使用 Selenium 获取带动态加载的群成员页面，并处理自动登录
+    使用 Edge 浏览器获取动态页面，并处理自动登录
     """
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] 正在启动浏览器...")
+    import os # 确保开头 import 了 os
+    os.environ["NO_PROXY"] = "localhost,127.0.0.1" # 防 Bad Gateway 补丁
     
-    # 初始化 Chrome (你可以根据需要添加 options 开启无头模式)
-    options = webdriver.ChromeOptions()
-    # 如果你希望它在后台默默运行，去掉下面这行的注释（但首次运行扫码时必须注释掉）
-    # options.add_argument('--headless') 
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 正在启动 Edge 浏览器...")
     
-    driver = webdriver.Chrome(options=options)
+    options = webdriver.EdgeOptions()
+    options.add_experimental_option('excludeSwitches', ['enable-logging']) # 屏蔽底层烦人的红字日志
+    options.add_argument('--proxy-server="direct://"')
+    options.add_argument('--proxy-bypass-list=*')
+    
+    driver = webdriver.Edge(options=options)
     
     try:
-        # 1. 先访问一下 QQ 的基础域名，这样才能把 Cookie 种进去
+        # 1. 访问 QQ 基础域名写入 Cookie
         driver.get("https://qun.qq.com/")
         
-        # 2. 尝试加载之前保存的 Cookie（实现自动登录）
+        # 2. 尝试加载 Cookie
         if os.path.exists(COOKIE_FILE):
             with open(COOKIE_FILE, "rb") as f:
                 cookies = pickle.load(f)
@@ -71,52 +74,59 @@ def fetch_html_with_selenium():
                     driver.add_cookie(cookie)
             print("[-] 已加载本地保存的登录状态 (Cookie)。")
         
-        # 3. 访问真实的群成员目标网址
+        # 3. 访问目标网址
         driver.get(TARGET_URL)
-        time.sleep(3) # 稍微等待页面跳转
         
-        # 4. 判断是否被拦截到了登录页面
-        if "ui.ptlogin2.qq.com" in driver.current_url or "请登录" in driver.title:
-            print("[!] 检测到未登录或 Cookie 失效。")
-            print("[!] 请在弹出的浏览器窗口中【扫码】或【点击头像】完成登录...")
-            print("[!] 程序最多等待 5 分钟...")
-            
-            # 等待直到当前 URL 不再是登录界面的 URL
-            WebDriverWait(driver, 300).until(
-                lambda d: "ui.ptlogin2.qq.com" not in d.current_url
+        # ==========================================
+        # 核心修复：基于页面元素的 100% 准确登录检测
+        # ==========================================
+        try:
+            # 尝试寻找页面上的群标题 (id="groupTit")，只等 5 秒
+            # 如果能找到，说明已经登录进去了
+            WebDriverWait(driver, 5).until(
+                lambda d: len(d.find_elements(By.ID, "groupTit")) > 0
             )
-            
-            print("[+] 登录成功！正在保存登录状态，下次将自动跳过此步骤...")
-            # 登录成功后，将最新的 Cookie 序列化保存到本地
-            with open(COOKIE_FILE, "wb") as f:
-                pickle.dump(driver.get_cookies(), f)
-        else:
             print("[+] 自动登录验证通过！")
+            
+        except:
+            # 5 秒内没找到群标题，说明被登录框拦住了
+            print("[!] 检测到未登录或 Cookie 失效。")
+            print("[!] 请在弹出的 Edge 浏览器窗口中【扫码登录】...")
+            print("[!] 程序将耐心等待，直到检测到您登录成功 (最多等待 5 分钟)...")
+            
+            try:
+                # 死等群标题出现 (最多 300 秒)
+                WebDriverWait(driver, 300).until(
+                    lambda d: len(d.find_elements(By.ID, "groupTit")) > 0
+                )
+                print("[+] 登录成功！正在保存登录状态，下次将跳过此步骤...")
+                with open(COOKIE_FILE, "wb") as f:
+                    pickle.dump(driver.get_cookies(), f)
+            except Exception as e:
+                print(f"[-] 登录超时或发生异常，结束本次抓取。")
+                return None
+        # ==========================================
 
-        # 等待页面主体加载完毕
-        time.sleep(3)
+        time.sleep(3) # 缓冲一下，等页面彻底渲染完毕
         
-        # 5. 模拟人类向下滚动，加载所有群成员（解决懒加载问题）
+        # 5. 模拟向下滚动，加载所有群成员
         print("[-] 正在向下滚动页面以加载完整名单...")
         last_height = driver.execute_script("return document.body.scrollHeight")
         while True:
-            # 滚到底部
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(1.5) # 等待网络请求返回新的成员数据
+            time.sleep(1.5) # 稍微等久一点，防止网速慢导致没刷出来就以为到底了
             
-            # 计算新的高度
             new_height = driver.execute_script("return document.body.scrollHeight")
             if new_height == last_height:
-                break # 如果高度不再增加，说明已经到底了
+                break 
             last_height = new_height
             
         print("[+] 页面滚动完毕，已加载所有成员。")
         
-        # 6. 获取最终渲染完成的完整 HTML 源码
+        # 6. 返回最终 HTML 源码
         return driver.page_source
         
     finally:
-        # 务必关闭浏览器释放内存
         driver.quit()
 
 def sync_to_database(conn, scraped_qqs):
