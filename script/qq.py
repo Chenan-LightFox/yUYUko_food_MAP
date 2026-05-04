@@ -54,7 +54,10 @@ def fetch_html_with_selenium():
     print(f"[{datetime.now().strftime('%H:%M:%S')}] 正在启动 Edge 浏览器...")
     
     options = webdriver.EdgeOptions()
+    options.add_argument('--headless=new')
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0')
+    options.add_argument('--window-size=1920,1080')
     driver = webdriver.Edge(options=options)
     
     try:
