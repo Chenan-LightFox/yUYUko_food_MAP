@@ -11,6 +11,7 @@ const placesRouter = require("./routes/places");
 const commentsRouter = require("./routes/comments");
 const usersRouter = require("./routes/users");
 const searchRouter = require('./routes/search');
+const recommendationsRouter = require('./routes/recommendations');
 const adminUsersRouter = require("./routes/admin/adminUsers");
 const adminInvitesRouter = require("./routes/admin/adminInvites");
 const adminCommentsRouter = require("./routes/admin/adminComments");
@@ -79,7 +80,7 @@ app.use(cors({
         return callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Search-Session', 'X-Search-Source'],
     credentials: true,
     maxAge: 3600
 }));
@@ -162,6 +163,7 @@ app.use("/api/admin/notices", requireAuth, adminNoticesRouter);
 
 init();
 
+app.use('/api/recommendations', recommendationsRouter);
 app.use('/api', searchRouter);
 app.use("/places", placesRouter);
 app.use("/comments", commentsRouter);

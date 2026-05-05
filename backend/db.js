@@ -1,7 +1,9 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const dbFile = path.join(__dirname, 'data.sqlite');
+const dbFile = process.env.SQLITE_DB_FILE
+    ? path.resolve(__dirname, process.env.SQLITE_DB_FILE)
+    : path.join(__dirname, 'data.sqlite');
 const SQLITE_UUID_EXPR = "lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6)))";
 
 let rawDb;
@@ -11,6 +13,8 @@ try {
     console.error('Failed to open DB:', e && e.message);
     throw e;
 }
+
+console.log(`Using SQLite DB: ${dbFile}`);
 
 // Provide a small wrapper that mimics the sqlite3 async callback API used across the codebase
 const db = {
@@ -335,6 +339,64 @@ function init() {
             rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_favorite_place_id ON Favorite(place_id);`);
         } catch (e) {
             console.warn('Failed to create Favorite indexes:', e.message);
+        }
+
+        rawDb.exec(`CREATE TABLE IF NOT EXISTS "RecommendationSearchLog" (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            search_session_id TEXT,
+            user_id TEXT,
+            search_source TEXT DEFAULT 'unknown',
+            raw_query TEXT NOT NULL,
+            normalized_query TEXT,
+            parse_source TEXT,
+            parse_mode TEXT,
+            parse_coverage TEXT,
+            parse_confidence TEXT,
+            needs_second_pass INTEGER DEFAULT 0,
+            modifier_tokens TEXT,
+            unresolved_tokens TEXT,
+            coverage_reasons TEXT,
+            anchor_query TEXT,
+            anchor_name TEXT,
+            requested_sort_by TEXT,
+            actual_sort_by TEXT,
+            requested_center_lat REAL,
+            requested_center_lng REAL,
+            resolved_center_lat REAL,
+            resolved_center_lng REAL,
+            provider TEXT,
+            provider_result_count INTEGER,
+            candidate_count INTEGER DEFAULT 0,
+            first_candidate_id TEXT,
+            first_candidate_name TEXT,
+            fallback_used INTEGER DEFAULT 0,
+            rule_parse_snapshot TEXT,
+            ip_hash TEXT,
+            user_agent TEXT,
+            elapsed_ms INTEGER,
+            created_time DATETIME DEFAULT CURRENT_TIMESTAMP
+        );`);
+        const recommendationLogCols = rawDb.prepare("PRAGMA table_info('RecommendationSearchLog')").all().map(r => r.name);
+        const addRecommendationLogIfMissing = (colDef) => {
+            const colName = colDef.split(' ')[0];
+            if (!recommendationLogCols.includes(colName)) {
+                try {
+                    rawDb.exec(`ALTER TABLE RecommendationSearchLog ADD COLUMN ${colDef}`);
+                    console.log(`Migrated: ALTER TABLE RecommendationSearchLog ADD COLUMN ${colDef}`);
+                } catch (e) {
+                    console.warn(`ALTER TABLE RecommendationSearchLog ADD COLUMN ${colDef} failed:`, e.message);
+                }
+            }
+        };
+        addRecommendationLogIfMissing('fallback_used INTEGER DEFAULT 0');
+        addRecommendationLogIfMissing('rule_parse_snapshot TEXT');
+        try {
+            rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_recommendationsearchlog_created_time ON RecommendationSearchLog(created_time DESC);`);
+            rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_recommendationsearchlog_user_id ON RecommendationSearchLog(user_id);`);
+            rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_recommendationsearchlog_session_time ON RecommendationSearchLog(search_session_id, created_time DESC);`);
+            rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_recommendationsearchlog_parse_coverage ON RecommendationSearchLog(parse_coverage);`);
+        } catch (e) {
+            console.warn('Failed to create RecommendationSearchLog indexes:', e.message);
         }
 
     } catch (e) {

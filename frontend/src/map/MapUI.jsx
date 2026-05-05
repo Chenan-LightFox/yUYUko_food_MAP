@@ -53,7 +53,6 @@ function buildNavigationTargets(place) {
 
 export default function MapUI(props) {
     const {
-        places,
         mapRef,
         userLocationMarkerRef,
         backendUrl,
@@ -63,6 +62,7 @@ export default function MapUI(props) {
         setSearchTerm,
         clearSearch,
         searchResetKey,
+        searchMeta,
         searchServer,
         onProgrammaticMapMove,
         onSelectSuggestion,
@@ -139,6 +139,7 @@ export default function MapUI(props) {
     };
 
     const [searchOpen, setSearchOpen] = useState(false);
+    const [searchSort, setSearchSort] = useState('relevance');
     const [searchResultsVisible, setSearchResultsVisible] = useState(true);
     const [detailOpen, setDetailOpen] = useState(false);
     const [favPageOpen, setFavPageOpen] = useState(false);
@@ -151,12 +152,14 @@ export default function MapUI(props) {
     const [popupLayout, setPopupLayout] = useState(null);
     const dark = useDarkMode();
     const hideNonSearchButtons = searchOpen;
+    const showSearchDebug = !!(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV);
 
     useEffect(() => {
         if (!selectedPlace) setNavPickerOpen(false);
     }, [selectedPlace]);
 
-    const { results: spResults, loading: spLoading } = useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLocationMarkerRef, places);
+    const { results: spResults, loading: spLoading } = useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLocationMarkerRef, searchSort, token);
+    const debugMeta = searchResultsVisible ? (spResults?.meta || searchMeta) : (searchMeta || spResults?.meta);
 
     // Close detail panel if popup closes
     useEffect(() => {
@@ -307,7 +310,7 @@ export default function MapUI(props) {
         }
         if (!searchTerm || !searchTerm.trim()) return;
         setSearchResultsVisible(false);
-        searchServer({ q: searchTerm, includeUnmarked: false, autoFit: false });
+        searchServer({ q: searchTerm, autoFit: false, sortBy: searchSort });
     };
 
     const handleClearSearchInput = () => {
@@ -330,6 +333,75 @@ export default function MapUI(props) {
             mapRef.current.setCenter([item.longitude, item.latitude]);
             mapRef.current.setZoom(16);
         }
+    };
+
+    const formatDistance = (distance) => {
+        if (!Number.isFinite(distance)) return '距离未知';
+        return distance < 1000 ? `${Math.round(distance)}米` : `${(distance / 1000).toFixed(1)}公里`;
+    };
+
+    const renderDevSearchDebug = (meta) => {
+        if (!showSearchDebug || !meta) return null;
+
+        const normalizedIntent = meta.normalizedIntent || {};
+        const debug = meta.debug || {};
+        const candidates = Array.isArray(meta.candidates) ? meta.candidates : [];
+        const previewNames = candidates.slice(0, 3).map((item) => item?.name).filter(Boolean);
+        const ruleFirstIntent = normalizedIntent.ruleFirstIntent || debug.parsedIntent?.ruleFirstIntent || null;
+        const ruleFirstSummary = ruleFirstIntent
+            ? [ruleFirstIntent.source || '-', ruleFirstIntent.parseCoverage || '-', ruleFirstIntent.parseConfidence || '-'].join(' / ')
+            : '-';
+        const rows = [
+            ['原始输入', normalizedIntent.rawQuery || searchTerm || '-'],
+            ['解析来源', normalizedIntent.parseSource || debug.parsedIntent?.source || '-'],
+            ['规则首轮', ruleFirstSummary],
+            ['回退来源', normalizedIntent.fallbackSource || debug.parsedIntent?.fallbackSource || '-'],
+            ['覆盖度', normalizedIntent.parseCoverage || debug.parsedIntent?.parseCoverage || '-'],
+            ['置信度', normalizedIntent.parseConfidence || debug.parsedIntent?.parseConfidence || '-'],
+            ['搜索模式', normalizedIntent.mode || '-'],
+            ['拆分锚点', normalizedIntent.anchorQuery || debug.parsedIntent?.anchorQuery || '-'],
+            ['锚点命中', normalizedIntent.anchor?.name || '-'],
+            ['实际搜索词', normalizedIntent.query || debug.parsedIntent?.searchQuery || '-'],
+            ['二轮修饰词', (normalizedIntent.modifierTokens || debug.parsedIntent?.modifierTokens || []).join(' / ') || '-'],
+            ['未覆盖词', (normalizedIntent.unresolvedTokens || debug.parsedIntent?.unresolvedTokens || []).join(' / ') || '-'],
+            ['原因', (normalizedIntent.coverageReasons || debug.parsedIntent?.coverageReasons || []).join(' / ') || '-'],
+            ['结果数', `${candidates.length}${Number.isFinite(debug.searchReported) ? ` / 高德${debug.searchReported}` : ''}`],
+            ['前 3 条', previewNames.length ? previewNames.join(' / ') : '-'],
+        ];
+
+        return (
+            <div style={{
+                padding: '10px 12px',
+                borderBottom: `1px solid ${dark ? '#1f2937' : '#e5e7eb'}`,
+                background: dark ? 'rgba(15,23,42,0.92)' : '#f8fafc'
+            }}>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 8,
+                    gap: 8
+                }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: dark ? '#bfdbfe' : '#1d4ed8' }}>DEV 搜索调试</span>
+                    <span style={{ fontSize: 11, color: dark ? '#94a3b8' : '#64748b' }}>拆词与返回结果</span>
+                </div>
+                <div style={{ display: 'grid', gap: 6 }}>
+                    {rows.map(([label, value]) => (
+                        <div key={label} style={{ display: 'grid', gridTemplateColumns: '72px 1fr', gap: 8, alignItems: 'start' }}>
+                            <span style={{ fontSize: 11, color: dark ? '#94a3b8' : '#64748b' }}>{label}</span>
+                            <span style={{
+                                fontSize: 12,
+                                color: dark ? '#e2e8f0' : '#0f172a',
+                                wordBreak: 'break-word',
+                                lineHeight: 1.4
+                            }}>
+                                {value || '-'}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
     };
 
     const renderSpSection = (title, items, hasMore, onMore) => {
@@ -362,8 +434,33 @@ export default function MapUI(props) {
                                 {item.address || item.category || item.description || ''}
                             </span>
                             <span style={{ fontSize: 11, color: dark ? '#6b7280' : '#9ca3af', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                距离: {item.dist < 1000 ? `${Math.round(item.dist)}米` : `${(item.dist / 1000).toFixed(1)}公里`}
+                                距离: {formatDistance(item.dist)}
                             </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, minWidth: 0 }}>
+                            <span style={{
+                                fontSize: 11,
+                                color: dark ? '#cbd5e1' : '#374151',
+                                background: dark ? '#1f2937' : '#eef2ff',
+                                borderRadius: 999,
+                                padding: '2px 8px',
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0
+                            }}>
+                                {item.sourceLabel || (item.isMarked ? '地图标记' : '搜索结果')}
+                            </span>
+                            {item.explanation && (
+                                <span style={{
+                                    fontSize: 11,
+                                    color: dark ? '#94a3b8' : '#6b7280',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    minWidth: 0
+                                }}>
+                                    {item.explanation}
+                                </span>
+                            )}
                         </div>
                     </div>
                 ))}
@@ -418,7 +515,7 @@ export default function MapUI(props) {
                                 e.preventDefault();
                                 if (searchTerm && searchTerm.trim()) {
                                     setSearchResultsVisible(false);
-                                    searchServer({ q: searchTerm, includeUnmarked: false, autoFit: false });
+                                    searchServer({ q: searchTerm, autoFit: false, sortBy: searchSort });
                                 }
                             }
                         }}
@@ -478,7 +575,7 @@ export default function MapUI(props) {
                         </Button>
                     )}
 
-                    {searchOpen && searchTerm && searchResultsVisible && (spLoading || spResults) && (
+                    {searchOpen && searchTerm && ((searchResultsVisible && (spLoading || spResults)) || (showSearchDebug && debugMeta)) && (
                         <ScrollableView style={{
                             position: 'absolute',
                             top: 48,
@@ -494,22 +591,54 @@ export default function MapUI(props) {
                             flexDirection: 'column',
                             color: dark ? '#e5e7eb' : '#1f2937'
                         }}>
-                            {spLoading && !spResults ? (
-                                <div style={{ padding: 12, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>加载中...</div>
-                            ) : (
-                                <>
-                                    {renderSpSection('标记点结果', spResults?.markedInView, spResults?.hasMoreMarkedInView, () => searchServer({ q: searchTerm }))}
-                                    {renderSpSection('非标记点结果', spResults?.unmarkedInView, spResults?.hasMoreUnmarkedInView, () => {
-                                        if (mapRef?.current && spResults?.unmarkedInView?.[0]) {
-                                            mapRef.current.setCenter([spResults.unmarkedInView[0].longitude, spResults.unmarkedInView[0].latitude]);
-                                        }
+                            {renderDevSearchDebug(debugMeta)}
+                            <div style={{
+                                padding: '8px 12px',
+                                borderBottom: `1px solid ${dark ? '#1f2937' : '#e5e7eb'}`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 12,
+                                fontSize: 12
+                            }}>
+                                <span style={{ color: dark ? '#9ca3af' : '#6b7280' }}>排序</span>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                    {[
+                                        { key: 'relevance', label: '综合' },
+                                        { key: 'distance', label: '距离' },
+                                    ].map((option) => {
+                                        const active = searchSort === option.key;
+                                        return (
+                                            <button
+                                                key={option.key}
+                                                onClick={() => setSearchSort(option.key)}
+                                                style={{
+                                                    border: 'none',
+                                                    borderRadius: 999,
+                                                    padding: '4px 10px',
+                                                    cursor: 'pointer',
+                                                    background: active ? customThemeColor : (dark ? '#1f2937' : '#f3f4f6'),
+                                                    color: active ? '#fff' : (dark ? '#d1d5db' : '#374151'),
+                                                    fontSize: 12,
+                                                }}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        );
                                     })}
+                                </div>
+                            </div>
+                            {searchResultsVisible && spLoading && !spResults ? (
+                                <div style={{ padding: 12, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>加载中...</div>
+                            ) : searchResultsVisible ? (
+                                <>
+                                    {renderSpSection('高德搜索结果', spResults?.markedInView, spResults?.hasMoreMarkedInView, () => searchServer({ q: searchTerm, sortBy: searchSort }))}
                                     {renderSpSection('其他匹配结果', spResults?.others, false, null)}
                                     {(!spResults?.markedInView?.length && !spResults?.unmarkedInView?.length && !spResults?.others?.length) && (
                                         <div style={{ padding: 12, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>未找到匹配的结果</div>
                                     )}
                                 </>
-                            )}
+                            ) : null}
                         </ScrollableView>
                     )}
 

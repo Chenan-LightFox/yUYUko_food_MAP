@@ -36,58 +36,73 @@ function loadUserById(userId) {
     });
 }
 
-async function requireAuth(req, res, next) {
-    const token = extractBearerToken(req);
-    if (!token) return res.status(401).json({ error: "未提供授权 token" });
-
+async function authenticateToken(token) {
     let payload;
     try {
         payload = jwt.verify(token, JWT_SECRET);
     } catch (e) {
-        return res.status(401).json({ error: "无效或已过期的 token" });
+        const error = new Error("无效或已过期的 token");
+        error.status = 401;
+        throw error;
     }
 
     const userId = payload && payload.id;
-    if (!userId) return res.status(401).json({ error: "无效或已过期的 token" });
+    if (!userId) {
+        const error = new Error("无效或已过期的 token");
+        error.status = 401;
+        throw error;
+    }
+
+    const sessionToken = await redis.get(`session:${userId}`);
+    if (!sessionToken || sessionToken !== token) {
+        const error = new Error("登录状态已失效，请重新登录");
+        error.status = 401;
+        throw error;
+    }
+
+    const user = await loadUserById(userId);
+    if (!user) {
+        const error = new Error("用户不存在");
+        error.status = 404;
+        throw error;
+    }
+
+    if (user.is_banned) {
+        const now = new Date();
+        if (user.ban_expires) {
+            const expires = new Date(user.ban_expires);
+            if (!isNaN(expires) && expires <= now) {
+                db.run('UPDATE User SET is_banned = 0, ban_reason = NULL, ban_expires = NULL WHERE id = ?', [userId], (e) => {
+                    if (e) console.error('Auto-unban failed:', e.message);
+                    else {
+                        try {
+                            logAdminAction(null, 'auto-unban', userId, JSON.stringify({ previous_reason: user.ban_reason || null }));
+                        } catch (ex) {
+                            console.error('Failed to log auto-unban', ex && ex.message);
+                        }
+                    }
+                });
+                user.is_banned = 0;
+                user.ban_reason = null;
+                user.ban_expires = null;
+            }
+        }
+    }
+
+    return user;
+}
+
+async function requireAuth(req, res, next) {
+    const token = extractBearerToken(req);
+    if (!token) return res.status(401).json({ error: "未提供授权 token" });
 
     try {
-        const sessionToken = await redis.get(`session:${userId}`);
-        if (!sessionToken || sessionToken !== token) {
-            return res.status(401).json({ error: "登录状态已失效，请重新登录" });
-        }
+        const user = await authenticateToken(token);
 
-        const user = await loadUserById(userId);
-        if (!user) return res.status(404).json({ error: "用户不存在" });
-
-        // handle banned users: auto-unban if expired, otherwise restrict non-read methods
         if (user.is_banned) {
-            let now = new Date();
-            if (user.ban_expires) {
-                const expires = new Date(user.ban_expires);
-                if (!isNaN(expires) && expires <= now) {
-                    // auto unban
-                    db.run('UPDATE User SET is_banned = 0, ban_reason = NULL, ban_expires = NULL WHERE id = ?', [userId], (e) => {
-                        if (e) console.error('Auto-unban failed:', e.message);
-                        else {
-                            try {
-                                logAdminAction(null, 'auto-unban', userId, JSON.stringify({ previous_reason: user.ban_reason || null }));
-                            } catch (ex) { console.error('Failed to log auto-unban', ex && ex.message); }
-                        }
-                    });
-                    // reflect change in user object
-                    user.is_banned = 0;
-                    user.ban_reason = null;
-                    user.ban_expires = null;
-                }
-            }
-
-            if (user.is_banned) {
-                // allow read-only methods
-                const safeMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
-                if (!safeMethods.has(req.method)) {
-                    return res.status(403).json({ error: "账号已被封禁，仅允许查看内容", reason: user.ban_reason || null });
-                }
-                // else continue but keep user info
+            const safeMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
+            if (!safeMethods.has(req.method)) {
+                return res.status(403).json({ error: "账号已被封禁，仅允许查看内容", reason: user.ban_reason || null });
             }
         }
 
@@ -95,8 +110,24 @@ async function requireAuth(req, res, next) {
         req.token = token;
         return next();
     } catch (err) {
-        return res.status(500).json({ error: "鉴权失败", detail: err.message });
+        const status = Number.isFinite(err && err.status) ? err.status : 500;
+        const error = status === 500 ? "鉴权失败" : err.message;
+        return res.status(status).json({ error, detail: status === 500 ? err.message : undefined });
     }
 }
 
-module.exports = { requireAuth, extractBearerToken };
+async function optionalAuth(req, res, next) {
+    const token = extractBearerToken(req);
+    if (!token) return next();
+
+    try {
+        req.user = await authenticateToken(token);
+        req.token = token;
+    } catch (err) {
+        req.authError = err;
+    }
+
+    return next();
+}
+
+module.exports = { requireAuth, optionalAuth, extractBearerToken };

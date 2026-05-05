@@ -1,36 +1,28 @@
 import { useState, useEffect } from 'react';
-import { searchPlaces } from './api';
-import * as MapUtils from './utils';
+import { searchRecommendations } from './api';
 
-function getAgentRadiusFromMap(map) {
-    if (!map || typeof map.getBounds !== 'function') return undefined;
-    const bounds = map.getBounds();
-    if (!bounds) return undefined;
-    const center = MapUtils.normalizeLngLat(map.getCenter());
-    if (!center) return undefined;
-    const sw = bounds.getSouthWest();
-    const ne = bounds.getNorthEast();
-    const swLng = typeof sw.lng !== 'undefined' ? sw.lng : sw.getLng();
-    const swLat = typeof sw.lat !== 'undefined' ? sw.lat : sw.getLat();
-    const neLng = typeof ne.lng !== 'undefined' ? ne.lng : ne.getLng();
-    const neLat = typeof ne.lat !== 'undefined' ? ne.lat : ne.getLat();
-    if (!Number.isFinite(swLng) || !Number.isFinite(swLat) || !Number.isFinite(neLng) || !Number.isFinite(neLat)) return undefined;
-    const corners = [
-        { lng: swLng, lat: swLat },
-        { lng: swLng, lat: neLat },
-        { lng: neLng, lat: swLat },
-        { lng: neLng, lat: neLat }
-    ];
-    let maxDist = 0;
-    for (const corner of corners) {
-        const dist = MapUtils.haversineDistanceMeters(center, corner);
-        if (Number.isFinite(dist) && dist > maxDist) maxDist = dist;
+function sortSearchItems(items, sortBy) {
+    const list = Array.isArray(items) ? items.slice() : [];
+    if (sortBy === 'distance') {
+        return list.sort((left, right) => {
+            const leftDist = Number.isFinite(left?.dist) ? left.dist : Number.POSITIVE_INFINITY;
+            const rightDist = Number.isFinite(right?.dist) ? right.dist : Number.POSITIVE_INFINITY;
+            if (leftDist !== rightDist) return leftDist - rightDist;
+            return (left?.rank ?? Number.POSITIVE_INFINITY) - (right?.rank ?? Number.POSITIVE_INFINITY);
+        });
     }
-    if (!Number.isFinite(maxDist) || maxDist <= 0) return undefined;
-    return Math.round(maxDist * 2);
+
+    return list.sort((left, right) => {
+        const leftRank = Number.isFinite(left?.rank) ? left.rank : Number.POSITIVE_INFINITY;
+        const rightRank = Number.isFinite(right?.rank) ? right.rank : Number.POSITIVE_INFINITY;
+        if (leftRank !== rightRank) return leftRank - rightRank;
+        const leftDist = Number.isFinite(left?.dist) ? left.dist : Number.POSITIVE_INFINITY;
+        const rightDist = Number.isFinite(right?.dist) ? right.dist : Number.POSITIVE_INFINITY;
+        return leftDist - rightDist;
+    });
 }
 
-export function useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLocationMarkerRef, places) {
+export function useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLocationMarkerRef, sortBy = 'relevance', token = '') {
     const [results, setResults] = useState(null);
     const [loading, setLoading] = useState(false);
 
@@ -47,23 +39,21 @@ export function useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLoc
             try {
                 const map = mapRef?.current;
                 const mapCenterNode = map ? map.getCenter() : null;
-                const bounds = map ? map.getBounds() : null;
 
                 // 获取用户位置，如果存在则用作距离测算的中心
                 const userLocPos = userLocationMarkerRef?.current ? userLocationMarkerRef.current.getPosition() : null;
                 const centerNode = userLocPos || mapCenterNode;
 
                 const center = centerNode ? { lat: centerNode.lat, lng: centerNode.lng } : undefined;
-                const agentRadius = map ? getAgentRadiusFromMap(map) : undefined;
-
-                // 1. Searched marked points (from our backend)
-                let markedData = [];
+                let recommendationData = null;
                 try {
-                    markedData = await searchPlaces(backendUrl, {
+                    recommendationData = await searchRecommendations(backendUrl, {
                         q: searchTerm.trim(),
                         center,
                         limit: 30,
-                        agentRadius
+                        sortBy,
+                        token,
+                        searchSource: 'panel'
                     });
                 } catch (e) {
                     console.error("fetch marked points failed", e);
@@ -71,98 +61,33 @@ export function useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLoc
 
                 if (cancel) return;
 
-                const processMarked = (markedData || []).map((p, idx) => {
+                const primaryResults = (Array.isArray(recommendationData?.candidates) ? recommendationData.candidates : []).map((p, idx) => {
                     const lat = p.latitude;
                     const lng = p.longitude;
-                    const dist = (centerNode && window.AMap) ? window.AMap.GeometryUtil.distance(centerNode, new window.AMap.LngLat(lng, lat)) : (p.distance || 9999999);
-                    return { ...p, isMarked: true, dist, rank: idx }; // 优先保留来自后端的关键词相关度排序
+                    const dist = (centerNode && window.AMap && Number.isFinite(lat) && Number.isFinite(lng))
+                        ? window.AMap.GeometryUtil.distance(centerNode, new window.AMap.LngLat(lng, lat))
+                        : (Number.isFinite(p.distanceMeters) ? p.distanceMeters : 9999999);
+                    return {
+                        ...p,
+                        isMarked: true,
+                        dist,
+                        rank: idx,
+                        source: p.source || 'local-place',
+                        sourceLabel: p.sourceLabel || '高德搜索',
+                    };
                 });
 
-                const markedPoints = processMarked.sort((a, b) => a.rank - b.rank || a.dist - b.dist);
-
-                // 2. Fetch AMap POI (unmarked points)
-                let unmarkedData = [];
-                if (window.AMap) {
-                    unmarkedData = await new Promise(resolve => {
-                        window.AMap.plugin('AMap.PlaceSearch', () => {
-                            const ps = new window.AMap.PlaceSearch({
-                                pageSize: 20,
-                                pageIndex: 1
-                            });
-                            const cpoint = centerNode ? [centerNode.lng, centerNode.lat] : null;
-                            if (cpoint) {
-                                ps.searchNearBy(searchTerm.trim(), cpoint, 20000, (status, result) => {
-                                    if (status === 'complete' && result.info === 'OK') {
-                                        resolve(result.poiList.pois || []);
-                                    } else {
-                                        resolve([]);
-                                    }
-                                });
-                            } else {
-                                ps.search(searchTerm.trim(), (status, result) => {
-                                    if (status === 'complete' && result.info === 'OK') {
-                                        resolve(result.poiList.pois || []);
-                                    } else {
-                                        resolve([]);
-                                    }
-                                });
-                            }
-                        });
-                    });
-                }
-
-                if (cancel) return;
-
-                const allKnownPlaces = [...(places || []), ...markedPoints];
-                const isNearKnownPlace = (lng, lat) => {
-                    if (!window.AMap || !lng || !lat) return false;
-                    for (const p of allKnownPlaces) {
-                        if (!p.longitude || !p.latitude) continue;
-                        const d = window.AMap.GeometryUtil.distance(
-                            new window.AMap.LngLat(lng, lat),
-                            new window.AMap.LngLat(p.longitude, p.latitude)
-                        );
-                        if (d < 50) return true; // 视为同一个地点，过滤掉
-                    }
-                    return false;
-                };
-
-                const processUnmarked = unmarkedData.map((p, idx) => {
-                    const lng = p.location?.lng;
-                    const lat = p.location?.lat;
-                    if (!lng || !lat) return null;
-                    if (isNearKnownPlace(lng, lat)) return null;
-                    const dist = (centerNode && window.AMap) ? window.AMap.GeometryUtil.distance(centerNode, new window.AMap.LngLat(lng, lat)) : 9999999;
-                    return {
-                        id: 'amap_' + p.id,
-                        name: p.name,
-                        longitude: lng,
-                        latitude: lat,
-                        address: p.address || `${p.pname || ''}${p.cityname || ''}${p.adname || ''}`,
-                        isMarked: false,
-                        dist,
-                        rank: idx // AMap 原本返回的排序（关键词相关度优先）
-                    };
-                }).filter(Boolean);
-
-                const unmarkedPoints = processUnmarked.sort((a, b) => a.rank - b.rank || a.dist - b.dist);
-
-                const finalMarked = markedPoints.slice(0, 5);
-                const hasMoreMarked = markedPoints.length > 5;
-
-                const finalUnmarked = unmarkedPoints.slice(0, 5);
-                const hasMoreUnmarked = unmarkedPoints.length > 5;
-
-                const othersCombined = [
-                    ...markedPoints.slice(5),
-                    ...unmarkedPoints.slice(5)
-                ].slice(0, 10);
+                const sortedResults = sortSearchItems(primaryResults, sortBy);
+                const finalMarked = sortedResults.slice(0, 8);
+                const hasMoreMarked = sortedResults.length > 8;
+                const othersCombined = sortedResults.slice(8, 18);
 
                 setResults({
+                    meta: recommendationData,
                     markedInView: finalMarked,
                     hasMoreMarkedInView: hasMoreMarked,
-                    unmarkedInView: finalUnmarked,
-                    hasMoreUnmarkedInView: hasMoreUnmarked,
+                    unmarkedInView: [],
+                    hasMoreUnmarkedInView: false,
                     others: othersCombined
                 });
 
@@ -177,7 +102,7 @@ export function useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLoc
             cancel = true;
             clearTimeout(timer);
         };
-    }, [searchTerm, mapRef, backendUrl, mapReady]);
+    }, [searchTerm, mapRef, backendUrl, mapReady, sortBy, token]);
 
     return { results, loading };
 }
