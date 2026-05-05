@@ -18,35 +18,6 @@ const { normalizeLngLat, readSavedMapView, shouldPersistMapView, MAP_VIEW_STORAG
 const PREFETCH_BOUNDS_RATIO = 1; // prefetch one viewport margin around the visible area
 
 const clampNumber = (value, min, max) => Math.min(Math.max(value, min), max);
-const getAgentRadiusFromMap = (map) => {
-    if (!map || typeof map.getBounds !== "function") return undefined;
-    const bounds = map.getBounds();
-    if (!bounds) return undefined;
-    const center = MapUtils.normalizeLngLat(map.getCenter());
-    if (!center) return undefined;
-    const sw = bounds.getSouthWest();
-    const ne = bounds.getNorthEast();
-    const swLng = typeof sw.lng !== 'undefined' ? sw.lng : sw.getLng();
-    const swLat = typeof sw.lat !== 'undefined' ? sw.lat : sw.getLat();
-    const neLng = typeof ne.lng !== 'undefined' ? ne.lng : ne.getLng();
-    const neLat = typeof ne.lat !== 'undefined' ? ne.lat : ne.getLat();
-    if (!Number.isFinite(swLng) || !Number.isFinite(swLat) || !Number.isFinite(neLng) || !Number.isFinite(neLat)) return undefined;
-    const corners = [
-        { lng: swLng, lat: swLat },
-        { lng: swLng, lat: neLat },
-        { lng: neLng, lat: swLat },
-        { lng: neLng, lat: neLat }
-    ];
-    let maxDist = 0;
-    for (const corner of corners) {
-        const dist = MapUtils.haversineDistanceMeters(center, corner);
-        if (Number.isFinite(dist) && dist > maxDist) maxDist = dist;
-    }
-    if (!Number.isFinite(maxDist) || maxDist <= 0) return undefined;
-    return Math.round(maxDist * 2);
-};
-
-
 
 function buildInfoWindowContent(place) {
     const root = document.createElement("div");
@@ -84,6 +55,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     const [addMode, setAddMode] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [searchResults, setSearchResults] = useState(null);
+    const [searchMeta, setSearchMeta] = useState(null);
     const [searching, setSearching] = useState(false);
     const [searchResetKey, setSearchResetKey] = useState(0);
     const showTip = useTips();
@@ -136,6 +108,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
     const clearSearchState = ({ resetTerm = true, closeSearchUi = true, reloadPlaces = true } = {}) => {
         if (resetTerm) setSearchTerm("");
         setSearchResults(null);
+        setSearchMeta(null);
         setSearching(false);
         if (closeSearchUi) setSearchResetKey((v) => v + 1);
         if (reloadPlaces && loadPlacesRef.current) {
@@ -877,89 +850,32 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
         }
     };
 
-    // 使用后端 /api/places/search 接口进行搜索，并混合高德地图 API 非标记点结果
-    const searchServer = async ({ q = "", center = undefined, limit = undefined, autoFit = true, includeUnmarked = true } = {}) => {
+    // 使用后端 /api/recommendations/search 接口进行搜索，PR1 第一版以高德 Web 服务结果为主。
+    const searchServer = async ({ q = "", center = undefined, limit = undefined, autoFit = true, sortBy = 'relevance' } = {}) => {
         const userLocPos = userLocationMarkerRef?.current ? userLocationMarkerRef.current.getPosition() : null;
         const mapCenter = mapRef.current ? mapRef.current.getCenter() : null;
         const effectiveCenter = center || (userLocPos ? { lat: userLocPos.lat, lng: userLocPos.lng } : (mapCenter ? { lat: mapCenter.lat, lng: mapCenter.lng } : undefined));
-        const agentRadius = mapRef.current ? getAgentRadiusFromMap(mapRef.current) : undefined;
         if (!mapRef.current && !effectiveCenter) {
             console.warn("searchServer: 地图尚未就绪且未传入 center，直接返回");
             return;
         }
         setSearching(true);
         try {
-            const markedData = await Api.searchPlaces(backendUrl, { q, center: effectiveCenter, limit, agentRadius });
-
-            let unmarkedData = [];
-            if (window.AMap && q && q.trim()) {
-                unmarkedData = await new Promise(resolve => {
-                    window.AMap.plugin('AMap.PlaceSearch', () => {
-                        const ps = new window.AMap.PlaceSearch({
-                            pageSize: 20,
-                            pageIndex: 1
-                        });
-                        const cpoint = effectiveCenter
-                            ? [effectiveCenter.lng, effectiveCenter.lat]
-                            : (mapRef.current ? [mapRef.current.getCenter().lng, mapRef.current.getCenter().lat] : null);
-
-                        if (cpoint) {
-                            ps.searchNearBy(q.trim(), cpoint, 2000, (status, result) => {
-                                if (status === 'complete' && result.info === 'OK') {
-                                    resolve(result.poiList.pois || []);
-                                } else {
-                                    resolve([]);
-                                }
-                            });
-                        } else {
-                            ps.search(q.trim(), (status, result) => {
-                                if (status === 'complete' && result.info === 'OK') {
-                                    resolve(result.poiList.pois || []);
-                                } else {
-                                    resolve([]);
-                                }
-                            });
-                        }
-                    });
-                });
-            }
-
-            const processUnmarked = unmarkedData.map(p => {
-                const lng = p.location?.lng;
-                const lat = p.location?.lat;
-                if (!lng || !lat) return null;
-
-                const allKnown = [...(places || []), ...markedData];
-                let isKnown = false;
-                if (window.AMap) {
-                    for (const kp of allKnown) {
-                        if (!kp.longitude || !kp.latitude) continue;
-                        const d = window.AMap.GeometryUtil.distance(
-                            new window.AMap.LngLat(lng, lat),
-                            new window.AMap.LngLat(kp.longitude, kp.latitude)
-                        );
-                        if (d < 50) {
-                            isKnown = true;
-                            break;
-                        }
-                    }
-                }
-                if (isKnown) return null;
-
-                return {
-                    id: 'amap_' + p.id,
-                    name: p.name,
-                    longitude: lng,
-                    latitude: lat,
-                    address: p.address || `${p.pname || ''}${p.cityname || ''}${p.adname || ''}`,
-                    category: p.type || "非标记点",
-                    isMarked: false
-                };
-            }).filter(Boolean);
-
-            const data = includeUnmarked ? [...markedData, ...processUnmarked] : markedData;
+            const recommendationData = await Api.searchRecommendations(backendUrl, {
+                q,
+                center: effectiveCenter,
+                limit,
+                sortBy,
+                token,
+                searchSource: 'submit'
+            });
+            const markedData = Array.isArray(recommendationData?.candidates)
+                ? recommendationData.candidates
+                : [];
+            const data = markedData;
 
             setSearchResults(data);
+            setSearchMeta(recommendationData || null);
             renderMarkers(mapRef.current, markersRef, data, showPopup);
             // 若匹配成功，调整视野到所有匹配 marker
             if (autoFit) {
@@ -1003,6 +919,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
 
     const handleSelectSuggestion = (item) => {
         setSearchResults([item]);
+        setSearchMeta(null);
     };
 
     const handleToggleAddMode = () => {
@@ -1340,6 +1257,7 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 setSearchTerm={setSearchTerm}
                 clearSearch={clearSearch}
                 searchResetKey={searchResetKey}
+                searchMeta={searchMeta}
                 searchServer={searchServer}
                 onProgrammaticMapMove={armSkipAutoSearch}
                 onSelectSuggestion={handleSelectSuggestion}

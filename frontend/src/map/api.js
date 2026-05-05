@@ -36,19 +36,48 @@ export async function postPlace(backendUrl, token, payload) {
     return res.json();
 }
 
-export async function searchPlaces(backendUrl, opts = {}) {
+const SEARCH_SESSION_STORAGE_KEY = 'recommendation_search_session_id';
+
+function getRecommendationSearchSessionId() {
+    if (typeof window === 'undefined') return '';
+    try {
+        const existing = window.localStorage.getItem(SEARCH_SESSION_STORAGE_KEY);
+        if (existing) return existing;
+        const next = window.crypto?.randomUUID
+            ? window.crypto.randomUUID()
+            : `search_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+        window.localStorage.setItem(SEARCH_SESSION_STORAGE_KEY, next);
+        return next;
+    } catch (e) {
+        return '';
+    }
+}
+
+function buildRecommendationHeaders(opts = {}) {
+    const headers = {};
+    const token = opts.token || '';
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const searchSessionId = getRecommendationSearchSessionId();
+    if (searchSessionId) headers['X-Search-Session'] = searchSessionId;
+    if (opts.searchSource) headers['X-Search-Source'] = String(opts.searchSource);
+
+    return headers;
+}
+
+export async function searchRecommendations(backendUrl, opts = {}) {
     const params = new URLSearchParams();
     params.set('q', opts.q || '');
     if (opts.limit) params.set('limit', String(opts.limit));
+    if (opts.sortBy) params.set('sortBy', String(opts.sortBy));
     if (opts.center && opts.center.lat != null && opts.center.lng != null) {
         params.set('centerLat', String(opts.center.lat));
         params.set('centerLng', String(opts.center.lng));
     }
-    if (opts.agentRadius) params.set('agentRadius', String(opts.agentRadius));
 
-    const url = `${backendUrl}/api/places/search?${params.toString()}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`search failed: ${res.status}`);
+    const url = `${backendUrl}/api/recommendations/search?${params.toString()}`;
+    const res = await fetch(url, { headers: buildRecommendationHeaders(opts) });
+    if (!res.ok) throw new Error(`recommendation search failed: ${res.status}`);
     return res.json();
 }
 
