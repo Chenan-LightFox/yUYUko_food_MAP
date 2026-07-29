@@ -938,7 +938,7 @@ export default function MapUI(props) {
                                 </Tooltip>
                                 <span style={{ padding: 4 }}></span> */ }
                                     {selectedPlace.isMarked !== false && (
-                                        <Tooltip text={favoriteIds && favoriteIds.has(selectedPlace.id) ? '取消收藏' : (isAuthenticated ? '收藏此地点' : '登录后可收藏')}>
+                                        <Tooltip text={favoriteIds && favoriteIds.has(selectedPlace.id) ? '已收藏，点击取消收藏' : (isAuthenticated ? '点击收藏此地点' : '登录后可收藏')}>
                                             <Button
                                                 onClick={() => onToggleFavorite && onToggleFavorite(selectedPlace)}
                                                 disabled={favoriteLoading}

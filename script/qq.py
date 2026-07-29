@@ -13,7 +13,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 # ================= 配置区 =================
 DB_NAME = "../backend/data.sqlite"
-TARGET_URL = "https://qun.qq.com/member.html#gid=871393095"
+TARGET_GROUP_IDS = (
+    "871393095",
+    "994716945",
+)
 COOKIE_FILE = "qq_cookies.pkl" # 用于保存登录状态的文件
 # ==========================================
 
@@ -93,8 +96,8 @@ def fetch_html_with_selenium():
                     driver.add_cookie(cookie)
             print("[-] 已加载本地保存的登录状态 (Cookie)。")
         
-        # 3. 访问目标网址
-        driver.get(TARGET_URL)
+        # 3. 访问第一个目标群，用于验证登录状态
+        driver.get(f"https://qun.qq.com/member.html#gid={TARGET_GROUP_IDS[0]}")
         
         # ==========================================
         # 核心修复：基于页面元素的 100% 准确登录检测
@@ -125,24 +128,35 @@ def fetch_html_with_selenium():
                 return None
         # ==========================================
 
-        time.sleep(3) # 缓冲一下，等页面彻底渲染完毕
-        
-        # 5. 模拟向下滚动，加载所有群成员
-        print("[-] 正在向下滚动页面以加载完整名单...")
-        last_height = driver.execute_script("return document.body.scrollHeight")
-        while True:
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(1.5) # 稍微等久一点，防止网速慢导致没刷出来就以为到底了
-            
-            new_height = driver.execute_script("return document.body.scrollHeight")
-            if new_height == last_height:
-                break 
-            last_height = new_height
-            
-        print("[+] 页面滚动完毕，已加载所有成员。")
-        
-        # 6. 返回最终 HTML 源码
-        return driver.page_source
+        group_pages = {}
+
+        # 5. 依次加载每个目标群，并抓取完整成员名单
+        for group_id in TARGET_GROUP_IDS:
+            try:
+                target_url = f"https://qun.qq.com/member.html#gid={group_id}"
+                print(f"[-] 正在加载群 {group_id} 的成员页面...")
+                driver.get(target_url)
+                driver.refresh()
+                time.sleep(3) # 缓冲一下，等页面彻底渲染完毕
+
+                print(f"[-] 正在向下滚动群 {group_id} 的页面以加载完整名单...")
+                last_height = driver.execute_script("return document.body.scrollHeight")
+                while True:
+                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                    time.sleep(1.5) # 稍微等久一点，防止网速慢导致没刷出来就以为到底了
+
+                    new_height = driver.execute_script("return document.body.scrollHeight")
+                    if new_height == last_height:
+                        break
+                    last_height = new_height
+
+                group_pages[group_id] = driver.page_source
+                print(f"[+] 群 {group_id} 页面滚动完毕，已加载所有成员。")
+            except Exception as e:
+                print(f"[!] 抓取群 {group_id} 时发生错误，将继续处理其他群: {e}")
+
+        # 6. 返回各目标群的最终 HTML 源码
+        return group_pages
         
     finally:
         driver.quit()
@@ -176,13 +190,17 @@ def sync_to_database(conn, scraped_qqs):
 def job():
     """定时任务主流程"""
     try:
-        html = fetch_html_with_selenium()
-        if html:
-            qq_list = parse_qq_from_html(html)
-            print(f"[*] 网页解析成功，共发现 {len(qq_list)} 个群成员。")
-            
+        group_pages = fetch_html_with_selenium()
+        if group_pages:
+            all_qqs = set()
+            for group_id, html in group_pages.items():
+                qq_list = parse_qq_from_html(html)
+                all_qqs.update(qq_list)
+                print(f"[*] 群 {group_id} 解析成功，共发现 {len(qq_list)} 个群成员。")
+
+            print(f"[*] 所有目标群合并去重后，共发现 {len(all_qqs)} 个群成员。")
             conn = init_db()
-            sync_to_database(conn, qq_list)
+            sync_to_database(conn, all_qqs)
             conn.close()
     except Exception as e:
         print(f"[!] 任务执行发生错误: {e}")
