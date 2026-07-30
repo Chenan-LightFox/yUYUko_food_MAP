@@ -10,6 +10,20 @@ import ScrollableView from '../components/ScrollableView';
 import Notice from '../components/Notice';
 import { fetchFavorites } from './api';
 
+function getPlaceKey(place) {
+    if (place?.id !== undefined && place?.id !== null && String(place.id) !== '') {
+        return `id:${place.id}`;
+    }
+
+    const longitude = Number(place?.longitude);
+    const latitude = Number(place?.latitude);
+    if (Number.isFinite(longitude) && Number.isFinite(latitude)) {
+        return `coord:${longitude.toFixed(6)},${latitude.toFixed(6)}`;
+    }
+
+    return `name:${String(place?.name || place?.address || '').trim()}`;
+}
+
 function buildNavigationTargets(place) {
     const latitude = Number(place?.latitude);
     const longitude = Number(place?.longitude);
@@ -191,7 +205,10 @@ export default function MapUI(props) {
         onToggleFavorite,
         isAuthenticated,
         pickerMode,
+        pickerContext,
+        pickedPlaces,
         onPickPlace,
+        onRemovePickedPlace,
         onPickerClose,
         showTip
     } = props;
@@ -230,6 +247,7 @@ export default function MapUI(props) {
     const [searchResultsVisible, setSearchResultsVisible] = useState(true);
     const [detailOpen, setDetailOpen] = useState(false);
     const [favPageOpen, setFavPageOpen] = useState(false);
+    const [pickedPageOpen, setPickedPageOpen] = useState(false);
     const [favItems, setFavItems] = useState([]);
     const [favLoading, setFavLoading] = useState(false);
     const [favError, setFavError] = useState('');
@@ -243,6 +261,9 @@ export default function MapUI(props) {
     const [popupLayout, setPopupLayout] = useState(null);
     const dark = useDarkMode();
     const hideNonSearchButtons = false;
+    const isPosterPicker = pickerMode && pickerContext === 'poster';
+    const normalizedPickedPlaces = Array.isArray(pickedPlaces) ? pickedPlaces : [];
+    const selectedPlaceAlreadyPicked = !!selectedPlace && normalizedPickedPlaces.some((place) => getPlaceKey(place) === getPlaceKey(selectedPlace));
 
     useEffect(() => {
         const onResize = () => setIsNarrow(window.innerWidth <= 500);
@@ -479,7 +500,11 @@ export default function MapUI(props) {
 
     const handlePickPlace = () => {
         if (!selectedPlace) return;
-        if (typeof onPickPlace === 'function') onPickPlace(selectedPlace);
+        if (isPosterPicker && selectedPlaceAlreadyPicked) {
+            if (typeof onRemovePickedPlace === 'function') onRemovePickedPlace(selectedPlace);
+        } else if (typeof onPickPlace === 'function') {
+            onPickPlace(selectedPlace);
+        }
         if (typeof closePopup === 'function') closePopup();
     };
 
@@ -530,7 +555,7 @@ export default function MapUI(props) {
             })}
 
             {pickerMode && (
-                <Notice title="正在选择聚餐地点" tone="warning" />
+                <Notice title={isPosterPicker ? `正在选择海报地点 · 已选 ${normalizedPickedPlaces.length} 个` : '正在选择聚餐地点'} tone="warning" />
             )}
 
             <div ref={searchBarRef} style={(() => {
@@ -687,7 +712,7 @@ export default function MapUI(props) {
             {!hideNonSearchButtons && (
                 <div ref={dinnerBtnRef} style={{ position: "absolute", left: 16, bottom: isNarrow ? 68 : 12, zIndex: 2000 }}>
                     {pickerMode ? (
-                        <Tooltip text="返回聚餐创建" placement="top">
+                        <Tooltip text={isPosterPicker ? '返回海报生成' : '返回聚餐创建'} placement="top">
                             <div style={{ display: "inline-block" }}>
                                 <Button
                                     onClick={onPickerClose}
@@ -796,7 +821,10 @@ export default function MapUI(props) {
                         <Tooltip text={authPending ? '正在验证登录状态，请稍候再试' : (favPageOpen ? '关闭收藏夹' : '展开收藏夹')}>
                             <div style={{ display: "inline-block" }}>
                                 <Button
-                                    onClick={() => setFavPageOpen(v => !v)}
+                                    onClick={() => {
+                                        setFavPageOpen((open) => !open);
+                                        setPickedPageOpen(false);
+                                    }}
                                     disabled={!mapReady}
                                     aria-label={favPageOpen ? '关闭收藏夹' : '展开收藏夹'}
                                     style={{
@@ -819,6 +847,59 @@ export default function MapUI(props) {
                                 </Button>
                             </div>
                         </Tooltip>
+
+                        {isPosterPicker && (
+                            <Tooltip text={pickedPageOpen ? '关闭已选择地点' : `查看已选择地点（${normalizedPickedPlaces.length}）`}>
+                                <div style={{ display: "inline-block" }}>
+                                    <Button
+                                        onClick={() => {
+                                            setPickedPageOpen((open) => !open);
+                                            setFavPageOpen(false);
+                                        }}
+                                        disabled={!mapReady}
+                                        aria-label={pickedPageOpen ? '关闭已选择地点' : '查看已选择地点'}
+                                        style={{
+                                            width: 44,
+                                            height: 44,
+                                            padding: 0,
+                                            borderRadius: '50%',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            position: 'relative',
+                                            background: pickedPageOpen ? '#f5220b' : customThemeColor,
+                                            color: '#fff9f6',
+                                            border: 'none',
+                                            transition: 'background 180ms ease, transform 220ms ease',
+                                            cursor: !mapReady ? 'not-allowed' : 'pointer',
+                                            opacity: !mapReady ? 0.6 : 1
+                                        }}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 29 }}>format_list_numbered</span>
+                                        <span style={{
+                                            position: 'absolute',
+                                            right: -3,
+                                            top: -3,
+                                            minWidth: 18,
+                                            height: 18,
+                                            padding: '0 4px',
+                                            borderRadius: 9,
+                                            boxSizing: 'border-box',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            background: '#fff9f6',
+                                            color: customThemeColor,
+                                            border: `1px solid ${customThemeColor}`,
+                                            fontSize: 10,
+                                            fontWeight: 700
+                                        }}>
+                                            {normalizedPickedPlaces.length}
+                                        </span>
+                                    </Button>
+                                </div>
+                            </Tooltip>
+                        )}
 
                         {!pickerMode && (
                             <Tooltip text={authPending ? '正在验证登录状态，请稍候再试' : '定位/我的位置'}>
@@ -880,7 +961,7 @@ export default function MapUI(props) {
                                 return (
                                     <>
                                         <span>{text}</span>
-                                        {hasMore && (
+                                        {hasMore && !pickerMode && (
                                             <span
                                                 onClick={openDetailPanel}
                                                 style={{ marginLeft: 4, color: '#9ca3af', cursor: 'pointer', whiteSpace: 'nowrap' }}
@@ -907,7 +988,17 @@ export default function MapUI(props) {
                         {pickerMode ? (
                             <div style={{ marginTop: 10, textAlign: 'right' }}>
                                 {!hideNonSearchButtons && (
-                                    <Button onClick={handlePickPlace} style={{ color: '#fff9f6', border: 0 }}>选择此地点</Button>
+                                    <Button
+                                        onClick={handlePickPlace}
+                                        aria-label={isPosterPicker && selectedPlaceAlreadyPicked ? '取消选择此地点' : '选择此地点'}
+                                        style={{
+                                            ...(isPosterPicker && selectedPlaceAlreadyPicked ? { background: '#dc2626' } : {}),
+                                            color: '#fff9f6',
+                                            border: 0
+                                        }}
+                                    >
+                                        {isPosterPicker && selectedPlaceAlreadyPicked ? '取消选择' : '选择此地点'}
+                                    </Button>
                                 )}
                             </div>
                         ) : (
@@ -1220,6 +1311,106 @@ export default function MapUI(props) {
                                     {item.name && (!item.longitude || !item.latitude) && (
                                         <span style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>坐标缺失，无法定位</span>
                                     )}
+                                </div>
+                            ))
+                        )}
+                    </ScrollableView>
+                </div>
+            )}
+
+            {isPosterPicker && pickedPageOpen && (
+                <div style={{
+                    position: 'absolute',
+                    right: 60,
+                    top: 8,
+                    width: 'min(300px, calc(100vw - 80px))',
+                    maxHeight: '60vh',
+                    background: dark ? '#0f172a' : '#fff9f6',
+                    color: dark ? '#f8fafc' : '#333',
+                    borderRadius: 8,
+                    boxShadow: dark ? '0 4px 24px rgba(0,0,0,0.6)' : '0 4px 24px rgba(0,0,0,0.2)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    zIndex: 5000
+                }}>
+                    <div style={{
+                        padding: '12px 16px',
+                        borderBottom: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexShrink: 0
+                    }}>
+                        <h3 style={{ margin: 0, fontSize: 16, color: dark ? '#f8fafc' : '#111827' }}>
+                            已选择地点（{normalizedPickedPlaces.length}）
+                        </h3>
+                        <Button
+                            onClick={() => setPickedPageOpen(false)}
+                            aria-label="关闭已选择地点"
+                            style={{ padding: '2px 8px', background: 'transparent', border: 'none', color: dark ? '#e5e7eb' : '#374151', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}
+                        >
+                            ×
+                        </Button>
+                    </div>
+
+                    <ScrollableView style={{ flex: 1 }}>
+                        {normalizedPickedPlaces.length === 0 ? (
+                            <div style={{ padding: 16, textAlign: 'center', color: dark ? '#9ca3af' : '#6b7280', fontSize: 13 }}>
+                                点击地图 Marker，再选择此地点
+                            </div>
+                        ) : (
+                            normalizedPickedPlaces.map((item, index) => (
+                                <div
+                                    key={getPlaceKey(item)}
+                                    onClick={() => {
+                                        navigateToPlace(item.longitude, item.latitude);
+                                        setPickedPageOpen(false);
+                                    }}
+                                    style={{
+                                        padding: '10px 12px 10px 16px',
+                                        cursor: (item.longitude && item.latitude) ? 'pointer' : 'default',
+                                        borderBottom: `1px solid ${dark ? '#1f2937' : '#f3f4f6'}`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 9
+                                    }}
+                                    onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = dark ? '#1f2937' : '#f9fafb'; }}
+                                    onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = 'transparent'; }}
+                                >
+                                    <span style={{
+                                        width: 24,
+                                        height: 24,
+                                        borderRadius: '50%',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        flexShrink: 0,
+                                        background: customThemeColor,
+                                        color: '#fff9f6',
+                                        fontSize: 11,
+                                        fontWeight: 700
+                                    }}>
+                                        {index + 1}
+                                    </span>
+                                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontSize: 14, color: dark ? '#f3f4f6' : '#111827', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {item.name || item.address || '未命名地点'}
+                                        </span>
+                                        <span style={{ fontSize: 12, color: dark ? '#9ca3af' : '#6b7280', marginTop: 2 }}>
+                                            {item.category || '未分类'}
+                                        </span>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            if (typeof onRemovePickedPlace === 'function') onRemovePickedPlace(item);
+                                        }}
+                                        aria-label={`移除${item.name || item.address || '此地点'}`}
+                                        style={{ padding: '3px 7px', background: 'transparent', border: 'none', color: dark ? '#ff8a93' : '#b00020', fontSize: 12 }}
+                                    >
+                                        移除
+                                    </Button>
                                 </div>
                             ))
                         )}

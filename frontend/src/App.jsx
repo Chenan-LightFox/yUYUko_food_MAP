@@ -17,6 +17,7 @@ import { ConfirmProvider } from "./components/Confirm";
 import { applyDarkMode, applyThemeColors, resolveThemePrimary, resolveThemeSecondary, getSystemPrefersDark, onSystemColorSchemeChange } from "./utils/theme";
 import useDarkMode from './utils/useDarkMode';
 import { DinnerCreatePage, DinnerDetailPage, DinnerListPage, isDinnerPath, parseDinnerIdFromPath } from './DinnerPages';
+import PosterExportPage from './PosterExportPage';
 import { getNoticeColorOption } from './utils/noticeColors';
 
 function normalizeUrl(url) {
@@ -348,15 +349,15 @@ export default function App() {
     }, [token, user, clearAuthState]);
 
     useEffect(() => {
-        // 限定页面路径（允许 /, /admin, /settings/*, /dinners*）
-        if (pathname !== "/" && pathname !== "/admin" && !pathname.startsWith("/settings") && !isDinnerPath(pathname)) {
+        // 限定页面路径（允许 /, /admin, /settings/*, /dinners*, /posters/new）
+        if (pathname !== "/" && pathname !== "/admin" && !pathname.startsWith("/settings") && !isDinnerPath(pathname) && pathname !== '/posters/new') {
             goPath("/");
         }
     }, [pathname, goPath]);
 
     useEffect(() => {
         // 未登录访问受限页面时，弹出登录对话框但不强制跳转，以便用户在页面内登录
-        if ((pathname === "/admin" || pathname.startsWith("/settings") || pathname === "/dinners/new") && !token) {
+        if ((pathname === "/admin" || pathname.startsWith("/settings") || pathname === "/dinners/new" || pathname === '/posters/new') && !token) {
             setShowAuth(true);
             // do not navigate away; allow login modal to appear over these pages
         }
@@ -377,7 +378,8 @@ export default function App() {
     const dinnerId = parseDinnerIdFromPath(pathname);
     const showDinnerDetail = Number.isFinite(dinnerId) && dinnerId > 0;
     const showAnyDinnerPage = showDinnerList || showDinnerCreate || showDinnerDetail;
-    const showMapPage = !showAdminPage && !showSettingsAny && !showAnyDinnerPage;
+    const showPosterExport = pathname === '/posters/new';
+    const showMapPage = !showAdminPage && !showSettingsAny && !showAnyDinnerPage && !showPosterExport;
     const siteNoticeVisible = !!(siteNotice && String(siteNotice.id) !== String(dismissedNoticeId || ''));
 
     useLayoutEffect(() => {
@@ -530,6 +532,22 @@ export default function App() {
                             />
                         )}
 
+                        {showPosterExport && (
+                            user ? (
+                                <PosterExportPage
+                                    backendUrl={BACKEND_URL}
+                                    token={token}
+                                    isAuth={isAuth}
+                                    onRequireAuth={() => setShowAuth(true)}
+                                    onMapPickerOpenChange={setAuthPanelDisabled}
+                                />
+                            ) : (
+                                <div style={placeholderStyle}>
+                                    正在验证登录状态...
+                                </div>
+                            )
+                        )}
+
                         {showAdminPage && (
                             user ? (
                                 <AdminDashboard
@@ -660,6 +678,7 @@ export default function App() {
                             onOpenSettings={() => goPath("/settings")}
                             onOpenDinners={() => goPath('/dinners')}
                             onOpenDinnerCreate={() => goPath('/dinners/new')}
+                            onOpenPosterExport={() => goPath('/posters/new')}
                             onGoHome={() => goPath("/")}
                             pathname={pathname}
                             backendUrl={BACKEND_URL}

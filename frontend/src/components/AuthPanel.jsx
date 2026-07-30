@@ -5,7 +5,7 @@ import defaultAvatar from '../img/default.png';
 import useDarkMode from '../utils/useDarkMode';
 import { pickContrastTextColor, DEFAULT_PRIMARY, DEFAULT_DARK_PRIMARY, isDarkMode } from '../utils/theme';
 
-const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onGoHome, onOpenDinners, onOpenDinnerCreate, pathname, backendUrl, interactionDisabled = false }, ref) {
+const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onGoHome, onOpenDinners, onOpenDinnerCreate, onOpenPosterExport, pathname, backendUrl, interactionDisabled = false }, ref) {
     const [open, setOpen] = useState(false);
     const rootRef = useRef(null);
     const menuRef = useRef(null);
@@ -153,6 +153,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
     const isOnAdmin = currentPath === '/admin';
     const isOnSettings = typeof currentPath === 'string' && currentPath.startsWith('/settings');
     const isOnDinners = typeof currentPath === 'string' && currentPath.startsWith('/dinners');
+    const isOnPosterExport = currentPath === '/posters/new';
 
     return (
         <div
@@ -256,6 +257,11 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                                 <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
                                 <Button themeAware variant="menu" full onClick={() => { setOpen(false); if (isOnDinners) { onGoHome && onGoHome(); } else { onOpenDinners && onOpenDinners(); } }} style={{ color: menuTextColor }}>
                                     {isOnDinners ? '返回地图' : '聚餐活动'}
+                                </Button>
+
+                                <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
+                                <Button themeAware variant="menu" full onClick={() => { setOpen(false); if (isOnPosterExport) { onGoHome && onGoHome(); } else { onOpenPosterExport && onOpenPosterExport(); } }} style={{ color: menuTextColor }}>
+                                    {isOnPosterExport ? '返回地图' : '导出海报'}
                                 </Button>
 
                                 <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />

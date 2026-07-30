@@ -67,7 +67,20 @@ function buildInfoWindowContent(place) {
     return root;
 }
 
-export default function MapView({ backendUrl, token, isAuthenticated, onRequireAuth, onOpenDinnerCreate, onOpenDinners, pickerMode = false, onPickPlace, onPickerClose }) {
+export default function MapView({
+    backendUrl,
+    token,
+    isAuthenticated,
+    onRequireAuth,
+    onOpenDinnerCreate,
+    onOpenDinners,
+    pickerMode = false,
+    pickerContext = 'dinner',
+    pickedPlaces = [],
+    onPickPlace,
+    onRemovePickedPlace,
+    onPickerClose
+}) {
     const containerRef = useRef(null);
     const mapRef = useRef(null);
     const markersRef = useRef([]);
@@ -1511,7 +1524,10 @@ export default function MapView({ backendUrl, token, isAuthenticated, onRequireA
                 onToggleFavorite={handleToggleFavorite}
                 isAuthenticated={isAuthenticated}
                 pickerMode={pickerMode}
+                pickerContext={pickerContext}
+                pickedPlaces={pickedPlaces}
                 onPickPlace={onPickPlace}
+                onRemovePickedPlace={onRemovePickedPlace}
                 onPickerClose={onPickerClose}
                 showTip={showTip}
             />
