@@ -177,8 +177,6 @@ export default function MapUI(props) {
         addMode,
         handleToggleAddMode,
         addPlaceTipText,
-        onOpenDinnerCreate,
-        onOpenDinners,
         popupPoint,
         selectedPlace,
         getLastModifierText,
@@ -279,28 +277,13 @@ export default function MapUI(props) {
         }
     }, [searchResetKey]);
 
-    // Detect overlap between search bar and dinner button (wide mode only)
+    // Keep the search bar centered in wide mode.
     useLayoutEffect(() => {
         if (isNarrow) return;
         const searchEl = searchBarRef.current;
-        const dinnerEl = dinnerBtnRef.current;
         if (!searchEl) return;
 
         const updatePosition = () => {
-            const viewportWidth = window.innerWidth;
-            const searchWidth = searchEl.getBoundingClientRect().width;
-            if (!searchWidth) return;
-            const centeredLeft = (viewportWidth - searchWidth) / 2;
-
-            if (dinnerEl && !pickerMode) {
-                const dinnerRect = dinnerEl.getBoundingClientRect();
-                const minLeft = dinnerRect.right + 15;
-                if (centeredLeft < minLeft) {
-                    searchEl.style.left = `${minLeft}px`;
-                    searchEl.style.transform = 'none';
-                    return;
-                }
-            }
             searchEl.style.left = '50%';
             searchEl.style.transform = 'translateX(-50%)';
         };
@@ -709,73 +692,35 @@ export default function MapUI(props) {
                 </div>
             </div>
 
-            {!hideNonSearchButtons && (
+            {!hideNonSearchButtons && pickerMode && (
                 <div ref={dinnerBtnRef} style={{ position: "absolute", left: 16, bottom: isNarrow ? 68 : 12, zIndex: 2000 }}>
-                    {pickerMode ? (
-                        <Tooltip text={isPosterPicker ? '返回海报生成' : '返回聚餐创建'} placement="top">
-                            <div style={{ display: "inline-block" }}>
-                                <Button
-                                    onClick={onPickerClose}
-                                    aria-label="返回"
-                                    style={{
-                                        width: 64,
-                                        height: 64,
-                                        padding: 0,
-                                        borderRadius: '50%',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        background: customThemeColor,
-                                        color: '#fff9f6',
-                                        border: 'none',
-                                        boxShadow: `0 4px 12px ${hexToRgba(customThemeColor, 0.2)}`,
-                                        transition: 'background 180ms ease, transform 220ms ease',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 36 }}>
-                                        arrow_back
-                                    </span>
-                                </Button>
-                            </div>
-                        </Tooltip>
-                    ) : (
-                        <Tooltip text={authPending ? '正在验证登录状态，请稍候再试' : '发起聚餐'} placement="top">
-                            <div style={{ display: "inline-block" }}>
-                                <Button
-                                    onClick={() => {
-                                        if (typeof onOpenDinners === 'function') {
-                                            onOpenDinners();
-                                            return;
-                                        }
-                                        if (typeof onOpenDinnerCreate === 'function') onOpenDinnerCreate();
-                                    }}
-                                    disabled={!mapReady || authPending}
-                                    aria-label="发起聚餐"
-                                    style={{
-                                        width: 64,
-                                        height: 64,
-                                        padding: 0,
-                                        borderRadius: '50%',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        background: customThemeColor,
-                                        color: '#fff9f6',
-                                        border: 'none',
-                                        boxShadow: `0 4px 12px ${hexToRgba(customThemeColor, 0.2)}`,
-                                        transition: 'background 180ms ease, transform 220ms ease',
-                                        cursor: (!mapReady || authPending) ? 'not-allowed' : 'pointer',
-                                        opacity: (!mapReady || authPending) ? 0.6 : 1
-                                    }}
-                                >
-                                    <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 36 }}>
-                                        flatware
-                                    </span>
-                                </Button>
-                            </div>
-                        </Tooltip>
-                    )}
+                    <Tooltip text={isPosterPicker ? '返回海报生成' : '返回聚餐创建'} placement="top">
+                        <div style={{ display: "inline-block" }}>
+                            <Button
+                                onClick={onPickerClose}
+                                aria-label="返回"
+                                style={{
+                                    width: 64,
+                                    height: 64,
+                                    padding: 0,
+                                    borderRadius: '50%',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: customThemeColor,
+                                    color: '#fff9f6',
+                                    border: 'none',
+                                    boxShadow: `0 4px 12px ${hexToRgba(customThemeColor, 0.2)}`,
+                                    transition: 'background 180ms ease, transform 220ms ease',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 36 }}>
+                                    arrow_back
+                                </span>
+                            </Button>
+                        </div>
+                    </Tooltip>
                 </div>
             )}
 

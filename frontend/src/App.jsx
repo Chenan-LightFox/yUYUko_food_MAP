@@ -488,8 +488,6 @@ export default function App() {
                                 token={token}
                                 isAuthenticated={isAuth}
                                 onRequireAuth={() => setShowAuth(true)}
-                                onOpenDinnerCreate={() => goPath('/dinners/new')}
-                                onOpenDinners={() => goPath('/dinners')}
                             />
                         </div>
 
@@ -677,7 +675,6 @@ export default function App() {
                             onOpenAdmin={() => goPath("/admin")}
                             onOpenSettings={() => goPath("/settings")}
                             onOpenDinners={() => goPath('/dinners')}
-                            onOpenDinnerCreate={() => goPath('/dinners/new')}
                             onOpenPosterExport={() => goPath('/posters/new')}
                             onGoHome={() => goPath("/")}
                             pathname={pathname}

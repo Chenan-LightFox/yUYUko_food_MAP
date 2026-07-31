@@ -1,31 +1,33 @@
 import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import Button from './Button';
-import Tooltip from './Tooltip';
 import defaultAvatar from '../img/default.png';
 import useDarkMode from '../utils/useDarkMode';
 import { pickContrastTextColor, DEFAULT_PRIMARY, DEFAULT_DARK_PRIMARY, isDarkMode } from '../utils/theme';
+import Tooltip from './Tooltip';
 
-const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onGoHome, onOpenDinners, onOpenDinnerCreate, onOpenPosterExport, pathname, backendUrl, interactionDisabled = false }, ref) {
+const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onOpenDinners, onOpenPosterExport, onGoHome, pathname, backendUrl, interactionDisabled = false }, ref) {
     const [open, setOpen] = useState(false);
+    const [moreOpen, setMoreOpen] = useState(false);
+    const [isNarrow, setIsNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 500);
     const rootRef = useRef(null);
-    const menuRef = useRef(null);
-    const closeTimerRef = useRef(null);
     const [themeColor, setThemeColor] = useState(() => isDarkMode() ? DEFAULT_DARK_PRIMARY : DEFAULT_PRIMARY);
 
     const dark = useDarkMode();
     const menuTextColor = dark ? '#e5e7eb' : 'inherit';
 
-    const isTouchDevice = typeof window !== 'undefined' && (('ontouchstart' in window) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0));
-
     useEffect(() => {
-        if (!open) return;
+        if (!open && !moreOpen) return;
         const onDocClick = (e) => {
             if (rootRef.current && !rootRef.current.contains(e.target)) {
                 setOpen(false);
+                setMoreOpen(false);
             }
         };
         const onKey = (e) => {
-            if (e.key === 'Escape') setOpen(false);
+            if (e.key === 'Escape') {
+                setOpen(false);
+                setMoreOpen(false);
+            }
         };
         document.addEventListener('mousedown', onDocClick);
         document.addEventListener('touchstart', onDocClick, { passive: true });
@@ -35,19 +37,19 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
             document.removeEventListener('touchstart', onDocClick);
             document.removeEventListener('keydown', onKey);
         };
-    }, [open]);
+    }, [open, moreOpen]);
 
     useEffect(() => {
-        if (interactionDisabled && open) setOpen(false);
-    }, [interactionDisabled, open]);
+        if (interactionDisabled) {
+            setOpen(false);
+            setMoreOpen(false);
+        }
+    }, [interactionDisabled]);
 
     useEffect(() => {
-        return () => {
-            if (closeTimerRef.current) {
-                clearTimeout(closeTimerRef.current);
-                closeTimerRef.current = null;
-            }
-        };
+        const onResize = () => setIsNarrow(window.innerWidth <= 500);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
     }, []);
 
     useEffect(() => {
@@ -87,66 +89,20 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
         return () => window.removeEventListener('themechange', onThemeChange);
     }, []);
 
-    const scheduleClose = (delay = 150) => {
-        if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-        closeTimerRef.current = setTimeout(() => {
-            closeTimerRef.current = null;
-            setOpen(false);
-        }, delay);
-    };
-
-    const cancelScheduledClose = () => {
-        if (closeTimerRef.current) {
-            clearTimeout(closeTimerRef.current);
-            closeTimerRef.current = null;
-        }
-    };
-
-    const handleAvatarClick = (e) => {
+    const handleAvatarClick = () => {
         if (interactionDisabled) return;
         if (!isAuth) {
             onOpenAuth && onOpenAuth();
             return;
         }
-        if (isTouchDevice) {
-            setOpen((v) => !v);
-        } else {
-            setOpen(true);
-        }
+        setMoreOpen(false);
+        setOpen((value) => !value);
     };
 
-    const handleAvatarMouseEnter = () => {
+    const handleMoreClick = () => {
         if (interactionDisabled) return;
-        if (!isTouchDevice && isAuth) {
-            cancelScheduledClose();
-            setOpen(true);
-        }
-    };
-    const handleAvatarMouseLeave = () => {
-        if (interactionDisabled) return;
-        if (!isTouchDevice && isAuth) {
-            scheduleClose();
-        }
-    };
-    const handleMenuMouseEnter = () => {
-        if (interactionDisabled) return;
-        if (!isTouchDevice && isAuth) {
-            cancelScheduledClose();
-            setOpen(true);
-        }
-    };
-    const handleMenuMouseLeave = () => {
-        if (interactionDisabled) return;
-        if (!isTouchDevice && isAuth) {
-            scheduleClose();
-        }
-    };
-
-    const initials = (name) => {
-        if (!name) return '?';
-        const parts = name.trim().split(/\s+/);
-        if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
-        return (parts[0].slice(0, 1) + parts[1].slice(0, 1)).toUpperCase();
+        setOpen(false);
+        setMoreOpen((value) => !value);
     };
 
     const currentPath = typeof pathname !== 'undefined' ? pathname : (typeof window !== 'undefined' ? window.location.pathname : '');
@@ -154,6 +110,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
     const isOnSettings = typeof currentPath === 'string' && currentPath.startsWith('/settings');
     const isOnDinners = typeof currentPath === 'string' && currentPath.startsWith('/dinners');
     const isOnPosterExport = currentPath === '/posters/new';
+    const divider = <div style={{ height: 1, background: dark ? '#293649' : '#a2a2a2' }} />;
 
     return (
         <div
@@ -180,8 +137,6 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                 aria-haspopup="true"
                 aria-expanded={open}
                 onClick={handleAvatarClick}
-                onMouseEnter={handleAvatarMouseEnter}
-                onMouseLeave={handleAvatarMouseLeave}
                 style={{
                     width: 50,
                     height: 50,
@@ -209,13 +164,10 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
             </div>
 
             {/* 下拉菜单 */}
-            {open && (
+            {open && isAuth && user && (
                 <div
-                    ref={menuRef}
                     role="menu"
                     aria-label="用户菜单"
-                    onMouseEnter={handleMenuMouseEnter}
-                    onMouseLeave={handleMenuMouseLeave}
                     style={{
                         position: 'absolute',
                         left: 12,
@@ -224,62 +176,93 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                         background: dark ? 'var(--theme-secondary)' : '#fff9f6',
                         borderRadius: 8,
                         boxShadow: dark ? '0 6px 24px rgba(0,0,0,0.6)' : '0 6px 24px rgba(0,0,0,0.15)',
-                        padding: 12,
+                        padding: 8,
                         border: dark ? '1px solid #1f2937' : '1px solid rgba(16,24,40,0.06)',
                         color: dark ? '#e5e7eb' : 'inherit'
                     }}
                 >
-                    {isAuth && user ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <div style={{ fontSize: 20, fontWeight: 700 }}>{'东方饭联地图'}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                        <div style={{ padding: '4px 10px 8px' }}>
+                            <div style={{ fontSize: 20, fontWeight: 700 }}>东方饭联地图</div>
+                            <div style={{ marginTop: 6, fontSize: 14, overflowWrap: 'anywhere' }}>当前用户：{user.username}</div>
+                        </div>
+                        {divider}
+                        <Button themeAware variant="menu" full onClick={() => { setOpen(false); if (isOnSettings) { onGoHome && onGoHome(); } else { onOpenSettings && onOpenSettings(); } }} style={{ color: menuTextColor }}>
+                            {isOnSettings ? '返回地图' : '设置'}
+                        </Button>
+                        {divider}
+                        <Button themeAware variant="menu" full onClick={() => { setOpen(false); onLogout && onLogout(); }} style={{ color: dark ? '#ff8a93' : '#b00020' }}>
+                            注销
+                        </Button>
+                    </div>
+                </div>
+            )}
 
-                            <div style={{ fontSize: 14 }}>
-                                <Tooltip text={`用户ID：${user.id}`} placement="top">{user.username}</Tooltip>
-                            </div>
-                            <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666' }}>{user.admin_level ? `管理员：${user.admin_level}` : '普通用户'}</div>
+            {!interactionDisabled && (
+                <div style={{ position: 'fixed', left: 16, bottom: isNarrow ? 68 : 12 }}>
+                    <Tooltip text="更多功能" placement="top">
+                        <Button
+                            onClick={handleMoreClick}
+                            aria-haspopup="true"
+                            aria-expanded={moreOpen}
+                            style={{
+                                width: 64,
+                                height: 64,
+                                padding: 0,
+                                borderRadius: '50%',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: themeColor,
+                                color: '#fff9f6',
+                                border: 'none',
+                                boxShadow: dark ? '0 4px 12px rgba(0,0,0,0.45)' : '0 4px 12px rgba(0,0,0,0.18)',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 36 }}>menu</span>
+                        </Button>
+                    </Tooltip>
+                </div>
+            )}
 
-                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                                {(isAdmin || isOnAdmin) && (
-                                    <Button themeAware variant="menu" full onClick={() => { setOpen(false); if (isOnAdmin) { onGoHome && onGoHome(); } else { onOpenAdmin && onOpenAdmin(); } }} style={{ color: menuTextColor }}>
-                                        {isOnAdmin ? '返回地图' : '管理后台'}
-                                    </Button>
-                                )}
-                                {(isAdmin || isOnAdmin) && (
-                                    <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
-                                )}
-
-                                <Button themeAware variant="menu" full onClick={() => { setOpen(false); if (isOnSettings) { onGoHome && onGoHome(); } else { onOpenSettings && onOpenSettings(); } }} style={{ color: menuTextColor }}>
-                                    {isOnSettings ? '返回地图' : '设置'}
+            {moreOpen && !interactionDisabled && (
+                <div
+                    role="menu"
+                    style={{
+                        position: 'fixed',
+                        left: 16,
+                        bottom: isNarrow ? 144 : 88,
+                        minWidth: 180,
+                        background: dark ? 'var(--theme-secondary)' : '#fff9f6',
+                        borderRadius: 8,
+                        boxShadow: dark ? '0 6px 24px rgba(0,0,0,0.6)' : '0 6px 24px rgba(0,0,0,0.15)',
+                        padding: 8,
+                        border: dark ? '1px solid #1f2937' : '1px solid rgba(16,24,40,0.06)',
+                        color: dark ? '#e5e7eb' : 'inherit'
+                    }}
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                        {isAuth && (isAdmin || isOnAdmin) && (
+                            <>
+                                <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); if (isOnAdmin) { onGoHome && onGoHome(); } else { onOpenAdmin && onOpenAdmin(); } }} style={{ color: menuTextColor }}>
+                                    {isOnAdmin ? '返回地图' : '管理后台'}
                                 </Button>
-
-                                <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
-                                <Button themeAware variant="menu" full onClick={() => { setOpen(false); if (isOnDinners) { onGoHome && onGoHome(); } else { onOpenDinners && onOpenDinners(); } }} style={{ color: menuTextColor }}>
-                                    {isOnDinners ? '返回地图' : '聚餐活动'}
-                                </Button>
-
-                                <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
-                                <Button themeAware variant="menu" full onClick={() => { setOpen(false); if (isOnPosterExport) { onGoHome && onGoHome(); } else { onOpenPosterExport && onOpenPosterExport(); } }} style={{ color: menuTextColor }}>
+                                {divider}
+                            </>
+                        )}
+                        <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); if (isOnDinners) { onGoHome && onGoHome(); } else { onOpenDinners && onOpenDinners(); } }} style={{ color: menuTextColor }}>
+                            {isOnDinners ? '返回地图' : '聚餐活动'}
+                        </Button>
+                        {isAuth && (
+                            <>
+                                {divider}
+                                <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); if (isOnPosterExport) { onGoHome && onGoHome(); } else { onOpenPosterExport && onOpenPosterExport(); } }} style={{ color: menuTextColor }}>
                                     {isOnPosterExport ? '返回地图' : '导出海报'}
                                 </Button>
-
-                                <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 1, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
-                                <Button themeAware variant="menu" full onClick={() => { setOpen(false); onLogout && onLogout(); }} style={{ color: dark ? '#ff8a93' : '#b00020' }}>
-                                    注销
-                                </Button>
-                            </div>
-                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
-                            <Button themeAware variant="menu" full onClick={() => { setOpen(false); onOpenDinners && onOpenDinners(); }}>聚餐活动</Button>
-                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
-                            <Button themeAware variant="menu" full onClick={() => { setOpen(false); onOpenAuth && onOpenAuth(); }}>登录 / 注册</Button>
-                            <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: dark ? '#1f2937' : '#a2a2a2', margin: 0 }} />
-                        </div>
-                    )}
+                            </>
+                        )}
+                    </div>
                 </div>
             )}
         </div>

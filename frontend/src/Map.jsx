@@ -72,8 +72,6 @@ export default function MapView({
     token,
     isAuthenticated,
     onRequireAuth,
-    onOpenDinnerCreate,
-    onOpenDinners,
     pickerMode = false,
     pickerContext = 'dinner',
     pickedPlaces = [],
@@ -1496,8 +1494,6 @@ export default function MapView({
                 addMode={addMode}
                 handleToggleAddMode={handleToggleAddMode}
                 addPlaceTipText={addPlaceTipText}
-                onOpenDinnerCreate={onOpenDinnerCreate}
-                onOpenDinners={onOpenDinners}
                 popupPoint={popupPoint}
                 selectedPlace={selectedPlace}
                 getLastModifierText={getLastModifierText}
