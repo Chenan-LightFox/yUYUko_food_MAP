@@ -252,13 +252,13 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                             </>
                         )}
                         <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); if (isOnDinners) { onGoHome && onGoHome(); } else { onOpenDinners && onOpenDinners(); } }} style={{ color: menuTextColor }}>
-                            {isOnDinners ? '返回地图' : '聚餐活动'}
+                            {isOnDinners ? '返回地图' : '聚餐活动 (beta)'}
                         </Button>
                         {isAuth && (
                             <>
                                 {divider}
                                 <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); if (isOnPosterExport) { onGoHome && onGoHome(); } else { onOpenPosterExport && onOpenPosterExport(); } }} style={{ color: menuTextColor }}>
-                                    {isOnPosterExport ? '返回地图' : '导出海报'}
+                                    {isOnPosterExport ? '返回地图' : '导出海报 (beta)'}
                                 </Button>
                             </>
                         )}
