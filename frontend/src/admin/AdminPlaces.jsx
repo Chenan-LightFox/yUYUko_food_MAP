@@ -6,6 +6,8 @@ import { useConfirm } from "../components/Confirm";
 import { useAuth } from "../AuthContext";
 import JsonTable from "../components/JsonTable";
 import ResponsiveTable from "../components/ResponsiveTable";
+import ActionMenu from '../components/ActionMenu';
+import useMediaQuery from '../utils/useMediaQuery';
 import useDarkMode from "../utils/useDarkMode";
 import { getThemeColor } from "../utils/theme";
 
@@ -38,6 +40,7 @@ export default function AdminPlaces({ backendUrl = null }) {
     const fetchIdRef = useRef(0);
     const dark = useDarkMode();
     const themeColor = getThemeColor();
+    const isMobile = useMediaQuery('(max-width: 640px)');
 
 
 
@@ -108,8 +111,11 @@ export default function AdminPlaces({ backendUrl = null }) {
         }
     };
 
-    const review = async (id, action) => {
-        if (!(await confirm(`确认要 ${action === 'approve' ? '通过' : '驳回'} 此申请？`))) return;
+    const review = async (target, action) => {
+        const id = target.id;
+        const approve = action === 'approve';
+        const impact = approve ? '通过后，提议内容会写入对应地点并立即对地图访客可见。' : '驳回后，本申请会结束且不会修改地点。';
+        if (!(await confirm(`确认${approve ? '通过' : '驳回'}申请 #${id}？\n对象：地点 ${target.place_id || '-'}，申请人 ${target.requester_id || '-'}。\n${impact}`))) return;
         setProcessing(p => ({ ...p, [id]: true }));
         const thisFetchId = ++fetchIdRef.current; // bump to mark new action
         try {
@@ -186,6 +192,15 @@ export default function AdminPlaces({ backendUrl = null }) {
     }, [totalPages]);
 
     const pageItems = (filtered || []).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const renderReviewActions = (request) => (
+        <ActionMenu
+            disabled={processing[request.id]}
+            items={[
+                { key: 'approve', label: '通过并应用修改…', onClick: () => review(request, 'approve') },
+                { key: 'reject', label: '驳回申请…', tone: 'danger', onClick: () => review(request, 'reject') }
+            ]}
+        />
+    );
 
     return (
         <div style={{ marginTop: 12 }}>
@@ -208,6 +223,34 @@ export default function AdminPlaces({ backendUrl = null }) {
                         <div>
                             {filtered.length === 0 ? (
                                 <div>当前没有匹配的待处理申请。</div>
+                            ) : isMobile ? (
+                                <div>
+                                    <div style={{ display: 'grid', gap: 10 }}>
+                                        {pageItems.map((request) => (
+                                            <article key={request.id} style={{ padding: 12, border: '1px solid var(--color-border)', borderRadius: 12, background: 'var(--color-bg-surface)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                                                    <div style={{ minWidth: 0 }}>
+                                                        <div style={{ fontWeight: 750 }}>地点申请 #{request.id}</div>
+                                                        <div style={{ marginTop: 4, fontSize: 12, color: 'var(--color-text-secondary)', overflowWrap: 'anywhere' }}>地点：{request.place_id || '-'} · 申请人：{request.requester_id || '-'}</div>
+                                                    </div>
+                                                    {renderReviewActions(request)}
+                                                </div>
+                                                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--color-border)' }}>
+                                                    <JsonTable value={request.proposed} />
+                                                    {request.note && <div style={{ marginTop: 8, fontSize: 13, color: 'var(--color-text-secondary)', overflowWrap: 'anywhere' }}>备注：{request.note}</div>}
+                                                </div>
+                                                <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-text-muted)' }}>{request.created_time}</div>
+                                            </article>
+                                        ))}
+                                    </div>
+                                    <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                        <div style={{ fontSize: 13 }}>共 {filtered.length} 条 · 第 {page}/{totalPages} 页</div>
+                                        <div style={{ display: 'flex', gap: 6 }}>
+                                            <Button themeAware onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>上一页</Button>
+                                            <Button themeAware onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>下一页</Button>
+                                        </div>
+                                    </div>
+                                </div>
                             ) : (
                                 <div>
                                     <ResponsiveTable minWidth={950} cellPadding="8" style={{ border: '1px solid var(--color-border)' }}>
@@ -235,10 +278,7 @@ export default function AdminPlaces({ backendUrl = null }) {
                                                         {r.note ? <div style={{ color: 'var(--color-text-secondary)', marginTop: 6 }}>备注: {r.note}</div> : null}
                                                     </td>
                                                     <td style={{ minWidth: 140 }}>
-                                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                                            <Button themeAware onClick={() => review(r.id, 'approve')} disabled={processing[r.id]} style={{ fontSize: 12, padding: '4px 6px' }}>通过</Button>
-                                                            <Button themeAware onClick={() => review(r.id, 'reject')} disabled={processing[r.id]} style={{ background: 'var(--color-danger)', color: 'var(--color-on-emphasis)', fontSize: 12, padding: '4px 6px' }}>驳回</Button>
-                                                        </div>
+                                                        {renderReviewActions(r)}
                                                     </td>
                                                 </tr>
                                             ))}

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import TextInput from './components/TextInput';
 import ScrollableView from './components/ScrollableView';
 import Button from './components/Button';
@@ -81,11 +81,19 @@ function getFriendlyErrorMessage(status, fallback, action) {
     return `${action}失败：${status}`;
 }
 
-async function fetchWithTimeout(url, options, timeoutMs = REQUEST_TIMEOUT_MS) {
-    const controller = new AbortController();
-    const timerId = window.setTimeout(() => controller.abort(), timeoutMs);
+async function fetchWithTimeout(url, options, controller, timeoutMs = REQUEST_TIMEOUT_MS) {
+    let timedOut = false;
+    const timerId = window.setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+    }, timeoutMs);
     try {
         return await fetch(url, { ...options, signal: controller.signal });
+    } catch (error) {
+        if (error && error.name === "AbortError" && timedOut) {
+            error.requestTimedOut = true;
+        }
+        throw error;
     } finally {
         window.clearTimeout(timerId);
     }
@@ -102,6 +110,46 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
     const [inviteCode, setInviteCode] = useState("");
     const [message, setMessage] = useState("");
     const [loading, setLoading] = useState(false);
+    const [slowConnection, setSlowConnection] = useState(false);
+    const requestControllerRef = useRef(null);
+    const slowTimerRef = useRef(null);
+    const closingRef = useRef(false);
+
+    const clearSlowTimer = useCallback(() => {
+        if (slowTimerRef.current) {
+            window.clearTimeout(slowTimerRef.current);
+            slowTimerRef.current = null;
+        }
+    }, []);
+
+    const startRequest = useCallback(() => {
+        const controller = new AbortController();
+        requestControllerRef.current = controller;
+        closingRef.current = false;
+        setLoading(true);
+        setSlowConnection(false);
+        clearSlowTimer();
+        slowTimerRef.current = window.setTimeout(() => setSlowConnection(true), 4000);
+        return controller;
+    }, [clearSlowTimer]);
+
+    const finishRequest = useCallback((controller) => {
+        if (requestControllerRef.current !== controller) return;
+        requestControllerRef.current = null;
+        clearSlowTimer();
+        setLoading(false);
+        setSlowConnection(false);
+    }, [clearSlowTimer]);
+
+    const cancelRequest = useCallback((showCancelledMessage = true) => {
+        const controller = requestControllerRef.current;
+        requestControllerRef.current = null;
+        if (controller) controller.abort();
+        clearSlowTimer();
+        setLoading(false);
+        setSlowConnection(false);
+        if (showCancelledMessage) setMessage("请求已取消，可以重新提交");
+    }, [clearSlowTimer]);
 
     const resetForm = useCallback(() => {
         setUsername("");
@@ -112,14 +160,16 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
         setInviteCode("");
         setMessage("");
         setLoading(false);
+        setSlowConnection(false);
         setRegisterStep("qrcode");
     }, []);
 
     const handleClose = useCallback(() => {
-        if (loading) return;
+        closingRef.current = true;
+        cancelRequest(false);
         resetForm();
         onClose && onClose();
-    }, [loading, onClose, resetForm]);
+    }, [cancelRequest, onClose, resetForm]);
 
     useEffect(() => {
         const onKeyDown = (event) => {
@@ -129,8 +179,15 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
             }
         };
         window.addEventListener("keydown", onKeyDown);
-        return () => window.removeEventListener("keydown", onKeyDown);
-    }, [handleClose]);
+        return () => {
+            window.removeEventListener("keydown", onKeyDown);
+            closingRef.current = true;
+            const controller = requestControllerRef.current;
+            requestControllerRef.current = null;
+            if (controller) controller.abort();
+            clearSlowTimer();
+        };
+    }, [clearSlowTimer, handleClose]);
 
     const switchTab = (nextTab) => {
         if (loading) return;
@@ -176,13 +233,13 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
         if (!normalizedUsername || !password) return setMessage("请输入用户名和密码");
         if (normalizedUsername.length > MAX_USERNAME_LENGTH) return setMessage(`用户名不能超过 ${MAX_USERNAME_LENGTH} 个字符`);
         if (password.length > MAX_PASSWORD_LENGTH) return setMessage(`密码不能超过 ${MAX_PASSWORD_LENGTH} 个字符`);
-        setLoading(true);
+        const controller = startRequest();
         try {
             const res = await fetchWithTimeout(`${backendUrl}/users/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username: normalizedUsername, password })
-            });
+            }, controller);
             const data = await parseResponseBody(res);
             if (res.ok) {
                 if (data.user && data.token) {
@@ -195,13 +252,14 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                 setMessage(getFriendlyErrorMessage(res.status, data.error, "登录"));
             }
         } catch (err) {
+            if (closingRef.current) return;
             if (err && err.name === "AbortError") {
-                setMessage("请求超时，请检查网络后重试");
+                setMessage(err.requestTimedOut ? "请求超时，请检查网络后重试" : "请求已取消，可以重新提交");
             } else {
                 setMessage(`网络错误：${err && err.message ? err.message : "请稍后重试"}`);
             }
         } finally {
-            setLoading(false);
+            finishRequest(controller);
         }
     };
 
@@ -218,13 +276,13 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
         if (password !== confirmPassword) return setMessage("两次输入的密码不一致");
         if (normalizedQq.length > 20) return setMessage(`QQ号不能超过 20 个字符`);
         if (normalizedInviteCode.length > MAX_INVITE_CODE_LENGTH) return setMessage(`邀请码不能超过 ${MAX_INVITE_CODE_LENGTH} 个字符`);
-        setLoading(true);
+        const controller = startRequest();
         try {
             const res = await fetchWithTimeout(`${backendUrl}/users/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username: normalizedUsername, password, qq: normalizedQq, inviteCode: normalizedInviteCode })
-            });
+            }, controller);
             const data = await parseResponseBody(res);
             if (res.ok || res.status === 201) {
                 // 注册接口会返回 { user, token }，若返回 token 则自动登录
@@ -239,13 +297,14 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                 setMessage(getFriendlyErrorMessage(res.status, data.error, "注册"));
             }
         } catch (err) {
+            if (closingRef.current) return;
             if (err && err.name === "AbortError") {
-                setMessage("请求超时，请检查网络后重试");
+                setMessage(err.requestTimedOut ? "请求超时，请检查网络后重试" : "请求已取消，可以重新提交");
             } else {
                 setMessage(`网络错误：${err && err.message ? err.message : "请稍后重试"}`);
             }
         } finally {
-            setLoading(false);
+            finishRequest(controller);
         }
     };
     const dark = useDarkMode();
@@ -285,6 +344,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
             onMouseDown={(e) => e.stopPropagation()}
             style={{
                 width: "min(420px, calc(100vw - 32px))",
+                boxSizing: "border-box",
                 maxHeight: "calc(var(--app-height, 100vh) - 32px)",
                 overflowY: "auto",
                 background: uiColors.panelBackground,
@@ -318,11 +378,10 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                 <div style={{ marginLeft: "auto" }}>
                     <Button
                         type="button"
-                        disabled={loading}
                         onClick={handleClose}
                         style={{ border: `1px solid ${uiColors.border}`, borderRadius: 8, padding: "7px 10px" }}
                     >
-                        关闭
+                        {loading ? "取消并关闭" : "关闭"}
                     </Button>
                 </div>
             </div>
@@ -539,6 +598,31 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                         {submitButtonText}
                     </Button>
                 </form>
+            )}
+
+            {slowConnection && (
+                <div
+                    role="status"
+                    aria-live="polite"
+                    style={{
+                        marginTop: 12,
+                        padding: "10px 11px",
+                        borderRadius: 8,
+                        border: "1px solid var(--color-warning)",
+                        color: "var(--color-text-primary)",
+                        background: "color-mix(in srgb, var(--color-warning) 12%, var(--color-bg-surface))",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 10,
+                        fontSize: 13
+                    }}
+                >
+                    <span>连接较慢，你可以取消后重试。</span>
+                    <Button type="button" onClick={() => cancelRequest(true)} style={{ flexShrink: 0, padding: "6px 9px" }}>
+                        取消请求
+                    </Button>
+                </div>
             )}
 
             {message && (

@@ -1,271 +1,183 @@
 import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import Button from './Button';
 import defaultAvatar from '../img/default.png';
-import useDarkMode from '../utils/useDarkMode';
-import { pickContrastTextColor, DEFAULT_PRIMARY, DEFAULT_DARK_PRIMARY, isDarkMode } from '../utils/theme';
-import Tooltip from './Tooltip';
+import { DEFAULT_DARK_PRIMARY, DEFAULT_PRIMARY, isDarkMode, pickContrastTextColor } from '../utils/theme';
+import useMediaQuery from '../utils/useMediaQuery';
 
-const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onOpenDinners, onOpenPosterExport, onGoHome, pathname, backendUrl, interactionDisabled = false }, ref) {
-    const [open, setOpen] = useState(false);
+const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onOpenDinners, onOpenPosterExport, onGoHome, pathname, backendUrl, interactionDisabled = false }, forwardedRef) {
+    const [userOpen, setUserOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
-    const [isNarrow, setIsNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 500);
-    const rootRef = useRef(null);
     const [themeColor, setThemeColor] = useState(() => isDarkMode() ? DEFAULT_DARK_PRIMARY : DEFAULT_PRIMARY);
+    const isMobile = useMediaQuery('(max-width: 640px)');
+    const rootRef = useRef(null);
 
-    const dark = useDarkMode();
-    const menuTextColor = 'var(--color-text-primary)';
+    const assignRef = (node) => {
+        rootRef.current = node;
+        if (typeof forwardedRef === 'function') forwardedRef(node);
+        else if (forwardedRef) forwardedRef.current = node;
+    };
 
     useEffect(() => {
-        if (!open && !moreOpen) return;
-        const onDocClick = (e) => {
-            if (rootRef.current && !rootRef.current.contains(e.target)) {
-                setOpen(false);
-                setMoreOpen(false);
-            }
+        if (!userOpen && !moreOpen) return;
+        const closeMenus = (event) => {
+            if (event.type === 'keydown' && event.key !== 'Escape') return;
+            if (event.type !== 'keydown' && rootRef.current?.contains(event.target)) return;
+            setUserOpen(false);
+            setMoreOpen(false);
         };
-        const onKey = (e) => {
-            if (e.key === 'Escape') {
-                setOpen(false);
-                setMoreOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', onDocClick);
-        document.addEventListener('touchstart', onDocClick, { passive: true });
-        document.addEventListener('keydown', onKey);
+        document.addEventListener('mousedown', closeMenus);
+        document.addEventListener('keydown', closeMenus);
         return () => {
-            document.removeEventListener('mousedown', onDocClick);
-            document.removeEventListener('touchstart', onDocClick);
-            document.removeEventListener('keydown', onKey);
+            document.removeEventListener('mousedown', closeMenus);
+            document.removeEventListener('keydown', closeMenus);
         };
-    }, [open, moreOpen]);
+    }, [userOpen, moreOpen]);
 
     useEffect(() => {
         if (interactionDisabled) {
-            setOpen(false);
+            setUserOpen(false);
             setMoreOpen(false);
         }
     }, [interactionDisabled]);
 
     useEffect(() => {
-        const onResize = () => setIsNarrow(window.innerWidth <= 500);
-        window.addEventListener('resize', onResize);
-        return () => window.removeEventListener('resize', onResize);
-    }, []);
-
-    useEffect(() => {
-        try {
-            let color = null;
-            if (user && user.map_settings) color = user.map_settings.theme_color || null;
+        const resolveColor = () => {
+            let color = user?.map_settings?.theme_color || '';
             if (!color) {
-                try {
-                    const raw = window.localStorage.getItem('map_settings');
-                    if (raw) {
-                        const ms = JSON.parse(raw);
-                        if (ms && ms.theme_color) color = ms.theme_color;
-                    }
-                } catch (e) { }
+                try { color = JSON.parse(window.localStorage.getItem('map_settings') || '{}').theme_color || ''; } catch (e) { }
             }
-            if (color) setThemeColor(color);
-            else setThemeColor(isDarkMode() ? DEFAULT_DARK_PRIMARY : DEFAULT_PRIMARY);
-        } catch (e) { }
-    }, [user]);
-
-    useEffect(() => {
-        const onThemeChange = (e) => {
-            try {
-                const detail = (e && e.detail) ? e.detail : null;
-                if (detail) {
-                    if (typeof detail.color !== 'undefined') {
-                        setThemeColor(detail.color || (isDarkMode() ? DEFAULT_DARK_PRIMARY : DEFAULT_PRIMARY));
-                    }
-                    // Dark mode toggled — may need to switch default
-                    if (typeof detail.dark !== 'undefined' && (!detail.color || detail.color === '')) {
-                        setThemeColor(isDarkMode() ? DEFAULT_DARK_PRIMARY : DEFAULT_PRIMARY);
-                    }
-                }
-            } catch (err) { }
+            setThemeColor(color || (isDarkMode() ? DEFAULT_DARK_PRIMARY : DEFAULT_PRIMARY));
         };
+        resolveColor();
+        const onThemeChange = (event) => setThemeColor(event?.detail?.color || (isDarkMode() ? DEFAULT_DARK_PRIMARY : DEFAULT_PRIMARY));
         window.addEventListener('themechange', onThemeChange);
         return () => window.removeEventListener('themechange', onThemeChange);
-    }, []);
+    }, [user]);
 
-    const handleAvatarClick = () => {
-        if (interactionDisabled) return;
-        if (!isAuth) {
-            onOpenAuth && onOpenAuth();
-            return;
-        }
-        setMoreOpen(false);
-        setOpen((value) => !value);
-    };
+    if (isMobile) return <div ref={assignRef} style={{ display: 'none' }} />;
 
-    const handleMoreClick = () => {
-        if (interactionDisabled) return;
-        setOpen(false);
-        setMoreOpen((value) => !value);
-    };
-
-    const currentPath = typeof pathname !== 'undefined' ? pathname : (typeof window !== 'undefined' ? window.location.pathname : '');
+    const currentPath = pathname || window.location.pathname;
     const isOnAdmin = currentPath === '/admin';
-    const isOnSettings = typeof currentPath === 'string' && currentPath.startsWith('/settings');
-    const isOnDinners = typeof currentPath === 'string' && currentPath.startsWith('/dinners');
+    const isOnSettings = currentPath.startsWith('/settings');
+    const isOnDinners = currentPath.startsWith('/dinners');
     const isOnPosterExport = currentPath === '/posters/new';
     const divider = <div style={{ height: 1, background: 'var(--color-border)' }} />;
+    const menuStyle = {
+        position: 'absolute',
+        top: 52,
+        right: 0,
+        minWidth: 210,
+        padding: 8,
+        borderRadius: 10,
+        border: '1px solid var(--color-border)',
+        background: 'var(--color-bg-surface)',
+        color: 'var(--color-text-primary)',
+        boxShadow: 'var(--shadow-surface)'
+    };
 
     return (
-        <div
-            ref={(node) => {
-                rootRef.current = node;
-                if (typeof ref === 'function') {
-                    ref(node);
-                } else if (ref) {
-                    ref.current = node;
-                }
-            }}
+        <header
+            ref={assignRef}
             style={{
                 position: 'absolute',
-                left: 12,
-                top: 12,
-                zIndex: 4000,
+                left: 0,
+                right: 0,
+                top: 0,
+                height: 64,
+                zIndex: 1800,
+                padding: '0 14px',
+                boxSizing: 'border-box',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8
+                justifyContent: 'space-between',
+                gap: 16,
+                background: 'color-mix(in srgb, var(--color-bg-surface) 92%, transparent)',
+                borderBottom: '1px solid var(--color-border)',
+                boxShadow: '0 4px 18px rgba(18, 16, 22, 0.08)',
+                backdropFilter: 'blur(14px)'
             }}
         >
-            <div
-                role="button"
-                aria-haspopup="true"
-                aria-expanded={open}
-                onClick={handleAvatarClick}
-                style={{
-                    width: 50,
-                    height: 50,
-                    borderRadius: '50%',
-                    background: themeColor,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: interactionDisabled ? 'default' : 'pointer',
-                    boxShadow: '0 2px 10px var(--color-glow)',
-                    overflow: 'hidden',
-                    border: `3px solid ${themeColor}`,
-                    boxSizing: 'border-box'
-                }}
-            >
-                {isAuth && user ? (
-                    <img
-                        src={user.has_avatar ? `${backendUrl}/users/${user.id}/avatar?t=${Date.now()}` : (user.avatar || defaultAvatar)}
-                        alt={user.username || 'avatar'}
-                        style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-                    />
-                ) : (
-                    <span style={{ fontWeight: 700, color: pickContrastTextColor(themeColor) }}>登录</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Button
+                    onClick={onGoHome}
+                    style={{ border: 0, background: 'transparent', color: 'var(--color-text-primary)', padding: '8px', textAlign: 'left' }}
+                >
+                    <span style={{ display: 'block', fontSize: 17, fontWeight: 800, lineHeight: 1.1 }}>东方饭联地图</span>
+                </Button>
+                {!isAuth && (
+                    <Button
+                        onClick={onOpenAuth}
+                        disabled={interactionDisabled}
+                        style={{ minHeight: 38, padding: '7px 13px', borderRadius: 999, background: themeColor, color: pickContrastTextColor(themeColor), fontWeight: 750 }}
+                    >
+                        登录
+                    </Button>
                 )}
             </div>
 
-            {/* 下拉菜单 */}
-            {open && isAuth && user && (
-                <div
-                    role="menu"
-                    aria-label="用户菜单"
-                    style={{
-                        position: 'absolute',
-                        left: 12,
-                        top: 64,
-                        minWidth: 200,
-                        background: 'var(--color-bg-surface)',
-                        borderRadius: 8,
-                        boxShadow: 'var(--shadow-surface)',
-                        padding: 8,
-                        border: '1px solid var(--color-border)',
-                        color: 'var(--color-text-primary)'
-                    }}
+            <div ref={rootRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Button themeAware onClick={() => isOnDinners ? onGoHome?.() : onOpenDinners?.()} style={{ minHeight: 42, padding: '8px 12px' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 19, marginRight: 5, verticalAlign: 'middle' }}>groups</span>
+                    {isOnDinners ? '返回地图' : '聚餐'}
+                </Button>
+                <Button
+                    onClick={() => { if (!interactionDisabled) { setMoreOpen((value) => !value); setUserOpen(false); } }}
+                    aria-haspopup="menu"
+                    aria-expanded={moreOpen}
+                    style={{ width: 42, height: 42, padding: 0, borderRadius: 12, border: '1px solid var(--color-border)', background: 'var(--color-bg-overlay)', color: 'var(--color-text-primary)' }}
                 >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                        <div style={{ padding: '4px 10px 8px' }}>
-                            <div style={{ fontSize: 20, fontWeight: 700 }}>东方饭联地图</div>
-                            <div style={{ marginTop: 6, fontSize: 14, overflowWrap: 'anywhere' }}>当前用户：{user.username}</div>
-                        </div>
-                        {divider}
-                        <Button themeAware variant="menu" full onClick={() => { setOpen(false); if (isOnSettings) { onGoHome && onGoHome(); } else { onOpenSettings && onOpenSettings(); } }} style={{ color: menuTextColor }}>
-                            {isOnSettings ? '返回地图' : '设置'}
-                        </Button>
-                        {divider}
-                        <Button themeAware variant="menu" full onClick={() => { setOpen(false); onLogout && onLogout(); }} style={{ color: 'var(--color-danger)' }}>
-                            注销
-                        </Button>
-                    </div>
-                </div>
-            )}
+                    <span className="material-symbols-outlined">more_horiz</span>
+                </Button>
+                {isAuth && user && (
+                    <Button
+                        onClick={() => {
+                            if (interactionDisabled) return;
+                            setUserOpen((value) => !value);
+                            setMoreOpen(false);
+                        }}
+                        aria-label="打开用户菜单"
+                        aria-expanded={userOpen}
+                        style={{ width: 42, height: 42, padding: 0, borderRadius: '50%', overflow: 'hidden', border: `2px solid ${themeColor}`, background: themeColor, color: pickContrastTextColor(themeColor) }}
+                    >
+                        <img src={user.has_avatar ? `${backendUrl}/users/${user.id}/avatar?t=${Date.now()}` : (user.avatar || defaultAvatar)} alt={user.username || '头像'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </Button>
+                )}
 
-            {!interactionDisabled && (
-                <div style={{ position: 'fixed', left: 16, bottom: isNarrow ? 68 : 12 }}>
-                    <Tooltip text="更多功能" placement="top">
-                        <Button
-                            onClick={handleMoreClick}
-                            aria-haspopup="true"
-                            aria-expanded={moreOpen}
-                            style={{
-                                width: 64,
-                                height: 64,
-                                padding: 0,
-                                borderRadius: '50%',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: themeColor,
-                                color: '#FFFFFF',
-                                border: 'none',
-                                boxShadow: '0 4px 12px var(--color-glow)',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 36 }}>menu</span>
-                        </Button>
-                    </Tooltip>
-                </div>
-            )}
-
-            {moreOpen && !interactionDisabled && (
-                <div
-                    role="menu"
-                    style={{
-                        position: 'fixed',
-                        left: 16,
-                        bottom: isNarrow ? 144 : 88,
-                        minWidth: 180,
-                        background: 'var(--color-bg-surface)',
-                        borderRadius: 8,
-                        boxShadow: 'var(--shadow-surface)',
-                        padding: 8,
-                        border: '1px solid var(--color-border)',
-                        color: 'var(--color-text-primary)'
-                    }}
-                >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {moreOpen && (
+                    <div role="menu" aria-label="更多功能" style={{ ...menuStyle, right: 50 }}>
                         {isAuth && (isAdmin || isOnAdmin) && (
                             <>
-                                <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); if (isOnAdmin) { onGoHome && onGoHome(); } else { onOpenAdmin && onOpenAdmin(); } }} style={{ color: menuTextColor }}>
-                                    {isOnAdmin ? '返回地图' : '管理后台'}
-                                </Button>
+                                <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); isOnAdmin ? onGoHome?.() : onOpenAdmin?.(); }}>{isOnAdmin ? '返回地图' : '管理后台'}</Button>
                                 {divider}
                             </>
                         )}
-                        <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); if (isOnDinners) { onGoHome && onGoHome(); } else { onOpenDinners && onOpenDinners(); } }} style={{ color: menuTextColor }}>
-                            {isOnDinners ? '返回地图' : '聚餐活动 (beta)'}
-                        </Button>
                         {isAuth && (
                             <>
+                                <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); isOnPosterExport ? onGoHome?.() : onOpenPosterExport?.(); }}>{isOnPosterExport ? '返回地图' : '导出海报 (beta)'}</Button>
                                 {divider}
-                                <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); if (isOnPosterExport) { onGoHome && onGoHome(); } else { onOpenPosterExport && onOpenPosterExport(); } }} style={{ color: menuTextColor }}>
-                                    {isOnPosterExport ? '返回地图' : '导出海报 (beta)'}
-                                </Button>
                             </>
                         )}
+                        <div style={{ padding: '9px 12px', fontSize: 13 }}>
+                            <div style={{ fontWeight: 700 }}>关于东方饭联地图</div>
+                            <div style={{ marginTop: 4, color: 'var(--color-text-secondary)' }}>版本 v1.8.1</div>
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )}
+
+                {userOpen && isAuth && user && (
+                    <div role="menu" aria-label="用户菜单" style={menuStyle}>
+                        <div style={{ padding: '6px 10px 10px' }}>
+                            <div style={{ fontWeight: 750, overflowWrap: 'anywhere' }}>{user.username}</div>
+                            <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)' }}>已登录</div>
+                        </div>
+                        {divider}
+                        <Button themeAware variant="menu" full onClick={() => { setUserOpen(false); isOnSettings ? onGoHome?.() : onOpenSettings?.(); }}>{isOnSettings ? '返回地图' : '账号与地图设置'}</Button>
+                        {divider}
+                        <Button themeAware variant="menu" full onClick={() => { setUserOpen(false); onLogout?.(); }} style={{ color: 'var(--color-danger)' }}>退出登录</Button>
+                    </div>
+                )}
+            </div>
+        </header>
     );
 });
 

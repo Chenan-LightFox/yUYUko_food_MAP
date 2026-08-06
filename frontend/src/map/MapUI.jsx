@@ -202,6 +202,9 @@ export default function MapUI(props) {
         favoriteLoading,
         onToggleFavorite,
         isAuthenticated,
+        onRequireAuth,
+        onOpenDinners,
+        onOpenMine,
         pickerMode,
         pickerContext,
         pickedPlaces,
@@ -242,6 +245,7 @@ export default function MapUI(props) {
     };
 
     const [searchOpen, setSearchOpen] = useState(true);
+    const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
     const [searchResultsVisible, setSearchResultsVisible] = useState(true);
     const [detailOpen, setDetailOpen] = useState(false);
     const [favPageOpen, setFavPageOpen] = useState(false);
@@ -251,7 +255,7 @@ export default function MapUI(props) {
     const [favError, setFavError] = useState('');
     const [navPickerOpen, setNavPickerOpen] = useState(false);
     const [shareOpen, setShareOpen] = useState(false);
-    const [isNarrow, setIsNarrow] = useState(() => window.innerWidth <= 500);
+    const [isNarrow, setIsNarrow] = useState(() => window.innerWidth <= 640);
     const inputRef = useRef(null);
     const popupRef = useRef(null);
     const searchBarRef = useRef(null);
@@ -279,9 +283,46 @@ export default function MapUI(props) {
     };
     const popupActionIconStyle = { display: 'inline-block', fontSize: 20 };
     const popupActionLabelStyle = { fontSize: 11, fontWeight: 600, lineHeight: 1, whiteSpace: 'nowrap' };
+    const mobileNavButtonStyle = {
+        flex: 1,
+        minWidth: 0,
+        minHeight: 58,
+        padding: '6px 2px',
+        border: 0,
+        borderRadius: 10,
+        background: 'transparent',
+        color: 'var(--color-text-primary)',
+        display: 'inline-flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 2,
+        fontSize: 11,
+        lineHeight: 1.1,
+        touchAction: 'manipulation'
+    };
+
+    const toggleFavorites = () => {
+        if (!isAuthenticated) {
+            onRequireAuth?.();
+            return;
+        }
+        setFavPageOpen((open) => !open);
+        setPickedPageOpen(false);
+        setMobileSearchOpen(false);
+    };
+
+    const openMobileSearch = () => {
+        setMobileSearchOpen((open) => {
+            const next = !open;
+            if (next) window.requestAnimationFrame(() => inputRef.current?.focus());
+            return next;
+        });
+        setFavPageOpen(false);
+    };
 
     useEffect(() => {
-        const onResize = () => setIsNarrow(window.innerWidth <= 500);
+        const onResize = () => setIsNarrow(window.innerWidth <= 640);
         window.addEventListener('resize', onResize);
         return () => window.removeEventListener('resize', onResize);
     }, []);
@@ -559,10 +600,17 @@ export default function MapUI(props) {
             )}
 
             <div ref={searchBarRef} style={(() => {
-                const base = { position: "absolute", bottom: 12, zIndex: 2000 };
-                return isNarrow
-                    ? { ...base, left: 12, right: 12 }
-                    : { ...base, left: '50%', transform: 'translateX(-50%)' };
+                const base = { position: "absolute", zIndex: 2000 };
+                if (isNarrow) {
+                    return {
+                        ...base,
+                        left: 12,
+                        right: 12,
+                        bottom: pickerMode ? 12 : 78,
+                        display: (pickerMode || mobileSearchOpen) ? 'block' : 'none'
+                    };
+                }
+                return { ...base, top: 10, left: '50%', transform: 'translateX(-50%)' };
             })()}>
                 <div style={{
                     position: 'relative', height: 44, zIndex: 2001,
@@ -644,7 +692,7 @@ export default function MapUI(props) {
                     {searchTerm && searchResultsVisible && (spLoading || spResults) && (
                         <ScrollableView style={{
                             position: 'absolute',
-                            bottom: 48,
+                            ...(isNarrow ? { bottom: 48 } : { top: 48 }),
                             right: 0,
                             width: '100%',
                             maxHeight: '60vh',
@@ -741,13 +789,9 @@ export default function MapUI(props) {
                 </div>
             )}
 
-            {!hideNonSearchButtons && (
-                <div style={{ position: "absolute", right: 8, top: 8, zIndex: 2000 }}>
+            {!hideNonSearchButtons && (!isNarrow || pickerMode) && (
+                <div style={{ position: "absolute", right: 8, top: 72, zIndex: 2000 }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
-                        <div style={{ padding: "4px 8px", background: "var(--color-backdrop)", color: "#F3EFEF", borderRadius: "12px", fontSize: "12px", pointerEvents: "none", userSelect: "none" }}>
-                            v1.8.1
-                        </div>
-
                         {!pickerMode && (
                             <div style={{ display: "inline-block" }}>
                                 <Tooltip text={addPlaceTipText}>
@@ -783,10 +827,7 @@ export default function MapUI(props) {
                         <Tooltip text={authPending ? '正在验证登录状态，请稍候再试' : (favPageOpen ? '关闭收藏夹' : '展开收藏夹')}>
                             <div style={{ display: "inline-block" }}>
                                 <Button
-                                    onClick={() => {
-                                        setFavPageOpen((open) => !open);
-                                        setPickedPageOpen(false);
-                                    }}
+                                    onClick={toggleFavorites}
                                     disabled={!mapReady}
                                     aria-label={favPageOpen ? '关闭收藏夹' : '展开收藏夹'}
                                     style={{
@@ -897,6 +938,87 @@ export default function MapUI(props) {
                         )}
                     </div>
                 </div>
+            )}
+
+            {!hideNonSearchButtons && isNarrow && !pickerMode && (
+                <>
+                    <Button
+                        onClick={handleLocateMe}
+                        disabled={!mapReady || locating}
+                        aria-label="定位到我的位置"
+                        title="定位到我的位置"
+                        style={{
+                            position: 'absolute',
+                            right: 12,
+                            bottom: mobileSearchOpen ? 134 : 82,
+                            zIndex: 2100,
+                            width: 48,
+                            height: 48,
+                            padding: 0,
+                            borderRadius: '50%',
+                            border: '1px solid var(--color-border)',
+                            background: locating ? 'var(--color-success)' : 'var(--color-bg-surface)',
+                            color: locating ? 'var(--color-on-emphasis)' : customThemeColor,
+                            boxShadow: 'var(--shadow-surface)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                    >
+                        <span className="material-symbols-outlined" style={{ fontSize: 27 }}>{locating ? 'my_location' : 'location_searching'}</span>
+                    </Button>
+
+                    <nav
+                        aria-label="地图主要操作"
+                        style={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            zIndex: 2050,
+                            minHeight: 66,
+                            padding: '4px 6px calc(4px + env(safe-area-inset-bottom))',
+                            boxSizing: 'border-box',
+                            display: 'flex',
+                            alignItems: 'stretch',
+                            gap: 2,
+                            background: 'color-mix(in srgb, var(--color-bg-surface) 94%, transparent)',
+                            borderTop: '1px solid var(--color-border)',
+                            boxShadow: '0 -6px 20px rgba(18, 16, 22, 0.10)',
+                            backdropFilter: 'blur(12px)'
+                        }}
+                    >
+                        <Button onClick={openMobileSearch} aria-pressed={mobileSearchOpen} style={{ ...mobileNavButtonStyle, color: mobileSearchOpen ? customThemeColor : mobileNavButtonStyle.color }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>search</span>
+                            <span>搜索</span>
+                        </Button>
+                        <Button onClick={toggleFavorites} aria-pressed={favPageOpen} style={{ ...mobileNavButtonStyle, color: favPageOpen ? customThemeColor : mobileNavButtonStyle.color }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>favorite</span>
+                            <span>收藏</span>
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                handleToggleAddMode();
+                                setMobileSearchOpen(false);
+                                setFavPageOpen(false);
+                            }}
+                            disabled={!mapReady || authPending}
+                            aria-pressed={addMode}
+                            style={{ ...mobileNavButtonStyle, color: addMode ? 'var(--color-danger)' : customThemeColor }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: 27, transform: addMode ? 'rotate(-45deg)' : 'none', transition: 'transform 180ms ease' }}>add_circle</span>
+                            <span>{addMode ? '取消添加' : '添加'}</span>
+                        </Button>
+                        <Button onClick={onOpenDinners} style={mobileNavButtonStyle}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>groups</span>
+                            <span>聚餐</span>
+                        </Button>
+                        <Button onClick={onOpenMine} style={mobileNavButtonStyle}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>person</span>
+                            <span>我的</span>
+                        </Button>
+                    </nav>
+                </>
             )}
 
             {selectedPlace && popupPoint && (
@@ -1200,7 +1322,8 @@ export default function MapUI(props) {
             {!hideNonSearchButtons && !pickerMode && addingPos && (
                 <div style={{
                     position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
-                    background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)', padding: 12, zIndex: 3000, borderRadius: 10, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-surface)'
+                    width: 'min(520px, calc(100vw - 24px))', maxHeight: 'calc(var(--app-height, 100vh) - 48px)', overflowY: 'auto', boxSizing: 'border-box',
+                    background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)', padding: 12, zIndex: 5000, borderRadius: 10, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-surface)'
                 }}>
                     <h4 style={{ margin: '0 0 12px 0', color: 'var(--color-text-primary)' }}>添加地点</h4>
                     <AddForm backendUrl={backendUrl} token={token} defaultPos={addingPos} onCancel={onAddCancel} onSubmit={onAddSubmit} defaultName={addingPrefill?.name} defaultCategory={addingPrefill?.category} defaultDescription={addingPrefill?.description} />
@@ -1208,13 +1331,15 @@ export default function MapUI(props) {
             )}
 
             {!hideNonSearchButtons && !pickerMode && detailOpen && selectedPlace && (
-                <PlaceDetailPanel place={selectedPlace} onClose={() => setDetailOpen(false)} />
+                <PlaceDetailPanel place={selectedPlace} onClose={() => setDetailOpen(false)} onNavigate={handleNavigate} />
             )}
 
             {!hideNonSearchButtons && favPageOpen && (
                 <div style={{
-                    position: 'absolute', right: 60, top: 8,
-                    width: 300, maxHeight: '60vh',
+                    position: 'absolute',
+                    ...(isNarrow ? { left: 12, right: 12, bottom: 76 } : { right: 60, top: 72 }),
+                    width: isNarrow ? 'auto' : 300,
+                    maxHeight: isNarrow ? 'min(56vh, 440px)' : '60vh',
                     background: 'var(--color-bg-surface)',
                     color: 'var(--color-text-primary)',
                     borderRadius: 10,

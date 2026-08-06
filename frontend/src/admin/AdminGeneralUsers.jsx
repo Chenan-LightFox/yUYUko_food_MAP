@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from "react";
 import Button from "../components/Button";
 import { useAuth } from "../AuthContext";
-import useDarkMode from "../utils/useDarkMode";
 import ResponsiveTable from "../components/ResponsiveTable";
+import ActionMenu from '../components/ActionMenu';
+import useMediaQuery from '../utils/useMediaQuery';
 import { useTips } from "../components/Tips";
 import { useConfirm } from "../components/Confirm";
 import defaultAvatar from '../img/default.png';
@@ -30,7 +31,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
     const [processing, setProcessing] = useState({});
     const [searchQuery, setSearchQuery] = useState('');
     const fetchIdRef = useRef(0);
-    const dark = useDarkMode();
+    const isMobile = useMediaQuery('(max-width: 640px)');
 
     const canManage = user && user.admin_level;
 
@@ -93,8 +94,9 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
         }
     };
 
-    const deleteUser = async (id) => {
-        if (!(await confirm('确认删除此用户？'))) return;
+    const deleteUser = async (target) => {
+        const id = target.id;
+        if (!(await confirm(`确认永久删除普通用户“${target.username || id}”？\n账号资料与登录资格将被移除，此操作目前无法撤销。`))) return;
         setProcessing(p => ({ ...p, [id]: true }));
         const thisFetchId = ++fetchIdRef.current;
         const authToken = token;
@@ -166,6 +168,22 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                 <div>
                     {filteredUsers.length === 0 ? (
                         <div>当前没有匹配的普通用户记录。</div>
+                    ) : isMobile ? (
+                        <div style={{ display: 'grid', gap: 10 }}>
+                            {filteredUsers.map((target) => (
+                                <article key={target.id} style={{ padding: 12, border: '1px solid var(--color-border)', borderRadius: 12, background: 'var(--color-bg-surface)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <img src={target.has_avatar ? `${backendUrl}/users/${target.id}/avatar?t=${Date.now()}` : defaultAvatar} alt="头像" style={{ width: 42, height: 42, borderRadius: '50%', objectFit: 'cover' }} />
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontWeight: 750 }}>{target.username}</div>
+                                            <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)', overflowWrap: 'anywhere' }}>ID：{target.id}</div>
+                                            <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)' }}>QQ：{target.qq || '-'}</div>
+                                        </div>
+                                        <ActionMenu disabled={processing[target.id]} items={[{ key: 'delete', label: '永久删除用户…', tone: 'danger', onClick: () => deleteUser(target) }]} />
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
                     ) : (
                         <ResponsiveTable minWidth={750} cellPadding="8" style={{ border: '1px solid var(--color-border)' }}>
                             <thead>
@@ -191,7 +209,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                                             )}
                                         </td>
                                         <td style={{ minWidth: 100 }}>
-                                            <Button themeAware onClick={() => deleteUser(u.id)} disabled={processing[u.id]} style={{ background: 'var(--color-danger)', color: 'var(--color-on-emphasis)', fontSize: 12, padding: '4px 6px' }}>删除</Button>
+                                            <ActionMenu disabled={processing[u.id]} items={[{ key: 'delete', label: '永久删除用户…', tone: 'danger', onClick: () => deleteUser(u) }]} />
                                         </td>
                                     </tr>
                                 ))}

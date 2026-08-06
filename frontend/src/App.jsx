@@ -80,7 +80,8 @@ export default function App() {
     const [pathname, setPathname] = useState(currentPathname());
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem("token"));
-    const [showAuth, setShowAuth] = useState(!localStorage.getItem("token"));
+    // 游客应先看到地图价值；只有主动登录或执行受保护操作时才打开登录框。
+    const [showAuth, setShowAuth] = useState(false);
     const [authPanelDisabled, setAuthPanelDisabled] = useState(false);
     const [siteNotice, setSiteNotice] = useState(null);
     const [dismissedNoticeId, setDismissedNoticeId] = useState(() => {
@@ -108,7 +109,7 @@ export default function App() {
         setUser(null);
         setToken(null);
         try { localStorage.removeItem("token"); } catch (e) { }
-        setShowAuth(true);
+        setShowAuth(false);
     }, []);
 
     const handleLoginSuccess = (u, t) => {
@@ -297,7 +298,7 @@ export default function App() {
                 if (!newToken) {
                     // logged out in another tab
                     setUser(null);
-                    setShowAuth(true);
+                    setShowAuth(false);
                     // reset theme & map style when user logged out in another tab
                     try { applyDarkMode(false); } catch (err) { }
                     try { applyThemeColors('', ''); } catch (err) { }
@@ -311,7 +312,7 @@ export default function App() {
                         const res = await fetch(`${BACKEND_URL}/users/me`, { headers: { Authorization: `Bearer ${newToken}` } });
                         if (!res.ok) {
                             setUser(null);
-                            setShowAuth(true);
+                            setShowAuth(false);
                             return;
                         }
                         const data = await res.json();
@@ -319,7 +320,7 @@ export default function App() {
                     } catch (err) {
                         console.warn('Failed to refresh user after storage token change', err);
                         setUser(null);
-                        setShowAuth(true);
+                        setShowAuth(false);
                     }
                 })();
             }
@@ -488,6 +489,14 @@ export default function App() {
                                 token={token}
                                 isAuthenticated={isAuth}
                                 onRequireAuth={() => setShowAuth(true)}
+                                onOpenDinners={() => goPath('/dinners')}
+                                onOpenMine={() => {
+                                    if (!isAuth) {
+                                        setShowAuth(true);
+                                        return;
+                                    }
+                                    goPath('/settings');
+                                }}
                             />
                         </div>
 

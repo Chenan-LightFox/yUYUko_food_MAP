@@ -21,7 +21,8 @@ export default function CommentPanel({
         <div style={{
             position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
             background: 'var(--color-bg-surface)', padding: 12, zIndex: 5000, borderRadius: 10, boxShadow: 'var(--shadow-surface)', border: '1px solid var(--color-border)',
-            minWidth: 440, maxWidth: "90%"
+            width: "min(440px, calc(100vw - 24px))", maxWidth: "calc(100vw - 24px)",
+            maxHeight: "calc(var(--app-height, 100vh) - 88px)", overflowY: 'auto', boxSizing: 'border-box'
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <strong style={{ color: 'var(--color-text-primary)' }}>{place.name}</strong>
@@ -52,7 +53,7 @@ export default function CommentPanel({
 
             <div style={{ marginTop: 8 }}>
                 {message && <div style={{ color: 'var(--color-danger)', marginBottom: 8 }}>{message}</div>}
-                <TextArea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder={canPost ? '写下你的评论…' : '请登录后发表评论'} disabled={!canPost} style={{ width: '96%', minHeight: 80, padding: 8 }} />
+                <TextArea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder={canPost ? '写下你的评论…' : '请登录后发表评论'} disabled={!canPost} style={{ width: '100%', minHeight: 80, padding: 8, boxSizing: 'border-box' }} />
                 <div style={{ marginTop: 8, textAlign: 'right' }}>
                     <Button themeAware onClick={onSubmit} disabled={!canPost || submitting || !newComment || !newComment.trim()} style={{ marginRight: 8 }}>发布</Button>
                 </div>

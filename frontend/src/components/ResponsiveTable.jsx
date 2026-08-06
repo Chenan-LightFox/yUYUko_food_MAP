@@ -1,5 +1,6 @@
 import React from 'react';
 import ScrollableView from './ScrollableView';
+import useMediaQuery from '../utils/useMediaQuery';
 
 export default function ResponsiveTable({
     children,
@@ -9,6 +10,7 @@ export default function ResponsiveTable({
     style,
     ...tableProps
 }) {
+    const isMobile = useMediaQuery('(max-width: 640px)');
     const containerStyle = {
         width: '100%',
         maxWidth: '100%',
@@ -28,10 +30,17 @@ export default function ResponsiveTable({
     };
 
     return (
-        <ScrollableView style={containerStyle}>
-            <table {...tableProps} style={tableStyle_}>
-                {children}
-            </table>
-        </ScrollableView>
+        <div style={{ width: '100%', minWidth: 0 }}>
+            {isMobile && minWidth > 640 && (
+                <div style={{ marginBottom: 6, color: 'var(--color-text-secondary)', fontSize: 12 }}>
+                    ← 左右滑动查看完整内容 →
+                </div>
+            )}
+            <ScrollableView style={containerStyle}>
+                <table {...tableProps} style={tableStyle_}>
+                    {children}
+                </table>
+            </ScrollableView>
+        </div>
     );
 }

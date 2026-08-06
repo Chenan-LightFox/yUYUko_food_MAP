@@ -26,7 +26,8 @@ export default function ManagePanel({
         <div style={{
             position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
             background: 'var(--color-bg-surface)', padding: 12, zIndex: 5000, borderRadius: 10, boxShadow: 'var(--shadow-surface)', border: '1px solid var(--color-border)',
-            minWidth: 360, maxWidth: "90%"
+            width: "min(520px, calc(100vw - 24px))", maxWidth: "calc(100vw - 24px)",
+            maxHeight: "calc(var(--app-height, 100vh) - 48px)", overflowY: 'auto', boxSizing: 'border-box'
         }}>
             <h4 style={{ margin: 0, color: 'var(--color-text-primary)' }}>管理地点 — {selectedPlace.name}</h4>
             <div style={{ marginTop: 8, color: 'var(--color-text-primary)' }}>

@@ -1,144 +1,136 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import Button from '../components/Button';
-import useDarkMode from '../utils/useDarkMode';
 import ScrollableView from '../components/ScrollableView';
+import useMediaQuery from '../utils/useMediaQuery';
 
-export default function PlaceDetailPanel({ place, onClose }) {
-    const dark = useDarkMode();
+function parseImages(value) {
+    if (Array.isArray(value)) return value;
+    try { return value ? JSON.parse(value) : []; } catch (e) { return []; }
+}
+
+export default function PlaceDetailPanel({ place, onClose, onNavigate }) {
+    const isMobile = useMediaQuery('(max-width: 640px)');
     const [previewImage, setPreviewImage] = useState(null);
+    const [sheetOffset, setSheetOffset] = useState(0);
+    const [dragging, setDragging] = useState(false);
+    const dragStartRef = useRef(null);
+    const dragOffsetRef = useRef(0);
     if (!place) return null;
 
-    let exteriorImages = [];
-    let menuImages = [];
-    try { if (place.exterior_images) exteriorImages = JSON.parse(place.exterior_images); } catch (e) { }
-    try { if (place.menu_images) menuImages = JSON.parse(place.menu_images); } catch (e) { }
+    const exteriorImages = parseImages(place.exterior_images);
+    const menuImages = parseImages(place.menu_images);
+
+    const onDragStart = (event) => {
+        if (!isMobile) return;
+        dragStartRef.current = { y: event.clientY, offset: sheetOffset };
+        setDragging(true);
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+    };
+    const onDragMove = (event) => {
+        if (!dragStartRef.current) return;
+        const nextOffset = Math.max(0, dragStartRef.current.offset + event.clientY - dragStartRef.current.y);
+        dragOffsetRef.current = nextOffset;
+        setSheetOffset(nextOffset);
+    };
+    const onDragEnd = () => {
+        if (!dragStartRef.current) return;
+        dragStartRef.current = null;
+        setDragging(false);
+        if (dragOffsetRef.current > 110) onClose?.();
+        else {
+            dragOffsetRef.current = 0;
+            setSheetOffset(0);
+        }
+    };
+
+    const panelStyle = isMobile ? {
+        position: 'absolute', left: 0, right: 0, bottom: 0,
+        height: 'min(72vh, 620px)', maxHeight: 'calc(var(--app-height, 100vh) - 72px)',
+        borderRadius: '18px 18px 0 0',
+        transform: `translateY(${sheetOffset}px)`,
+        transition: dragging ? 'none' : 'transform 180ms ease-out'
+    } : {
+        position: 'absolute', top: 80, right: 20, width: 350, bottom: 24,
+        borderRadius: 12
+    };
+
+    const renderImageGroup = (title, images) => images.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--color-text-secondary)' }}>{title}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {images.map((url, index) => (
+                    <img
+                        key={`${url}-${index}`}
+                        src={url}
+                        alt={`${title} ${index + 1}`}
+                        style={{ width: '100%', borderRadius: 8, display: 'block', cursor: 'zoom-in' }}
+                        loading="lazy"
+                        onClick={() => setPreviewImage(url)}
+                    />
+                ))}
+            </div>
+        </div>
+    );
 
     return (
         <>
-            <div style={{
-                position: 'absolute', top: 120, right: 30, width: 350, bottom: 220,
-                background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)',
-                borderRadius: 10, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-surface)',
-                display: 'flex', flexDirection: 'column', zIndex: 5000
-            }}>
-                <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2 style={{ margin: 0, fontSize: 18 }}>{place.name} 详情</h2>
-                    <Button variant="secondary" onClick={onClose} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: 'transparent', fontSize: 18, lineHeight: 1, color: 'var(--color-text-secondary)' }} title="关闭">×</Button>
+            <section
+                aria-label={`${place.name} 详情`}
+                style={{
+                    ...panelStyle,
+                    background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)',
+                    border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-surface)',
+                    display: 'flex', flexDirection: 'column', zIndex: 5000, boxSizing: 'border-box', overflow: 'hidden'
+                }}
+            >
+                <div
+                    onPointerDown={onDragStart}
+                    onPointerMove={onDragMove}
+                    onPointerUp={onDragEnd}
+                    onPointerCancel={onDragEnd}
+                    style={{ padding: isMobile ? '8px 16px 14px' : '16px 20px', borderBottom: '1px solid var(--color-border)', touchAction: 'none', cursor: isMobile ? 'grab' : 'default' }}
+                >
+                    {isMobile && <div aria-hidden="true" style={{ width: 40, height: 4, borderRadius: 999, background: 'var(--color-border)', margin: '0 auto 10px' }} />}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                        <div style={{ minWidth: 0 }}>
+                            <h2 style={{ margin: 0, fontSize: 18, overflowWrap: 'anywhere' }}>{place.name}</h2>
+                            <div style={{ marginTop: 5, display: 'flex', flexWrap: 'wrap', gap: 8, color: 'var(--color-text-secondary)', fontSize: 13 }}>
+                                <span>{place.category || '未分类'}</span>
+                                {place.per_person_cost != null && <span>人均 ¥{place.per_person_cost}</span>}
+                            </div>
+                        </div>
+                        <Button variant="secondary" onClick={onClose} aria-label="关闭详情" style={{ flexShrink: 0, width: 36, height: 36, padding: 0, borderRadius: 999, border: 'none', background: 'var(--color-bg-overlay)', fontSize: 20, color: 'var(--color-text-secondary)' }}>×</Button>
+                    </div>
+                    {onNavigate && (
+                        <Button
+                            themeAware
+                            onPointerDown={(event) => event.stopPropagation()}
+                            onClick={() => onNavigate(place)}
+                            style={{ width: isMobile ? '100%' : 'auto', marginTop: 12, minHeight: 42, padding: '8px 16px', fontWeight: 700 }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: 19, verticalAlign: 'middle', marginRight: 5 }}>navigation</span>
+                            导航到这里
+                        </Button>
+                    )}
                 </div>
 
-                <ScrollableView style={{ flex: 1, padding: '20px' }}>
-                    <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 4 }}>分类</div>
-                        <div>{place.category || '暂无'}</div>
-                    </div>
-
+                <ScrollableView style={{ flex: 1, minHeight: 0, padding: isMobile ? '16px' : '20px', paddingBottom: isMobile ? 'calc(20px + env(safe-area-inset-bottom))' : 20 }}>
                     <div style={{ marginBottom: 24 }}>
                         <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 4 }}>描述</div>
-                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{place.description || '暂无描述'}</div>
+                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{place.description || '暂无描述'}</div>
                     </div>
-
-                    {place.per_person_cost != null && (
-                        <div style={{ marginBottom: 16 }}>
-                            <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 4 }}>人均</div>
-                            <div>¥{place.per_person_cost}</div>
-                        </div>
-                    )}
-
-                    {exteriorImages.length > 0 && (
-                        <div style={{ marginBottom: 24 }}>
-                            <div style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 8, color: 'var(--color-text-secondary)' }}>外观/招牌</div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                {exteriorImages.map((url, i) => (
-                                    <img
-                                        key={i}
-                                        src={url}
-                                        alt={`外观 ${i + 1}`}
-                                        style={{ width: '100%', borderRadius: 6, display: 'block', cursor: 'zoom-in' }}
-                                        loading="lazy"
-                                        onClick={() => setPreviewImage(url)}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {menuImages.length > 0 && (
-                        <div style={{ marginBottom: 24 }}>
-                            <div style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 8, color: 'var(--color-text-secondary)' }}>菜单</div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                {menuImages.map((url, i) => (
-                                    <img
-                                        key={i}
-                                        src={url}
-                                        alt={`菜单 ${i + 1}`}
-                                        style={{ width: '100%', borderRadius: 6, display: 'block', cursor: 'zoom-in' }}
-                                        loading="lazy"
-                                        onClick={() => setPreviewImage(url)}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
+                    {renderImageGroup('外观 / 招牌', exteriorImages)}
+                    {renderImageGroup('菜单', menuImages)}
                     {exteriorImages.length === 0 && menuImages.length === 0 && (
-                        <div style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: 13, marginTop: 24, textAlign: 'center' }}>
-                            暂无相关图片
-                        </div>
+                        <div style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: 13, marginTop: 24, textAlign: 'center' }}>暂无相关图片</div>
                     )}
                 </ScrollableView>
-            </div>
+            </section>
 
             {previewImage && (
-                <div
-                    role="presentation"
-                    onClick={() => setPreviewImage(null)}
-                    style={{
-                        position: 'fixed',
-                        inset: 0,
-                        background: 'rgba(0, 0, 0, 0.9)',
-                        zIndex: 7000,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: 24,
-                    }}
-                >
-                    <button
-                        type="button"
-                        onClick={() => setPreviewImage(null)}
-                        aria-label="关闭大图"
-                        title="关闭"
-                        style={{
-                            position: 'absolute',
-                            top: 20,
-                            right: 20,
-                            width: 40,
-                            height: 40,
-                            borderRadius: 999,
-                            border: 'none',
-                            background: 'rgba(255, 255, 255, 0.14)',
-                            color: '#FFFFFF',
-                            fontSize: 26,
-                            lineHeight: '40px',
-                            cursor: 'pointer',
-                        }}
-                        onMouseDown={(e) => e.stopPropagation()}
-                    >
-                        ×
-                    </button>
-                    <img
-                        src={previewImage}
-                        alt="图片大图预览"
-                        style={{
-                            maxWidth: '100%',
-                            maxHeight: '100%',
-                            objectFit: 'contain',
-                            boxShadow: '0 16px 60px rgba(0,0,0,0.45)',
-                            borderRadius: 8,
-                            userSelect: 'none',
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    />
+                <div role="presentation" onClick={() => setPreviewImage(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.9)', zIndex: 7000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+                    <button type="button" onClick={() => setPreviewImage(null)} aria-label="关闭大图" style={{ position: 'absolute', top: 20, right: 20, width: 44, height: 44, borderRadius: 999, border: 'none', background: 'rgba(255,255,255,.14)', color: '#fff', fontSize: 26, cursor: 'pointer' }}>×</button>
+                    <img src={previewImage} alt="图片大图预览" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8, userSelect: 'none' }} onClick={(event) => event.stopPropagation()} />
                 </div>
             )}
         </>

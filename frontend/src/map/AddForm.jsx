@@ -31,7 +31,7 @@ export default function AddForm({ backendUrl, token, defaultPos, defaultName = "
     };
 
     return (
-        <div style={{ width: 320 }}>
+        <div style={{ width: 'min(320px, 100%)', maxWidth: '100%', boxSizing: 'border-box' }}>
             <div><strong style={{ color: 'var(--color-text-primary)' }}>经纬度：</strong><span style={{ color: 'var(--color-text-primary)' }}>{defaultPos[1].toFixed(6)}, {defaultPos[0].toFixed(6)}</span></div>
             <div style={{ marginTop: 8 }}>
                 <TextInput placeholder="店名" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%" }} />

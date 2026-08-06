@@ -72,6 +72,8 @@ export default function MapView({
     token,
     isAuthenticated,
     onRequireAuth,
+    onOpenDinners,
+    onOpenMine,
     pickerMode = false,
     pickerContext = 'dinner',
     pickedPlaces = [],
@@ -1519,6 +1521,9 @@ export default function MapView({
                 favoriteLoading={favoriteLoading}
                 onToggleFavorite={handleToggleFavorite}
                 isAuthenticated={isAuthenticated}
+                onRequireAuth={onRequireAuth}
+                onOpenDinners={onOpenDinners}
+                onOpenMine={onOpenMine}
                 pickerMode={pickerMode}
                 pickerContext={pickerContext}
                 pickedPlaces={pickedPlaces}
