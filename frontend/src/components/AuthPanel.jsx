@@ -113,9 +113,50 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                         登录
                     </Button>
                 )}
+                {isAuth && user && (
+                    <div style={{ position: 'relative' }}>
+                        <Button
+                            onClick={() => {
+                                if (interactionDisabled) return;
+                                setUserOpen((value) => !value);
+                                setMoreOpen(false);
+                            }}
+                            aria-label="打开用户菜单"
+                            aria-expanded={userOpen}
+                            style={{
+                                maxWidth: 180,
+                                height: 42,
+                                padding: '3px 11px 3px 3px',
+                                borderRadius: 999,
+                                border: `2px solid ${themeColor}`,
+                                background: 'var(--color-bg-surface)',
+                                color: 'var(--color-text-primary)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 7
+                            }}
+                        >
+                            <img src={user.has_avatar ? `${backendUrl}/users/${user.id}/avatar?t=${Date.now()}` : (user.avatar || defaultAvatar)} alt={user.username || '头像'} style={{ width: 32, height: 32, flexShrink: 0, borderRadius: '50%', objectFit: 'cover' }} />
+                            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 700 }}>{user.username}</span>
+                        </Button>
+
+                        {userOpen && (
+                            <div role="menu" aria-label="用户菜单" style={{ ...menuStyle, left: 0, right: 'auto' }}>
+                                <div style={{ padding: '6px 10px 10px' }}>
+                                    <div style={{ fontWeight: 750, overflowWrap: 'anywhere' }}>{user.username}</div>
+                                    <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)' }}>已登录</div>
+                                </div>
+                                {divider}
+                                <Button themeAware variant="menu" full onClick={() => { setUserOpen(false); isOnSettings ? onGoHome?.() : onOpenSettings?.(); }}>{isOnSettings ? '返回地图' : '账号与地图设置'}</Button>
+                                {divider}
+                                <Button themeAware variant="menu" full onClick={() => { setUserOpen(false); onLogout?.(); }} style={{ color: 'var(--color-danger)' }}>退出登录</Button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
-            <div ref={rootRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Button themeAware onClick={() => isOnDinners ? onGoHome?.() : onOpenDinners?.()} style={{ minHeight: 42, padding: '8px 12px' }}>
                     <span className="material-symbols-outlined" style={{ fontSize: 19, marginRight: 5, verticalAlign: 'middle' }}>groups</span>
                     {isOnDinners ? '返回地图' : '聚餐'}
@@ -128,21 +169,6 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                 >
                     <span className="material-symbols-outlined">more_horiz</span>
                 </Button>
-                {isAuth && user && (
-                    <Button
-                        onClick={() => {
-                            if (interactionDisabled) return;
-                            setUserOpen((value) => !value);
-                            setMoreOpen(false);
-                        }}
-                        aria-label="打开用户菜单"
-                        aria-expanded={userOpen}
-                        style={{ width: 42, height: 42, padding: 0, borderRadius: '50%', overflow: 'hidden', border: `2px solid ${themeColor}`, background: themeColor, color: pickContrastTextColor(themeColor) }}
-                    >
-                        <img src={user.has_avatar ? `${backendUrl}/users/${user.id}/avatar?t=${Date.now()}` : (user.avatar || defaultAvatar)} alt={user.username || '头像'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </Button>
-                )}
-
                 {moreOpen && (
                     <div role="menu" aria-label="更多功能" style={{ ...menuStyle, right: 50 }}>
                         {isAuth && (isAdmin || isOnAdmin) && (
@@ -161,19 +187,6 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                             <div style={{ fontWeight: 700 }}>关于东方饭联地图</div>
                             <div style={{ marginTop: 4, color: 'var(--color-text-secondary)' }}>版本 v1.8.1</div>
                         </div>
-                    </div>
-                )}
-
-                {userOpen && isAuth && user && (
-                    <div role="menu" aria-label="用户菜单" style={menuStyle}>
-                        <div style={{ padding: '6px 10px 10px' }}>
-                            <div style={{ fontWeight: 750, overflowWrap: 'anywhere' }}>{user.username}</div>
-                            <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)' }}>已登录</div>
-                        </div>
-                        {divider}
-                        <Button themeAware variant="menu" full onClick={() => { setUserOpen(false); isOnSettings ? onGoHome?.() : onOpenSettings?.(); }}>{isOnSettings ? '返回地图' : '账号与地图设置'}</Button>
-                        {divider}
-                        <Button themeAware variant="menu" full onClick={() => { setUserOpen(false); onLogout?.(); }} style={{ color: 'var(--color-danger)' }}>退出登录</Button>
                     </div>
                 )}
             </div>
