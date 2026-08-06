@@ -9,6 +9,7 @@ import { useSearchPanel } from './useSearchPanel';
 import ScrollableView from '../components/ScrollableView';
 import Notice from '../components/Notice';
 import { fetchFavorites } from './api';
+import { pickContrastTextColor } from '../utils/theme';
 
 function getPlaceKey(place) {
     if (place?.id !== undefined && place?.id !== null && String(place.id) !== '') {
@@ -479,6 +480,7 @@ export default function MapUI(props) {
     const searchButtonLabel = hasSubmittedSearch
         ? (searchResultsVisible ? '折叠搜索结果' : '展开搜索结果')
         : (tipText || '搜索');
+    const searchButtonIconColor = pickContrastTextColor(customThemeColor);
 
     const handleSearchButtonClick = () => {
         if (hasSubmittedSearch) {
@@ -855,7 +857,7 @@ export default function MapUI(props) {
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     background: customThemeColor,
-                                    color: '#FFFFFF',
+                                    color: searchButtonIconColor,
                                     border: 'none',
                                     boxShadow: `0 4px 12px ${hexToRgba(customThemeColor, 0.2)}`,
                                     transition: 'background 180ms ease, transform 220ms ease',
