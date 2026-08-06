@@ -9,6 +9,10 @@ const {
 
 const EARTH_RADIUS_KM = 6371.0088;
 const MAX_VECTOR_CANDIDATES = 200;
+const configuredMinimumSemanticScore = Number.parseFloat(process.env.AI_SEARCH_MIN_SEMANTIC_SCORE);
+const MIN_SEMANTIC_SCORE = Number.isFinite(configuredMinimumSemanticScore)
+    ? Math.max(0, Math.min(1, configuredMinimumSemanticScore))
+    : 0.6;
 
 function vectorBuffer(embedding) {
     if (!Array.isArray(embedding) || embedding.length !== EMBEDDING_DIMENSIONS) {
@@ -104,32 +108,45 @@ function rankSemanticRows(rows, { center, bounds, limit = 5 } = {}) {
         const inView = Boolean(safeBounds && placePoint && isInsideBounds(placePoint, safeBounds));
         const proximityScale = Math.max(1, viewRadius || 5);
         const proximity = distanceKm === null ? 0 : 1 / (1 + (distanceKm / proximityScale) ** 1.35);
-        const combinedScore = safeCenter
-            ? Math.max(0, Math.min(1, semantic * 0.78 + proximity * 0.17 + (inView ? 0.05 : 0)))
-            : semantic;
         return {
             place: publicPlace(row),
-            score: combinedScore,
+            score: semantic,
             semantic_score: semantic,
             vector_distance: Number(row.vector_distance),
             distance_km: distanceKm === null ? null : Number(distanceKm.toFixed(3)),
-            in_view: inView
+            in_view: inView,
+            proximity_score: proximity
         };
-    });
+    }).filter((candidate) => candidate.semantic_score >= MIN_SEMANTIC_SCORE);
 
-    // When map context is available, never jump to a remote city just because its
-    // wording is a little closer. Candidates must be visible or reasonably near
-    // the current viewport; an empty local pool is better than a misleading card.
-    const eligible = safeCenter
-        ? candidates.filter((candidate) => candidate.in_view
-            || (candidate.distance_km !== null && candidate.distance_km <= nearbyRadiusKm))
-        : candidates;
+    const inViewCandidates = candidates.filter((candidate) => candidate.in_view);
+    let eligible = candidates;
+    if (safeCenter && inViewCandidates.length) {
+        // Once a relevant place is visible, screen position must not compete with
+        // meaning: every in-view candidate is ranked by semantic score alone.
+        eligible = inViewCandidates.map((candidate) => ({
+            ...candidate,
+            score: candidate.semantic_score
+        }));
+    } else if (safeCenter) {
+        // Only when the viewport contains no suitable result do we look just
+        // outside it, with a deliberately light proximity influence.
+        eligible = candidates
+            .filter((candidate) => candidate.distance_km !== null && candidate.distance_km <= nearbyRadiusKm)
+            .map((candidate) => ({
+                ...candidate,
+                score: Math.max(0, Math.min(1,
+                    candidate.semantic_score * 0.88 + candidate.proximity_score * 0.12
+                ))
+            }));
+    }
 
     return eligible
         .sort((a, b) => b.score - a.score
             || b.semantic_score - a.semantic_score
             || (a.distance_km ?? Number.POSITIVE_INFINITY) - (b.distance_km ?? Number.POSITIVE_INFINITY))
-        .slice(0, safeLimit);
+        .slice(0, safeLimit)
+        .map(({ proximity_score, ...candidate }) => candidate);
 }
 
 function localYuyukoReason(query, match) {
@@ -141,6 +158,16 @@ function localYuyukoReason(query, match) {
         ? `距离当前地图中心约 ${match.distance_km < 1 ? `${Math.round(match.distance_km * 1000)} 米` : `${match.distance_km.toFixed(1)} 公里`}，`
         : '';
     return `幽幽子觉得「${place.name}」很合适～${distanceText}${priceText}${categoryText}和你的“${String(query).slice(0, 36)}”颇有缘分，先去尝尝看吧。`;
+}
+
+function reasonMatchesPlace(reason, placeName, otherPlaceNames = []) {
+    const text = String(reason || '').trim();
+    const name = String(placeName || '').trim();
+    if (!text || !name || !text.includes(name)) return false;
+    return !(Array.isArray(otherPlaceNames) ? otherPlaceNames : []).some((otherName) => {
+        const normalized = String(otherName || '').trim();
+        return normalized && normalized !== name && text.includes(normalized);
+    });
 }
 
 async function searchSemanticPlaces(query, { limit = 5, center = null, bounds = null } = {}) {
@@ -164,8 +191,9 @@ async function searchSemanticPlaces(query, { limit = 5, center = null, bounds = 
 
     const matches = rankSemanticRows(rows, { center, bounds, limit: safeLimit });
     if (!matches.length) {
+        const hasRelevantCandidate = rows.some((row) => semanticScore(row.vector_distance) >= MIN_SEMANTIC_SCORE);
         return {
-            status: rows.length ? 'no_nearby_match' : 'index_empty',
+            status: !rows.length ? 'index_empty' : (hasRelevantCandidate ? 'no_nearby_match' : 'no_relevant_match'),
             recommendation: null,
             matches: []
         };
@@ -175,6 +203,12 @@ async function searchSemanticPlaces(query, { limit = 5, center = null, bounds = 
     let reasonSource = 'fallback';
     try {
         reason = await createYuyukoReason(query, matches);
+        const selectedName = String(matches[0].place.name || '').trim();
+        const otherNames = matches.slice(1).map((match) => match.place.name);
+        if (reason && !reasonMatchesPlace(reason, selectedName, otherNames)) {
+            console.warn('DeepSeek recommendation named a different place; using local fallback');
+            reason = '';
+        }
         if (reason) reasonSource = 'deepseek';
     } catch (error) {
         console.warn('DeepSeek recommendation failed:', error.message);
@@ -202,5 +236,7 @@ module.exports = {
     haversineDistanceKm,
     normalizeCenter,
     normalizeBounds,
-    rankSemanticRows
+    rankSemanticRows,
+    MIN_SEMANTIC_SCORE,
+    reasonMatchesPlace
 };

@@ -4,7 +4,7 @@ const { db, init } = require('../db');
 process.env.SILICONFLOW_API_KEY = '';
 process.env.DEEPSEEK_API_KEY = '';
 const searchRouter = require('../routes/search');
-const { rankSemanticRows } = require('../services/semanticSearch');
+const { rankSemanticRows, reasonMatchesPlace } = require('../services/semanticSearch');
 
 async function main() {
     init();
@@ -40,6 +40,27 @@ async function main() {
         });
         assert.equal(ranked[0]?.place?.id, 2, 'nearby semantic result should outrank a remote city');
         assert.equal(ranked.some((match) => match.place.id === 1), false, 'remote candidates should be excluded');
+        const rankedInsideView = rankSemanticRows([
+            { id: 4, name: '屏幕中心普通匹配', latitude: 23.1291, longitude: 113.2644, vector_distance: 0.16 },
+            { id: 5, name: '屏幕边缘精准匹配', latitude: 23.155, longitude: 113.295, vector_distance: 0.05 }
+        ], {
+            center: { lat: 23.1291, lng: 113.2644 },
+            bounds: { minLat: 23.1, minLng: 113.23, maxLat: 23.16, maxLng: 113.3 },
+            limit: 5
+        });
+        assert.equal(rankedInsideView[0]?.place?.id, 5, 'distance inside the viewport must not override semantic relevance');
+        assert.equal(rankedInsideView[0]?.score, rankedInsideView[0]?.semantic_score, 'in-view score should be purely semantic');
+        const irrelevant = rankSemanticRows([
+            { id: 3, name: '附近但不相关地点', latitude: 23.1291, longitude: 113.2644, vector_distance: 0.5 }
+        ], {
+            center: { lat: 23.1291, lng: 113.2644 },
+            bounds: { minLat: 23.1, minLng: 113.23, maxLat: 23.16, maxLng: 113.3 },
+            limit: 5
+        });
+        assert.equal(irrelevant.length, 0, 'distance must not rescue a semantically irrelevant place');
+        assert.equal(reasonMatchesPlace('推荐 Little PaPa 印度餐厅', '森焱食馆'), false, 'a reason for another shop must be rejected');
+        assert.equal(reasonMatchesPlace('森焱食馆不如 Little PaPa', '森焱食馆', ['Little PaPa']), false, 'a reason mentioning another candidate must be rejected');
+        assert.equal(reasonMatchesPlace('森焱食馆就在附近', '森焱食馆'), true, 'a reason naming the selected shop should pass');
 
         const aiResponse = await fetch(`${baseUrl}/api/places/search/ai`, {
             method: 'POST',
