@@ -27,6 +27,11 @@ const TextArea = forwardRef(({ style = {}, className, rows, ...rest }, ref) => {
         border: `2px solid ${dark ? 'var(--color-border)' : themeColor}`,
         background: 'var(--color-bg-overlay)',
         color: 'var(--color-text-primary)',
+        // Chrome gives <textarea> a different user-agent font by default.
+        // Inherit the application font so edit descriptions match labels and other fields.
+        fontFamily: 'inherit',
+        fontSize: 16,
+        lineHeight: 1.5,
         outline: 'none',
         boxShadow: `0 4px 12px ${hexToRgba(themeColor, 0.2)}, 0 0 8px ${hexToRgba(themeColor, 0.25)}`,
         resize: 'vertical',
