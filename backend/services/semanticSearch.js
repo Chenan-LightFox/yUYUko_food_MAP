@@ -3,7 +3,7 @@ const {
     EMBEDDING_DIMENSIONS,
     createEmbedding,
     expandSearchIntent,
-    createYuyukoReasons,
+    createYuyukoRecommendationReviews,
     hasEmbeddingConfiguration,
     hasDeepseekConfiguration
 } = require('./aiClients');
@@ -22,6 +22,14 @@ const configuredPlaceDetailWeight = Number.parseFloat(process.env.AI_PLACE_DETAI
 const PLACE_DETAIL_WEIGHT = Number.isFinite(configuredPlaceDetailWeight)
     ? Math.max(0, Math.min(0.5, configuredPlaceDetailWeight))
     : 0.25;
+const configuredRelevanceConfidence = Number.parseFloat(process.env.AI_RELEVANCE_MIN_CONFIDENCE);
+const RELEVANCE_MIN_CONFIDENCE = Number.isFinite(configuredRelevanceConfidence)
+    ? Math.max(0, Math.min(1, configuredRelevanceConfidence))
+    : 0.68;
+const configuredFallbackRelevanceScore = Number.parseFloat(process.env.AI_FALLBACK_RELEVANCE_MIN_SCORE);
+const FALLBACK_RELEVANCE_MIN_SCORE = Number.isFinite(configuredFallbackRelevanceScore)
+    ? Math.max(0, Math.min(1, configuredFallbackRelevanceScore))
+    : 0.58;
 
 function buildEmbeddingQuery(query, intentExpansion = null) {
     const original = String(query || '').trim();
@@ -222,6 +230,22 @@ function reasonMatchesPlace(reason, placeName, otherPlaceNames = []) {
     });
 }
 
+function isConfidentRecommendationReview(review, minimumConfidence = RELEVANCE_MIN_CONFIDENCE) {
+    const confidence = Number(review?.confidence);
+    const safeMinimum = Number.isFinite(Number(minimumConfidence))
+        ? Math.max(0, Math.min(1, Number(minimumConfidence)))
+        : RELEVANCE_MIN_CONFIDENCE;
+    return review?.relevant === true && Number.isFinite(confidence) && confidence >= safeMinimum;
+}
+
+function passesLocalRecommendationThreshold(match, minimumScore = FALLBACK_RELEVANCE_MIN_SCORE) {
+    const score = Number(match?.score);
+    const safeMinimum = Number.isFinite(Number(minimumScore))
+        ? Math.max(0, Math.min(1, Number(minimumScore)))
+        : FALLBACK_RELEVANCE_MIN_SCORE;
+    return Number.isFinite(score) && score >= safeMinimum;
+}
+
 async function searchSemanticPlaces(query, { limit = 5, center = null, bounds = null } = {}) {
     if (!isVectorSearchAvailable()) throw new Error('sqlite-vec is unavailable');
     if (!hasEmbeddingConfiguration()) throw new Error('SILICONFLOW_API_KEY is not configured');
@@ -260,18 +284,33 @@ async function searchSemanticPlaces(query, { limit = 5, center = null, bounds = 
         };
     }
 
-    const selectedMatches = matches.slice(0, 3);
-    let generatedReasons = selectedMatches.map(() => '');
-    try {
-        generatedReasons = await createYuyukoReasons(query, selectedMatches);
-    } catch (error) {
-        console.warn('DeepSeek recommendations failed:', error.message);
+    // Review a few extra semantic candidates so rejected generic matches can be
+    // replaced while the public response still contains at most three cards.
+    const reviewCandidates = matches.slice(0, 5);
+    let generatedReviews = null;
+    let deepseekReviewCompleted = false;
+    if (hasDeepseekConfiguration()) {
+        try {
+            generatedReviews = await createYuyukoRecommendationReviews(query, reviewCandidates);
+            deepseekReviewCompleted = Array.isArray(generatedReviews);
+        } catch (error) {
+            console.warn('DeepSeek relevance review failed:', error.message);
+        }
     }
 
+    const selectedNames = reviewCandidates.map((match) => String(match.place.name || '').trim());
     let deepseekReasonCount = 0;
-    const selectedNames = selectedMatches.map((match) => String(match.place.name || '').trim());
-    const recommendations = selectedMatches.map((match, index) => {
-        let reason = String(generatedReasons[index] || '').trim();
+    const recommendations = [];
+    for (let index = 0; index < reviewCandidates.length && recommendations.length < 3; index += 1) {
+        const match = reviewCandidates[index];
+        const review = generatedReviews?.[index] || null;
+        if (deepseekReviewCompleted) {
+            if (!isConfidentRecommendationReview(review)) continue;
+        } else if (!passesLocalRecommendationThreshold(match)) {
+            continue;
+        }
+
+        let reason = String(review?.reason || '').trim();
         let reasonSource = 'fallback';
         const otherNames = selectedNames.filter((_, otherIndex) => otherIndex !== index);
         if (reason && reasonMatchesPlace(reason, selectedNames[index], otherNames)) {
@@ -283,7 +322,7 @@ async function searchSemanticPlaces(query, { limit = 5, center = null, bounds = 
             }
             reason = localYuyukoReason(query, match);
         }
-        return {
+        recommendations.push({
             place: match.place,
             score: match.score,
             semantic_score: match.semantic_score,
@@ -291,13 +330,24 @@ async function searchSemanticPlaces(query, { limit = 5, center = null, bounds = 
             match_percent: Math.round(match.score * 100),
             distance_km: match.distance_km,
             in_view: match.in_view,
+            review_confidence: deepseekReviewCompleted ? Number(review.confidence) : Number(match.score),
+            review_source: deepseekReviewCompleted ? 'deepseek' : 'local_fallback',
             reason,
             reason_source: reasonSource
+        });
+    }
+
+    if (!recommendations.length) {
+        return {
+            status: 'no_confident_match',
+            recommendation: null,
+            recommendations: [],
+            matches
         };
-    });
+    }
 
     return {
-        status: hasDeepseekConfiguration() && deepseekReasonCount === recommendations.length ? 'ok' : 'partial',
+        status: deepseekReviewCompleted && deepseekReasonCount === recommendations.length ? 'ok' : 'partial',
         recommendation: recommendations[0] || null,
         recommendations,
         matches
@@ -312,7 +362,11 @@ module.exports = {
     rankSemanticRows,
     MIN_SEMANTIC_SCORE,
     PLACE_DETAIL_WEIGHT,
+    RELEVANCE_MIN_CONFIDENCE,
+    FALLBACK_RELEVANCE_MIN_SCORE,
     placeDetailCompleteness,
     reasonMatchesPlace,
+    isConfidentRecommendationReview,
+    passesLocalRecommendationThreshold,
     buildEmbeddingQuery
 };

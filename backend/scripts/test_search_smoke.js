@@ -8,9 +8,15 @@ const {
     rankSemanticRows,
     reasonMatchesPlace,
     buildEmbeddingQuery,
-    placeDetailCompleteness
+    placeDetailCompleteness,
+    isConfidentRecommendationReview,
+    passesLocalRecommendationThreshold
 } = require('../services/semanticSearch');
-const { parseIntentExpansionContent, parseYuyukoReasonsContent } = require('../services/aiClients');
+const {
+    parseIntentExpansionContent,
+    parseYuyukoReasonsContent,
+    parseYuyukoRecommendationReviewsContent
+} = require('../services/aiClients');
 
 async function main() {
     init();
@@ -138,6 +144,31 @@ async function main() {
             '第二家适合想吃清淡口味的时候。',
             ''
         ], 'batch reasons should map to exact place names and preserve ranking order');
+
+        const reviewMatches = [
+            { place: { name: 'Supported Place' } },
+            { place: { name: 'Generic Place' } }
+        ];
+        const parsedReviews = parseYuyukoRecommendationReviewsContent(JSON.stringify({
+            recommendations: [
+                { name: 'Generic Place', relevant: true, confidence: 0.42, reason: 'Generic Place might fit.' },
+                { name: 'Supported Place', relevant: true, confidence: 0.91, reason: 'Supported Place has direct evidence.' }
+            ]
+        }), reviewMatches);
+        assert.equal(isConfidentRecommendationReview(parsedReviews[0]), true, 'a well-supported review should pass');
+        assert.equal(isConfidentRecommendationReview(parsedReviews[1]), false, 'a low-confidence review should be rejected');
+        assert.equal(parsedReviews.filter((review) => isConfidentRecommendationReview(review)).length, 1, 'review filtering should preserve only confident matches');
+        const allLowConfidence = parseYuyukoRecommendationReviewsContent(JSON.stringify({
+            recommendations: reviewMatches.map((match) => ({
+                name: match.place.name,
+                relevant: true,
+                confidence: 0.2,
+                reason: `${match.place.name} lacks enough evidence.`
+            }))
+        }), reviewMatches);
+        assert.equal(allLowConfidence.filter((review) => isConfidentRecommendationReview(review)).length, 0, 'low confidence must allow zero recommendations');
+        assert.equal(passesLocalRecommendationThreshold({ score: 0.57 }), false, 'local fallback should reject weak adjusted scores');
+        assert.equal(passesLocalRecommendationThreshold({ score: 0.59 }), true, 'local fallback should retain sufficiently strong adjusted scores');
 
         const aiResponse = await fetch(`${baseUrl}/api/places/search/ai`, {
             method: 'POST',
