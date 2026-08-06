@@ -105,6 +105,7 @@ export function useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, places)
                         address: place.address || `${place.pname || ''}${place.cityname || ''}${place.adname || ''}`,
                         category: place.type || '高德地点',
                         isMarked: false,
+                        showOnMap: false,
                         dist: distanceMeters(center, { latitude: lat, longitude: lng })
                     };
                 }).filter(Boolean);

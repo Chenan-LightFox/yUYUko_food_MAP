@@ -570,9 +570,9 @@ export default function MapView({
                 const labels = [];
                 for (const p of currentPlaces) {
                     if (!p.name) continue;
-                    // 高德临时 POI 在普通浏览时不显示名称，避免地图拥挤；
-                    // 搜索模式下它们是明确的搜索结果，应与站内地点一样显示店名。
-                    if (!isSearch && p.isMarked === false) continue;
+                    // 高德临时 POI 默认只存在于结果列表；只有用户单独选中后
+                    // 才会显示对应 marker 和名称。
+                    if (p.isMarked === false && p.showOnMap !== true) continue;
                     // 搜索模式下不依赖聚类 visibleIds，确保所有搜索结果标签都显示
                     if (!isSearch && visibleIds.size > 0 && !visibleIds.has(p.id)) continue;
                     const point = lngLatToContainerPoint({ longitude: p.longitude, latitude: p.latitude });
@@ -941,7 +941,8 @@ export default function MapView({
     useEffect(() => {
         if (!mapRef.current) return;
         const listToRender = searchResults == null ? places : searchResults;
-        renderMarkers(mapRef.current, markersRef, listToRender || [], showPopup);
+        const visibleMapPlaces = (listToRender || []).filter((place) => place.isMarked !== false || place.showOnMap === true);
+        renderMarkers(mapRef.current, markersRef, visibleMapPlaces, showPopup);
         // 同步更新标签，避免旧标签残留
         setTimeout(() => {
             if (handleUpdateLabelsRef.current) handleUpdateLabelsRef.current();
@@ -1025,7 +1026,8 @@ export default function MapView({
             if (requestId !== searchRequestIdRef.current) return;
             const merged = mergeRecommendations(data, recommendations);
             setSearchResults(merged);
-            renderMarkers(mapRef.current, markersRef, merged, showPopup);
+            const visibleMapPlaces = merged.filter((place) => place.isMarked !== false || place.showOnMap === true);
+            renderMarkers(mapRef.current, markersRef, visibleMapPlaces, showPopup);
         };
 
         setSearching(true);
@@ -1144,6 +1146,7 @@ export default function MapView({
                     address: p.address || `${p.pname || ''}${p.cityname || ''}${p.adname || ''}`,
                     category: p.type || "高德地点",
                     isMarked: false,
+                    showOnMap: false,
                     ...(Number.isFinite(dist) ? { dist } : {})
                 };
             }).filter(Boolean);
@@ -1197,7 +1200,7 @@ export default function MapView({
     };
 
     const handleSelectSuggestion = (item) => {
-        setSearchResults([item]);
+        setSearchResults([item?.isMarked === false ? { ...item, showOnMap: true } : item]);
     };
 
     // 处理分享链接中的 ?place=<id> 参数：加载单个地点并居中

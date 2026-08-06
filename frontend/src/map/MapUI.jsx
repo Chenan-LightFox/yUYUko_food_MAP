@@ -513,7 +513,9 @@ export default function MapUI(props) {
                         <span onClick={onMore} style={{ cursor: 'pointer', color: customThemeSecondary || customThemeColor }}>查看更多</span>
                     )}
                 </div>
-                {items.map(item => (
+                {items.map(item => {
+                    const isAmapResult = item.isMarked === false;
+                    return (
                     <div
                         key={item.id}
                         onClick={() => handleSelectSpItem(item)}
@@ -522,12 +524,27 @@ export default function MapUI(props) {
                             cursor: 'pointer',
                             borderBottom: '1px solid var(--color-border)',
                             display: 'flex',
-                            flexDirection: 'column'
+                            flexDirection: 'column',
+                            background: isAmapResult ? 'var(--theme-secondary-0-12)' : 'transparent'
                         }}
                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-overlay)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isAmapResult ? 'var(--theme-secondary-0-12)' : 'transparent'}
                     >
-                        <span style={{ fontSize: 14, color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                            <span style={{ fontSize: 14, color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{item.name}</span>
+                            {isAmapResult && (
+                                <span style={{
+                                    flexShrink: 0,
+                                    padding: '1px 6px',
+                                    borderRadius: 999,
+                                    border: '1px solid var(--theme-secondary)',
+                                    background: 'var(--color-bg-surface)',
+                                    color: 'var(--theme-secondary)',
+                                    fontSize: 10,
+                                    fontWeight: 700
+                                }}>高德地图</span>
+                            )}
+                        </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
                             <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1, paddingRight: 8 }}>
                                 {item.address || item.category || item.description || ''}
@@ -539,7 +556,8 @@ export default function MapUI(props) {
                             )}
                         </div>
                     </div>
-                ))}
+                    );
+                })}
             </div>
         );
     };
@@ -795,12 +813,15 @@ export default function MapUI(props) {
                                 const visibleResults = Array.isArray(baseResults)
                                     ? baseResults.filter((place) => !recommendedIds.has(String(place.id)))
                                     : [];
+                                const siteResults = visibleResults.filter((place) => place.isMarked !== false);
+                                const amapResults = visibleResults.filter((place) => place.isMarked === false);
                                 if (!Array.isArray(baseResults) && spLoading) {
                                     return <div style={{ padding: 12, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>加载中...</div>;
                                 }
                                 return (
                                     <>
-                                        {renderSpSection('基础匹配结果', visibleResults, false, null)}
+                                        {renderSpSection('站内地点', siteResults, false, null)}
+                                        {renderSpSection('高德地图结果 · 选择后在地图显示', amapResults, false, null)}
                                         {!visibleResults.length && !aiThinking && aiRecommendations.length === 0 && !spLoading && (
                                             <div style={{ padding: 12, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>未找到匹配的结果</div>
                                         )}
