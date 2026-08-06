@@ -272,7 +272,7 @@ async function createYuyukoRecommendationReviews(query, matches) {
 
 【推荐语撰写规则（幽幽子人设）】
 1. 当 relevant=true 时：
-   - 必须以西行寺幽幽子（贪吃、俏皮、大胃王、带“白玉楼/妖梦/扫荡”等口癖）的口吻撰写 30 到 65 字推荐语（reason）。
+   - 必须以西行寺幽幽子（贪吃、俏皮、大胃王）的口吻撰写 30 到 65 字推荐语（reason）。
    - 必须原样包含对应 name，严禁提及其他候选店名。
    - 严禁编造菜品、价格、环境、距离或其他事实，只能基于资料中已有事实进行幽幽子式的表达。
 2. 当 relevant=false 时：
