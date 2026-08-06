@@ -40,6 +40,10 @@ export async function searchPlacesFast(backendUrl, opts = {}) {
     const params = new URLSearchParams();
     params.set('q', opts.q || '');
     if (opts.limit) params.set('limit', String(opts.limit));
+    if (Number.isFinite(Number(opts.center?.lat)) && Number.isFinite(Number(opts.center?.lng))) {
+        params.set('lat', String(opts.center.lat));
+        params.set('lng', String(opts.center.lng));
+    }
     const url = `${backendUrl}/api/places/search/fast?${params.toString()}`;
     const res = await fetch(url, { signal: opts.signal });
     if (!res.ok) throw new Error(`search failed: ${res.status}`);
@@ -50,10 +54,20 @@ export async function searchPlacesFast(backendUrl, opts = {}) {
 export const searchPlaces = searchPlacesFast;
 
 export async function searchPlacesAi(backendUrl, opts = {}) {
+    const payload = { q: opts.q || '', limit: opts.limit || 5 };
+    if (Number.isFinite(Number(opts.center?.lat)) && Number.isFinite(Number(opts.center?.lng))) {
+        payload.center = { lat: Number(opts.center.lat), lng: Number(opts.center.lng) };
+    }
+    const bounds = opts.bounds;
+    if (bounds && ['minLng', 'minLat', 'maxLng', 'maxLat'].every((key) => Number.isFinite(Number(bounds[key])))) {
+        payload.bounds = Object.fromEntries(
+            ['minLng', 'minLat', 'maxLng', 'maxLat'].map((key) => [key, Number(bounds[key])])
+        );
+    }
     const res = await fetch(`${backendUrl}/api/places/search/ai`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q: opts.q || '', limit: opts.limit || 5 }),
+        body: JSON.stringify(payload),
         signal: opts.signal
     });
     const data = await res.json().catch(() => ({}));

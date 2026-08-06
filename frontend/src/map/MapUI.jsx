@@ -361,7 +361,7 @@ export default function MapUI(props) {
         }
     }, [selectedPlace]);
 
-    const { results: spResults, loading: spLoading } = useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLocationMarkerRef, places);
+    const { results: spResults, loading: spLoading } = useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, places);
 
     // Close detail panel if popup closes
     useEffect(() => {
@@ -478,7 +478,7 @@ export default function MapUI(props) {
     const handleSearchButtonClick = () => {
         if (!searchTerm || !searchTerm.trim()) return;
         setSearchResultsVisible(true);
-        searchServer({ q: searchTerm, includeUnmarked: false, autoFit: false });
+        searchServer({ q: searchTerm, includeUnmarked: true, autoFit: false });
     };
 
     const handleClearSearchInput = () => {
@@ -551,6 +551,10 @@ export default function MapUI(props) {
         const matchPercent = Number.isFinite(Number(recommendation.match_percent))
             ? Math.round(Number(recommendation.match_percent))
             : Math.round((Number(recommendation.score) || 0) * 100);
+        const distanceKm = recommendation.distance_km == null ? Number.NaN : Number(recommendation.distance_km);
+        const distanceText = Number.isFinite(distanceKm)
+            ? (distanceKm < 1 ? `距地图中心 ${Math.round(distanceKm * 1000)} 米` : `距地图中心 ${distanceKm.toFixed(1)} 公里`)
+            : '';
         return (
             <div
                 onClick={() => handleSelectSpItem(place)}
@@ -583,9 +587,9 @@ export default function MapUI(props) {
                     }}>匹配度 {matchPercent}%</span>
                 </div>
                 <div style={{ marginTop: 8, fontSize: 16, fontWeight: 800, color: 'var(--color-text-primary)' }}>{place.name}</div>
-                {(place.category || place.per_person_cost) && (
+                {(place.category || place.per_person_cost || distanceText) && (
                     <div style={{ marginTop: 3, color: 'var(--color-text-secondary)', fontSize: 12 }}>
-                        {[place.category, place.per_person_cost ? `人均约 ${place.per_person_cost} 元` : ''].filter(Boolean).join(' · ')}
+                        {[place.category, place.per_person_cost ? `人均约 ${place.per_person_cost} 元` : '', distanceText].filter(Boolean).join(' · ')}
                     </div>
                 )}
                 <div style={{ marginTop: 8, color: 'var(--color-text-primary)', fontSize: 13, lineHeight: 1.55 }}>
@@ -691,7 +695,7 @@ export default function MapUI(props) {
                                 e.preventDefault();
                                 if (searchTerm && searchTerm.trim()) {
                                     setSearchResultsVisible(true);
-                                    searchServer({ q: searchTerm, includeUnmarked: false, autoFit: false });
+                                    searchServer({ q: searchTerm, includeUnmarked: true, autoFit: false });
                                 }
                             }
                         }}
@@ -745,7 +749,7 @@ export default function MapUI(props) {
                         </Button>
                     )}
 
-                    {searchTerm && searchResultsVisible && (aiThinking || aiRecommendation || Array.isArray(searchResults) || spLoading || spResults) && (
+                    {searchTerm && searchResultsVisible && (aiThinking || aiRecommendation || Array.isArray(searchResults) || spLoading || Array.isArray(spResults)) && (
                         <ScrollableView style={{
                             position: 'absolute',
                             ...(isNarrow ? { bottom: 48 } : { top: 48 }),
@@ -780,34 +784,23 @@ export default function MapUI(props) {
                                 </div>
                             )}
                             {renderAiRecommendation()}
-                            {Array.isArray(searchResults) ? (
-                                <>
-                                    {renderSpSection(
-                                        '基础匹配结果',
-                                        searchResults.filter((place) => String(place.id) !== String(aiRecommendation?.place?.id)),
-                                        false,
-                                        null
-                                    )}
-                                    {!searchResults.length && !aiThinking && !aiRecommendation && (
-                                        <div style={{ padding: 12, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>未找到匹配的结果</div>
-                                    )}
-                                </>
-                            ) : spLoading && !spResults ? (
-                                <div style={{ padding: 12, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>加载中...</div>
-                            ) : (
-                                <>
-                                    {renderSpSection('标记点结果', spResults?.markedInView, spResults?.hasMoreMarkedInView, () => searchServer({ q: searchTerm }))}
-                                    {renderSpSection('非标记点结果', spResults?.unmarkedInView, spResults?.hasMoreUnmarkedInView, () => {
-                                        if (mapRef?.current && spResults?.unmarkedInView?.[0]) {
-                                            mapRef.current.setCenter([spResults.unmarkedInView[0].longitude, spResults.unmarkedInView[0].latitude]);
-                                        }
-                                    })}
-                                    {renderSpSection('其他匹配结果', spResults?.others, false, null)}
-                                    {(!spResults?.markedInView?.length && !spResults?.unmarkedInView?.length && !spResults?.others?.length) && (
-                                        <div style={{ padding: 12, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>未找到匹配的结果</div>
-                                    )}
-                                </>
-                            )}
+                            {(() => {
+                                const baseResults = Array.isArray(searchResults) ? searchResults : spResults;
+                                const visibleResults = Array.isArray(baseResults)
+                                    ? baseResults.filter((place) => String(place.id) !== String(aiRecommendation?.place?.id))
+                                    : [];
+                                if (!Array.isArray(baseResults) && spLoading) {
+                                    return <div style={{ padding: 12, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>加载中...</div>;
+                                }
+                                return (
+                                    <>
+                                        {renderSpSection('基础匹配结果', visibleResults, false, null)}
+                                        {!visibleResults.length && !aiThinking && !aiRecommendation && !spLoading && (
+                                            <div style={{ padding: 12, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>未找到匹配的结果</div>
+                                        )}
+                                    </>
+                                );
+                            })()}
                         </ScrollableView>
                     )}
 

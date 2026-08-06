@@ -973,12 +973,25 @@ export default function MapView({
     };
 
     // 提交搜索时同时启动快速字面匹配与 AI 语义推荐；快速结果不会等待 AI。
-    const searchServer = async ({ q = "", center = undefined, limit = undefined, autoFit = true, includeUnmarked = true } = {}) => {
+    const searchServer = async ({ q = "", center = undefined, bounds = undefined, limit = undefined, autoFit = true, includeUnmarked = true } = {}) => {
         const query = String(q || '').trim();
         if (!query) return;
-        const userLocPos = userLocationMarkerRef?.current ? userLocationMarkerRef.current.getPosition() : null;
-        const mapCenter = mapRef.current ? mapRef.current.getCenter() : null;
-        const effectiveCenter = center || (userLocPos ? { lat: userLocPos.lat, lng: userLocPos.lng } : (mapCenter ? { lat: mapCenter.lat, lng: mapCenter.lng } : undefined));
+        const readMapPoint = (point) => {
+            const lat = Number(point?.lat ?? point?.getLat?.());
+            const lng = Number(point?.lng ?? point?.getLng?.());
+            return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : undefined;
+        };
+        const mapCenter = readMapPoint(mapRef.current?.getCenter?.());
+        const effectiveCenter = center || mapCenter;
+        const mapBounds = mapRef.current?.getBounds?.();
+        const southWest = readMapPoint(mapBounds?.getSouthWest?.());
+        const northEast = readMapPoint(mapBounds?.getNorthEast?.());
+        const effectiveBounds = bounds || (southWest && northEast ? {
+            minLng: southWest.lng,
+            minLat: southWest.lat,
+            maxLng: northEast.lng,
+            maxLat: northEast.lat
+        } : undefined);
         if (!mapRef.current && !effectiveCenter) {
             console.warn("searchServer: 地图尚未就绪且未传入 center，直接返回");
             return;
@@ -1023,6 +1036,8 @@ export default function MapView({
         const aiPromise = Api.searchPlacesAi(backendUrl, {
             q: query,
             limit: 5,
+            center: effectiveCenter,
+            bounds: effectiveBounds,
             signal: aiController.signal
         });
 
@@ -1045,6 +1060,10 @@ export default function MapView({
         try {
             const markedData = await fastPromise;
             if (requestId !== searchRequestIdRef.current) return;
+            const markedResults = (Array.isArray(markedData) ? markedData : []).map((place) => {
+                const distanceKm = place.distance_km == null ? Number.NaN : Number(place.distance_km);
+                return Number.isFinite(distanceKm) ? { ...place, dist: distanceKm * 1000 } : place;
+            });
 
             let unmarkedData = [];
             if (includeUnmarked && window.AMap) {
@@ -1059,7 +1078,7 @@ export default function MapView({
                             : (mapRef.current ? [mapRef.current.getCenter().lng, mapRef.current.getCenter().lat] : null);
 
                         if (cpoint) {
-                            ps.searchNearBy(query, cpoint, 2000, (status, result) => {
+                            ps.searchNearBy(query, cpoint, 20000, (status, result) => {
                                 if (status === 'complete' && result.info === 'OK') {
                                     resolve(result.poiList.pois || []);
                                 } else {
@@ -1085,7 +1104,7 @@ export default function MapView({
                 const lat = p.location?.lat;
                 if (!lng || !lat) return null;
 
-                const allKnown = [...(places || []), ...markedData];
+                const allKnown = [...(places || []), ...markedResults];
                 let isKnown = false;
                 if (window.AMap) {
                     for (const kp of allKnown) {
@@ -1102,18 +1121,26 @@ export default function MapView({
                 }
                 if (isKnown) return null;
 
+                const dist = effectiveCenter && window.AMap
+                    ? window.AMap.GeometryUtil.distance(
+                        new window.AMap.LngLat(effectiveCenter.lng, effectiveCenter.lat),
+                        new window.AMap.LngLat(lng, lat)
+                    )
+                    : null;
+
                 return {
                     id: 'amap_' + p.id,
                     name: p.name,
                     longitude: lng,
                     latitude: lat,
                     address: p.address || `${p.pname || ''}${p.cityname || ''}${p.adname || ''}`,
-                    category: p.type || "非标记点",
-                    isMarked: false
+                    category: p.type || "高德地点",
+                    isMarked: false,
+                    ...(Number.isFinite(dist) ? { dist } : {})
                 };
             }).filter(Boolean);
 
-            baseData = includeUnmarked ? [...markedData, ...processUnmarked] : markedData;
+            baseData = includeUnmarked ? [...markedResults, ...processUnmarked] : markedResults;
             fastSettled = true;
 
             publishResults(baseData, resolvedRecommendation);

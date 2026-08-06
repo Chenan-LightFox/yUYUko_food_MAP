@@ -1,7 +1,12 @@
 const express = require('express');
 const { performance } = require('perf_hooks');
 const { db } = require('../db');
-const { searchSemanticPlaces } = require('../services/semanticSearch');
+const {
+    searchSemanticPlaces,
+    haversineDistanceKm,
+    normalizeCenter,
+    normalizeBounds
+} = require('../services/semanticSearch');
 
 const router = express.Router();
 const AI_QUERY_MAX_LENGTH = 300;
@@ -38,7 +43,18 @@ function sendFastSearch(req, res) {
     const query = String(req.query.q || '').trim().slice(0, AI_QUERY_MAX_LENGTH);
     if (!query) return res.json([]);
     const startedAt = performance.now();
-    const rows = fastSearch(query, parseLimit(req.query.limit));
+    const center = normalizeCenter({ lat: req.query.lat, lng: req.query.lng });
+    const rows = fastSearch(query, parseLimit(req.query.limit)).map((row) => {
+        if (!center) return row;
+        const distanceKm = haversineDistanceKm(center, {
+            lat: row.latitude,
+            lng: row.longitude
+        });
+        return {
+            ...row,
+            distance_km: distanceKm === null ? null : Number(distanceKm.toFixed(3))
+        };
+    });
     const duration = performance.now() - startedAt;
     res.set('Server-Timing', `sqlite;dur=${duration.toFixed(1)}`);
     res.set('Cache-Control', 'no-store');
@@ -80,7 +96,13 @@ router.post('/places/search/ai', async (req, res) => {
     }
 
     try {
-        const result = await searchSemanticPlaces(query, { limit: parseLimit(req.body?.limit, 5, 10) });
+        const center = normalizeCenter(req.body?.center);
+        const bounds = normalizeBounds(req.body?.bounds);
+        const result = await searchSemanticPlaces(query, {
+            limit: parseLimit(req.body?.limit, 5, 10),
+            center,
+            bounds
+        });
         return res.json(result);
     } catch (error) {
         console.warn('AI place search unavailable:', error.message);
