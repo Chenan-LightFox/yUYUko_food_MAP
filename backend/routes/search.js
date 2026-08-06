@@ -1,610 +1,95 @@
 const express = require('express');
-const router = express.Router();
-const https = require('https');
+const { performance } = require('perf_hooks');
 const { db } = require('../db');
-const { fuzzySearch } = require('../utils/fuzzySearch'); // 模糊搜索，保留字段
+const { searchSemanticPlaces } = require('../services/semanticSearch');
 
-const DEFAULT_NEARBY_RADIUS_METERS = 5000;
-const DEFAULT_NEARBY_MIN_COUNT = 5;
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
-const DEEPSEEK_BASE_URL = (process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com').replace(/\/$/, '');
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
-const DEFAULT_DEEPSEEK_TIMEOUT_MS = (() => {
-    const n = Number(process.env.DEEPSEEK_TIMEOUT_MS);
-    return Number.isFinite(n) && n > 0 ? n : 15000;
-})();
-const DEFAULT_DEEPSEEK_MIN_SCORE = 0.6;
-const DEFAULT_DEEPSEEK_MAX_SUGGESTIONS = 8;
-const DEFAULT_DEEPSEEK_MIN_QUERY_LENGTH = 2;
-const DEFAULT_DEEPSEEK_FAR_DISTANCE_METERS = Math.max(8000, DEFAULT_NEARBY_RADIUS_METERS * 2);
-const DEFAULT_AGENT_RECOMMEND_COUNT = 5;
-const DEFAULT_AGENT_MAX_CANDIDATES = (() => {
-    const n = Number(process.env.DEEPSEEK_AGENT_MAX_CANDIDATES);
-    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 200;
-})();
-const DEFAULT_AGENT_CHUNK_SIZE = (() => {
-    const n = Number(process.env.DEEPSEEK_AGENT_CHUNK_SIZE);
-    return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_AGENT_MAX_CANDIDATES;
-})();
-const DEFAULT_AGENT_MAX_TOKENS = 200;
-const DEFAULT_AGENT_RADIUS_METERS = (() => {
-    const n = Number(process.env.DEEPSEEK_AGENT_RADIUS_METERS);
-    if (Number.isFinite(n) && n > 0) return n;
-    return DEFAULT_NEARBY_RADIUS_METERS;
-})();
+const router = express.Router();
+const AI_QUERY_MAX_LENGTH = 300;
+const AI_RATE_WINDOW_MS = 60 * 1000;
+const AI_RATE_LIMIT = Math.max(1, Number.parseInt(process.env.AI_SEARCH_RATE_LIMIT, 10) || 12);
+const aiRateBuckets = new Map();
 
-function normalizeText(s) {
-    return (s || "").toString().trim().toLowerCase();
+function parseLimit(rawValue, fallback = 50, max = 100) {
+    const parsed = Number.parseInt(rawValue, 10);
+    if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+    return Math.min(parsed, max);
 }
 
-function postJson(url, payload, headers = {}, timeoutMs = DEFAULT_DEEPSEEK_TIMEOUT_MS) {
-    return new Promise((resolve, reject) => {
-        const urlObj = new URL(url);
-        const body = JSON.stringify(payload);
-        const req = https.request({
-            method: 'POST',
-            hostname: urlObj.hostname,
-            port: urlObj.port || 443,
-            path: `${urlObj.pathname}${urlObj.search}`,
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(body),
-                ...headers
-            }
-        }, (res) => {
-            let data = '';
-            res.on('data', (chunk) => {
-                data += chunk;
-            });
-            res.on('end', () => {
-                resolve({ status: res.statusCode || 0, body: data });
-            });
-        });
-        req.on('error', reject);
-        req.setTimeout(timeoutMs, () => {
-            req.destroy(new Error('DeepSeek request timed out'));
-        });
-        req.write(body);
-        req.end();
-    });
+function fastSearch(query, limit) {
+    const sql = `SELECT p.*, u.username AS creator_name, uu.username AS updated_by_name
+                 FROM Place p
+                 LEFT JOIN User u ON p.creator_id = u.id
+                 LEFT JOIN User uu ON p.updated_by = uu.id
+                 WHERE instr(lower(COALESCE(p.name, '')), lower(?)) > 0
+                    OR instr(lower(COALESCE(p.category, '')), lower(?)) > 0
+                    OR instr(lower(COALESCE(p.description, '')), lower(?)) > 0
+                 ORDER BY CASE
+                    WHEN lower(trim(COALESCE(p.name, ''))) = lower(?) THEN 0
+                    WHEN instr(lower(COALESCE(p.name, '')), lower(?)) > 0 THEN 1
+                    WHEN instr(lower(COALESCE(p.category, '')), lower(?)) > 0 THEN 2
+                    ELSE 3
+                 END,
+                 p.created_time DESC
+                 LIMIT ?`;
+    return db._raw.prepare(sql).all(query, query, query, query, query, query, limit);
 }
 
-function parseJsonArray(text) {
-    if (!text) return [];
-    try {
-        const parsed = JSON.parse(text);
-        if (Array.isArray(parsed)) return parsed;
-    } catch (e) {
-        // ignore parse error
-    }
-    const match = text.match(/\[[\s\S]*\]/);
-    if (!match) return [];
-    try {
-        const parsed = JSON.parse(match[0]);
-        return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-        return [];
-    }
+function sendFastSearch(req, res) {
+    const query = String(req.query.q || '').trim().slice(0, AI_QUERY_MAX_LENGTH);
+    if (!query) return res.json([]);
+    const startedAt = performance.now();
+    const rows = fastSearch(query, parseLimit(req.query.limit));
+    const duration = performance.now() - startedAt;
+    res.set('Server-Timing', `sqlite;dur=${duration.toFixed(1)}`);
+    res.set('Cache-Control', 'no-store');
+    return res.json(rows);
 }
 
-async function deepseekChat(messages, opts = {}) {
-    if (!DEEPSEEK_API_KEY) return '';
-    const payload = {
-        model: DEEPSEEK_MODEL,
-        temperature: opts.temperature == null ? 0.2 : opts.temperature,
-        max_tokens: opts.maxTokens == null ? DEFAULT_AGENT_MAX_TOKENS : opts.maxTokens,
-        messages
-    };
-
-    try {
-        const url = `${DEEPSEEK_BASE_URL}/v1/chat/completions`;
-        const { status, body } = await postJson(url, payload, {
-            Authorization: `Bearer ${DEEPSEEK_API_KEY}`
-        }, opts.timeoutMs || DEFAULT_DEEPSEEK_TIMEOUT_MS);
-        if (status < 200 || status >= 300) return '';
-        const parsed = JSON.parse(body);
-        return parsed?.choices?.[0]?.message?.content || '';
-    } catch (e) {
-        console.warn('DeepSeek chat failed:', e.message || e);
-        return '';
-    }
-}
-
-async function expandQueriesWithDeepseek(query, maxSuggestions = DEFAULT_DEEPSEEK_MAX_SUGGESTIONS) {
-    if (!DEEPSEEK_API_KEY) return [];
-    const content = await deepseekChat([
-        {
-            role: 'system',
-            content: 'You are a food search query expander. Strip adjectives like 地道, 正宗, 好吃, 推荐, 附近, 最好 from the query and focus on the CORE cuisine/dish. Generate 3-6 keywords: the core cuisine name, common synonyms, and regional variations. NEVER generate terms with modifiers or generic words like 餐厅, 美食, 料理. Return ONLY a JSON array of strings.'
-        },
-        {
-            role: 'user',
-            content: `Query: ${query}`
-        }
-    ], { temperature: 0, maxTokens: 180 });
-
-    const rawList = parseJsonArray(content);
-    const originKey = normalizeText(query);
-    const seen = new Set();
-    const cleaned = [];
-    for (const item of rawList) {
-        const val = (item || '').toString().trim();
-        const key = normalizeText(val);
-        if (!key || key === originKey || key.length < DEFAULT_DEEPSEEK_MIN_QUERY_LENGTH) continue;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        cleaned.push(val);
-        if (cleaned.length >= maxSuggestions) break;
-    }
-    return cleaned;
-}
-
-// 非连续字符匹配
-function isSubsequence(term, text) {
-    if (!term) return true;
-    if (!text) return false;
-    let i = 0, j = 0;
-    const t = term.toLowerCase();
-    const s = text.toLowerCase();
-    while (i < t.length && j < s.length) {
-        if (t[i] === s[j]) i++;
-        j++;
-    }
-    return i === t.length;
-}
-
-// Haversine method 计算距离(m)
-function haversineDistance(lat1, lng1, lat2, lng2) {
-    const toRad = (v) => v * Math.PI / 180;
-    const R = 6371000;
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lng2 - lng1);
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-}
-
-function truncateText(text, maxLen) {
-    const s = (text || '').toString().trim();
-    if (!maxLen || s.length <= maxLen) return s;
-    return s.slice(0, maxLen) + '...';
-}
-
-function makeAgentCandidateKey(place, index) {
-    if (place && place.id != null) return `id:${place.id}`;
-    if (place && place.latitude != null && place.longitude != null) {
-        return `geo:${place.name || 'place'}:${place.latitude}:${place.longitude}`;
-    }
-    return `idx:${index}`;
-}
-
-const MIN_AGENT_RADIUS_METERS = 3000;
-
-function buildAgentCandidates(places, center, maxCandidates, radiusMeters) {
-    const list = [];
-    const cap = Number.isFinite(maxCandidates) && maxCandidates > 0
-        ? Math.floor(maxCandidates)
-        : DEFAULT_AGENT_MAX_CANDIDATES;
-    const rawRadius = Number.isFinite(radiusMeters) && radiusMeters > 0
-        ? radiusMeters
-        : DEFAULT_AGENT_RADIUS_METERS;
-    // 确保 agent 始终有足够的附近候选点，即使前端屏幕范围很小
-    const radius = Math.max(rawRadius, MIN_AGENT_RADIUS_METERS);
-    const enforceRadius = !!center && Number.isFinite(radius) && radius > 0;
-    for (let i = 0; i < (places || []).length && list.length < cap; i += 1) {
-        const p = places[i];
-        if (!p) continue;
-        const key = makeAgentCandidateKey(p, i);
-        let distanceMeters = undefined;
-        if (center && center.lat != null && center.lng != null && p.latitude != null && p.longitude != null) {
-            distanceMeters = haversineDistance(center.lat, center.lng, p.latitude, p.longitude);
-        }
-        if (enforceRadius) {
-            if (!Number.isFinite(distanceMeters) || distanceMeters > radius) continue;
-        }
-        list.push({
-            key,
-            name: truncateText(p.name || '', 40),
-            category: truncateText(p.category || '', 30),
-            address: truncateText(p.address || '', 40),
-            description: truncateText(p.description || '', 120),
-            hasDescription: !!(p.description && p.description.toString().trim()),
-            distanceMeters,
-            place: p
-        });
-    }
-    return list;
-}
-
-function splitIntoChunks(list, chunkSize) {
-    const size = Number.isFinite(chunkSize) && chunkSize > 0 ? Math.floor(chunkSize) : DEFAULT_AGENT_CHUNK_SIZE;
-    const chunks = [];
-    for (let i = 0; i < list.length; i += size) {
-        chunks.push(list.slice(i, i + size));
-    }
-    return chunks;
-}
-
-async function selectAgentKeysFromCandidates(query, candidates, maxCount) {
-    if (!DEEPSEEK_API_KEY || !query || !candidates.length) return [];
-    const limit = Number.isFinite(maxCount) && maxCount > 0 ? Math.floor(maxCount) : DEFAULT_AGENT_RECOMMEND_COUNT;
-    const payloadCandidates = candidates.map((c) => {
-        const base = {
-            key: c.key,
-            name: c.name,
-            category: c.category,
-            address: c.address,
-            description: c.description,
-            has_description: c.hasDescription
-        };
-        if (Number.isFinite(c.distanceMeters)) {
-            base.distance_m = Math.round(c.distanceMeters);
-        }
-        return base;
-    });
-
-    const content = await deepseekChat([
-        {
-            role: 'system',
-            content: 'You are a location recommender for a food map. Choose candidates that best match the user query by carefully reading each candidate\'s name, category AND description. A candidate is relevant if its description mentions the queried cuisine/dish, even if the name is not an obvious match. Candidates with "has_description": false have only a name — be very cautious and select them ONLY if the name is an unmistakable match for the query. Return ONLY a JSON array of candidate keys.'
-        },
-        {
-            role: 'user',
-            content: `Query: ${query}\nCandidates: ${JSON.stringify(payloadCandidates)}`
-        }
-    ], { temperature: 0, maxTokens: 400 });
-
-    const rawKeys = parseJsonArray(content);
-    const allowed = new Set(candidates.map((c) => c.key));
-    const selected = [];
-    for (const item of rawKeys) {
-        const key = (item || '').toString().trim();
-        if (!key || !allowed.has(key)) continue;
-        if (selected.includes(key)) continue;
-        selected.push(key);
-        if (selected.length >= limit) break;
-    }
-    return selected;
-}
-
-async function selectAgentRecommendations(query, candidates, maxCount) {
-    if (!DEEPSEEK_API_KEY || !query || !candidates.length) return [];
-    const limit = Number.isFinite(maxCount) && maxCount > 0 ? Math.floor(maxCount) : DEFAULT_AGENT_RECOMMEND_COUNT;
-    if (candidates.length <= DEFAULT_AGENT_CHUNK_SIZE) {
-        return await selectAgentKeysFromCandidates(query, candidates, limit);
-    }
-    const chunks = splitIntoChunks(candidates, DEFAULT_AGENT_CHUNK_SIZE);
-    const perChunk = Math.max(1, Math.ceil(limit / Math.max(1, chunks.length)));
-    const merged = [];
-
-    for (const chunk of chunks) {
-        const keys = await selectAgentKeysFromCandidates(query, chunk, perChunk);
-        for (const key of keys) {
-            if (!merged.includes(key)) merged.push(key);
+function consumeAiRateLimit(req) {
+    const now = Date.now();
+    if (aiRateBuckets.size > 1000) {
+        for (const [bucketKey, bucket] of aiRateBuckets) {
+            if (now - bucket.startedAt >= AI_RATE_WINDOW_MS) aiRateBuckets.delete(bucketKey);
         }
     }
-
-    if (merged.length <= limit) return merged;
-
-    const shortlist = candidates.filter((c) => merged.includes(c.key));
-    const finalKeys = await selectAgentKeysFromCandidates(query, shortlist, limit);
-    return finalKeys.length > 0 ? finalKeys : merged.slice(0, limit);
-}
-
-async function recommendPlacesWithAgent(query, places, center, opts = {}) {
-    if (!DEEPSEEK_API_KEY || !query) return [];
-    const maxCount = Number.isFinite(opts.maxCount) && opts.maxCount > 0
-        ? Math.floor(opts.maxCount)
-        : DEFAULT_AGENT_RECOMMEND_COUNT;
-    const maxCandidates = Number.isFinite(opts.maxCandidates) && opts.maxCandidates > 0
-        ? Math.floor(opts.maxCandidates)
-        : DEFAULT_AGENT_MAX_CANDIDATES;
-    const candidates = buildAgentCandidates(places, center, maxCandidates, opts.radiusMeters);
-    if (!candidates.length) return [];
-    const keys = await selectAgentRecommendations(query, candidates, maxCount);
-    if (!keys.length) return [];
-    const placeByKey = new Map(candidates.map((c) => [c.key, c.place]));
-    const selected = [];
-    for (const key of keys) {
-        const place = placeByKey.get(key);
-        if (place) selected.push(place);
-    }
-    return selected;
-}
-
-function resolveNearbyMinCount(limit, nearbyMin) {
-    if (Number.isFinite(nearbyMin) && nearbyMin > 0) return Math.floor(nearbyMin);
-    if (Number.isFinite(limit) && limit > 0) return Math.min(limit, DEFAULT_NEARBY_MIN_COUNT);
-    return DEFAULT_NEARBY_MIN_COUNT;
-}
-
-function compareMatches(a, b) {
-    if (a.rank !== b.rank) return a.rank - b.rank;
-    if (a.distance !== b.distance) return a.distance - b.distance;
-    const at = a.place.created_time ? new Date(a.place.created_time).getTime() : 0;
-    const bt = b.place.created_time ? new Date(b.place.created_time).getTime() : 0;
-    return bt - at;
-}
-
-function mergeMatchesByPlace(matches) {
-    const map = new Map();
-    for (const m of matches) {
-        const p = m.place || {};
-        const key = p.id != null
-            ? `id:${p.id}`
-            : `geo:${p.name || ''}:${p.latitude || ''}:${p.longitude || ''}`;
-        const existing = map.get(key);
-        if (!existing || compareMatches(m, existing) < 0) {
-            map.set(key, m);
-        }
-    }
-    return Array.from(map.values());
-}
-
-function getMatchQuality(matched, center) {
-    let bestScore = 0;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-    for (const m of matched) {
-        if (Number.isFinite(m.score) && m.score > bestScore) bestScore = m.score;
-        if (center && Number.isFinite(m.distance) && m.distance < nearestDistance) {
-            nearestDistance = m.distance;
-        }
-    }
-    return {
-        count: matched.length,
-        bestScore,
-        nearestDistance
-    };
-}
-
-function shouldFallbackToDeepseek(term, matched, center) {
-    const q = (term || '').toString().trim();
-    if (!q || q.length < DEFAULT_DEEPSEEK_MIN_QUERY_LENGTH) return false;
-    if (!DEEPSEEK_API_KEY) return false;
-    if (!matched.length) return true;
-
-    const quality = getMatchQuality(matched, center);
-
-    // 有足够的高质量名称匹配时不过度回退
-    const strongMatches = matched.filter(m => m.score >= 1.0);
-    if (strongMatches.length >= 3) return false;
-
-    // 有足够的分类级别匹配时也不回退（如搜"粤菜"匹配分类字段）
-    const decentMatches = matched.filter(m => m.score >= 0.5);
-    if (decentMatches.length >= 5) return false;
-
-    if (quality.bestScore < DEFAULT_DEEPSEEK_MIN_SCORE) return true;
-    if (center && Number.isFinite(quality.nearestDistance) && quality.nearestDistance > DEFAULT_DEEPSEEK_FAR_DISTANCE_METERS) {
+    const key = req.ip || req.socket?.remoteAddress || 'unknown';
+    const previous = aiRateBuckets.get(key);
+    if (!previous || now - previous.startedAt >= AI_RATE_WINDOW_MS) {
+        aiRateBuckets.set(key, { startedAt: now, count: 1 });
         return true;
     }
-    return false;
+    previous.count += 1;
+    return previous.count <= AI_RATE_LIMIT;
 }
 
-function buildMatchesFromRows(rows, term, center) {
-    const matched = [];
-    const t = normalizeText(term);
-    if (!t) return matched;
+// Request A: direct SQLite substring matching. This route never calls an AI service.
+router.get('/places/search/fast', sendFastSearch);
 
-    for (const p of rows) {
-        const name = normalizeText(p.name || '');
-        const category = normalizeText(p.category || '');
-        const description = normalizeText(p.description || '');
+// Backward-compatible alias used by older clients and live suggestions.
+router.get('/places/search', sendFastSearch);
 
-        // 正向：搜索词是否出现在字段中（子串或子序列）
-        const nameContainsFwd = name.indexOf(t) !== -1;
-        const categoryContainsFwd = category.indexOf(t) !== -1;
-        const descContainsFwd = description.indexOf(t) !== -1;
-        const nameSubseqFwd = isSubsequence(t, name);
-
-        // 反向：字段是否出现在搜索词中 — 仅在字段足够长时启用，
-        // 防止短名称（如"火锅""餐厅""重庆"等 1-2 字词）在长搜索词中大量误匹配
-        const nameLongEnough = name.length >= 3;
-        const catLongEnough = category.length >= 3;
-        const descLongEnough = description.length >= 3;
-        const nameContainsRev = nameLongEnough && t.indexOf(name) !== -1;
-        const categoryContainsRev = catLongEnough && t.indexOf(category) !== -1;
-        const descContainsRev = descLongEnough && t.indexOf(description) !== -1;
-        const nameSubseqRev = nameLongEnough && isSubsequence(name, t);
-
-        const nameContains = nameContainsFwd || nameContainsRev;
-        const categoryContains = categoryContainsFwd || categoryContainsRev;
-        const descContains = descContainsFwd || descContainsRev;
-        const nameSubseq = nameSubseqFwd || nameSubseqRev;
-
-        if (!nameContains && !nameSubseq && !categoryContains && !descContains) continue;
-
-        let rank = 99;
-        let score = 0;
-        if (nameContains) {
-            rank = 0;
-            score = 1;
-        } else if (nameSubseq) {
-            rank = 1;
-            score = 0.7;
-        } else if (categoryContains) {
-            rank = 2;
-            score = (t === category) ? 0.85 : 0.5;
-        } else if (descContains) {
-            rank = 3;
-            score = 0.4;
-        }
-
-        let distance = Number.POSITIVE_INFINITY;
-        if (center && center.lat != null && center.lng != null && p.latitude != null && p.longitude != null) {
-            distance = haversineDistance(center.lat, center.lng, p.latitude, p.longitude);
-        }
-
-        matched.push({
-            place: p,
-            rank,
-            distance,
-            score
-        });
+// Request B: embedding -> sqlite-vec KNN -> DeepSeek Yuyuko recommendation.
+router.post('/places/search/ai', async (req, res) => {
+    const query = String(req.body?.q || '').trim();
+    if (!query) return res.status(400).json({ error: '搜索内容不能为空' });
+    if (query.length > AI_QUERY_MAX_LENGTH) {
+        return res.status(400).json({ error: `搜索内容不能超过 ${AI_QUERY_MAX_LENGTH} 个字符` });
+    }
+    if (!consumeAiRateLimit(req)) {
+        return res.status(429).json({ error: '幽幽子正在认真品尝，请稍后再问一次吧' });
     }
 
-    return matched;
-}
-
-function prioritizeNearbyMatches(matched, opts = {}) {
-    const { center, limit, nearbyRadius, nearbyMin } = opts;
-    if (!center || center.lat == null || center.lng == null) return matched;
-
-    const radius = Number.isFinite(nearbyRadius) && nearbyRadius > 0
-        ? nearbyRadius
-        : DEFAULT_NEARBY_RADIUS_METERS;
-    if (!Number.isFinite(radius) || radius <= 0) return matched;
-
-    const minCount = resolveNearbyMinCount(limit, nearbyMin);
-    const inRadius = matched.filter((m) => Number.isFinite(m.distance) && m.distance <= radius);
-    if (inRadius.length >= minCount) return inRadius;
-
-    const outRadius = matched.filter((m) => !Number.isFinite(m.distance) || m.distance > radius);
-    return [...inRadius, ...outRadius];
-}
-
-async function getAllPlaces(opts = {}) {
-    const q = (opts.q || "").toString().trim();
-    const term = normalizeText(q);
-    const center = opts.center; // { lat, lng } 或 undefined
-    const limit = Number.isInteger(opts.limit) ? opts.limit : undefined;
-    const nearbyRadius = opts.nearbyRadius != null ? Number(opts.nearbyRadius) : undefined;
-    const nearbyMin = opts.nearbyMin != null ? Number(opts.nearbyMin) : undefined;
-    const allowDeepseek = opts.allowDeepseek !== false;
-    const agentRecommend = opts.agentRecommend !== false;
-    const agentRecommendOnly = opts.agentRecommendOnly === true;
-    const agentRecommendCount = Number.isFinite(opts.agentRecommendCount) ? Math.floor(opts.agentRecommendCount) : undefined;
-    const agentMaxCandidates = Number.isFinite(opts.agentMaxCandidates) ? Math.floor(opts.agentMaxCandidates) : undefined;
-    const agentRadiusMeters = Number.isFinite(opts.agentRadiusMeters) ? Math.floor(opts.agentRadiusMeters) : undefined;
-
-    // 获取所有地点数据（附带创建者和最后修改者姓名）
-    const rows = await new Promise((resolve, reject) => {
-        const sql = `SELECT p.*, u.username AS creator_name, uu.username AS updated_by_name
-                     FROM Place p
-                     LEFT JOIN User u ON p.creator_id = u.id
-                     LEFT JOIN User uu ON p.updated_by = uu.id`;
-        db.all(sql, [], (err, rows) => {
-            if (err) return reject(err);
-            resolve(rows || []);
-        });
-    });
-
-    // 如果没有关键字，则按距离或按创建时间降序返回
-    if (!term) {
-        let list = rows.slice();
-        if (center && center.lat != null && center.lng != null) {
-            list.forEach(p => {
-                p.__distance = haversineDistance(center.lat, center.lng, p.latitude, p.longitude);
-            });
-            list.sort((a, b) => a.__distance - b.__distance);
-        } else {
-            // 按 created_time 降序（若不存在则保持原序）
-            list.sort((a, b) => {
-                if (!a.created_time && !b.created_time) return 0;
-                if (!a.created_time) return 1;
-                if (!b.created_time) return -1;
-                return new Date(b.created_time) - new Date(a.created_time);
-            });
-        }
-        if (limit) return list.slice(0, limit);
-        return list;
-    }
-
-    // 有关键字的情况：分组并排序
-    let matched = buildMatchesFromRows(rows, term, center);
-    matched.sort(compareMatches);
-
-    const fullMatched = matched;
-
-    let prioritized = prioritizeNearbyMatches(matched, { center, limit, nearbyRadius, nearbyMin });
-    let results = prioritized.map(m => m.place);
-
-    if (allowDeepseek && shouldFallbackToDeepseek(term, matched, center)) {
-        const suggestions = await expandQueriesWithDeepseek(q);
-        if (suggestions.length > 0) {
-            const extraMatches = [];
-            for (const suggestion of suggestions) {
-                const altMatched = buildMatchesFromRows(rows, suggestion, center);
-                extraMatches.push(...altMatched);
-            }
-            const allMatches = [...fullMatched, ...extraMatches];
-            const allMerged = mergeMatchesByPlace(allMatches);
-            allMerged.sort(compareMatches);
-            results = allMerged.map(m => m.place);
-        }
-    }
-
-    if (agentRecommend) {
-        // 将所有地点传给 agent（不经过关键词筛选），由 agent 根据距离和语义自行判断
-        const recommended = await recommendPlacesWithAgent(q, rows, center, {
-            maxCount: agentRecommendCount,
-            maxCandidates: agentMaxCandidates,
-            radiusMeters: agentRadiusMeters
-        });
-        if (recommended.length > 0) {
-            if (agentRecommendOnly) {
-                results = recommended;
-            } else {
-                const seen = new Set();
-                const merged = [];
-                for (const p of recommended) {
-                    const key = p.id != null
-                        ? `id:${p.id}`
-                        : `geo:${p.name || ''}:${p.latitude || ''}:${p.longitude || ''}`;
-                    if (seen.has(key)) continue;
-                    seen.add(key);
-                    merged.push(p);
-                }
-                for (const p of results) {
-                    const key = p.id != null
-                        ? `id:${p.id}`
-                        : `geo:${p.name || ''}:${p.latitude || ''}:${p.longitude || ''}`;
-                    if (seen.has(key)) continue;
-                    seen.add(key);
-                    merged.push(p);
-                }
-                results = merged;
-            }
-        }
-    }
-
-    if (limit) return results.slice(0, limit);
-    return results;
-}
-
-// GET /places/search?q=关键字&limit=50&centerLat=...&centerLng=...&nearbyRadius=2000&nearbyMin=20&agentRecommend=1&agentRecommendOnly=1&agentRadius=5000
-router.get('/places/search', async (req, res) => {
     try {
-        const q = req.query.q || "";
-        const limit = req.query.limit ? parseInt(req.query.limit, 10) : undefined;
-        const centerLat = req.query.centerLat ? parseFloat(req.query.centerLat) : undefined;
-        const centerLng = req.query.centerLng ? parseFloat(req.query.centerLng) : undefined;
-        const center = (centerLat != null && centerLng != null) ? { lat: centerLat, lng: centerLng } : undefined;
-        const nearbyRadius = req.query.nearbyRadius ? parseFloat(req.query.nearbyRadius) : undefined;
-        const nearbyMin = req.query.nearbyMin ? parseInt(req.query.nearbyMin, 10) : undefined;
-        const agentRecommend = req.query.agentRecommend ? req.query.agentRecommend !== '0' : undefined;
-        const agentRecommendOnly = req.query.agentRecommendOnly ? req.query.agentRecommendOnly !== '0' : undefined;
-        const agentRecommendCount = req.query.agentRecommendCount ? parseInt(req.query.agentRecommendCount, 10) : undefined;
-        const agentMaxCandidates = req.query.agentMaxCandidates ? parseInt(req.query.agentMaxCandidates, 10) : undefined;
-        const agentRadiusMeters = req.query.agentRadius ? parseInt(req.query.agentRadius, 10) : undefined;
-
-        const places = await getAllPlaces({
-            q,
-            center,
-            limit,
-            nearbyRadius,
-            nearbyMin,
-            agentRecommend,
-            agentRecommendOnly,
-            agentRecommendCount,
-            agentMaxCandidates,
-            agentRadiusMeters
+        const result = await searchSemanticPlaces(query, { limit: parseLimit(req.body?.limit, 5, 10) });
+        return res.json(result);
+    } catch (error) {
+        console.warn('AI place search unavailable:', error.message);
+        return res.status(503).json({
+            status: 'unavailable',
+            recommendation: null,
+            matches: [],
+            error: '幽幽子的语义搜索暂时不可用，基础搜索仍可正常使用'
         });
-        res.json(places);
-    } catch (err) {
-        console.error("places search error:", err);
-        res.status(500).json({ error: err.message || "internal error" });
     }
 });
 

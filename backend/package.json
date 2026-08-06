@@ -3,7 +3,9 @@
     "version": "0.1.0",
     "main": "index.js",
     "scripts": {
-        "start": "node index.js"
+        "start": "node index.js",
+        "test:search": "node scripts/test_search_smoke.js",
+        "vectors:backfill": "node scripts/backfill_place_vectors.js"
     },
     "dependencies": {
         "better-sqlite3": "^12.8.0",
@@ -14,6 +16,7 @@
         "http-proxy-middleware": "^3.0.5",
         "ioredis": "^5.10.0",
         "jsonwebtoken": "^9.0.3",
-        "multer": "^2.1.1"
+        "multer": "^2.1.1",
+        "sqlite-vec": "0.1.9"
     }
 }

@@ -43,6 +43,15 @@
     <script
         src="https://webapi.amap.com/maps?v=2.0&key=c92da5ff295d79be6e55c3dd2946a272&plugin=AMap.MarkerCluster,AMap.PlaceSearch,AMap.Geolocation,AMap.InfoWindow"></script>
     <style>
+        @keyframes yuyuko-card-in {
+            from { opacity: 0; transform: translateY(-8px) scale(0.985); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes yuyuko-thinking-spin {
+            to { transform: rotate(360deg); }
+        }
+
         :root {
             --app-height: 100vh;
             color-scheme: light;

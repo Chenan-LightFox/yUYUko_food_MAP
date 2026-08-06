@@ -24,11 +24,20 @@ function parseCategoryNames(value) {
 }
 
 let rawDb;
+let vectorSearchAvailable = false;
 try {
     rawDb = new Database(dbFile);
 } catch (e) {
     console.error('Failed to open DB:', e && e.message);
     throw e;
+}
+
+try {
+    const sqliteVec = require('sqlite-vec');
+    sqliteVec.load(rawDb);
+    vectorSearchAvailable = true;
+} catch (error) {
+    console.warn('sqlite-vec is unavailable; semantic search will stay disabled:', error.message);
 }
 
 // Provide a small wrapper that mimics the sqlite3 async callback API used across the codebase
@@ -237,6 +246,15 @@ function init() {
         addPlaceIfMissing('exterior_images TEXT');
         addPlaceIfMissing('menu_images TEXT');
         addPlaceIfMissing('per_person_cost INTEGER');
+        addPlaceIfMissing('has_vector INTEGER NOT NULL DEFAULT 0');
+        addPlaceIfMissing('vector_updated_at DATETIME');
+
+        if (vectorSearchAvailable) {
+            rawDb.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS place_vectors USING vec0(
+                place_id INTEGER PRIMARY KEY,
+                embedding FLOAT[1024] distance_metric=cosine
+            );`);
+        }
 
         try {
             rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_place_creator_id ON Place(creator_id);`);
@@ -407,4 +425,8 @@ function init() {
     }
 }
 
-module.exports = { db, init };
+module.exports = {
+    db,
+    init,
+    isVectorSearchAvailable: () => vectorSearchAvailable
+};

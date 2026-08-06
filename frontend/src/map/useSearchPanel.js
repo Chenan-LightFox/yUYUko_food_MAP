@@ -1,34 +1,5 @@
 import { useState, useEffect } from 'react';
 import { searchPlaces } from './api';
-import * as MapUtils from './utils';
-
-function getAgentRadiusFromMap(map) {
-    if (!map || typeof map.getBounds !== 'function') return undefined;
-    const bounds = map.getBounds();
-    if (!bounds) return undefined;
-    const center = MapUtils.normalizeLngLat(map.getCenter());
-    if (!center) return undefined;
-    const sw = bounds.getSouthWest();
-    const ne = bounds.getNorthEast();
-    const swLng = typeof sw.lng !== 'undefined' ? sw.lng : sw.getLng();
-    const swLat = typeof sw.lat !== 'undefined' ? sw.lat : sw.getLat();
-    const neLng = typeof ne.lng !== 'undefined' ? ne.lng : ne.getLng();
-    const neLat = typeof ne.lat !== 'undefined' ? ne.lat : ne.getLat();
-    if (!Number.isFinite(swLng) || !Number.isFinite(swLat) || !Number.isFinite(neLng) || !Number.isFinite(neLat)) return undefined;
-    const corners = [
-        { lng: swLng, lat: swLat },
-        { lng: swLng, lat: neLat },
-        { lng: neLng, lat: swLat },
-        { lng: neLng, lat: neLat }
-    ];
-    let maxDist = 0;
-    for (const corner of corners) {
-        const dist = MapUtils.haversineDistanceMeters(center, corner);
-        if (Number.isFinite(dist) && dist > maxDist) maxDist = dist;
-    }
-    if (!Number.isFinite(maxDist) || maxDist <= 0) return undefined;
-    return Math.round(maxDist * 2);
-}
 
 export function useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLocationMarkerRef, places) {
     const [results, setResults] = useState(null);
@@ -54,16 +25,13 @@ export function useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, userLoc
                 const centerNode = userLocPos || mapCenterNode;
 
                 const center = centerNode ? { lat: centerNode.lat, lng: centerNode.lng } : undefined;
-                const agentRadius = map ? getAgentRadiusFromMap(map) : undefined;
-
                 // 1. Searched marked points (from our backend)
                 let markedData = [];
                 try {
                     markedData = await searchPlaces(backendUrl, {
                         q: searchTerm.trim(),
                         center,
-                        limit: 30,
-                        agentRadius
+                        limit: 30
                     });
                 } catch (e) {
                     console.error("fetch marked points failed", e);

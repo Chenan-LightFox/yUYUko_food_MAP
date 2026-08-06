@@ -4,6 +4,7 @@ const { db } = require("../db");
 const { requireAuth } = require("../middleware/auth");
 const requireAdmin = require("../middleware/adminAuth");
 const { logAdminAction } = require("../utils/adminAudit");
+const { queuePlaceVectorSync } = require('../services/placeVectorService');
 
 // 提交地点修改申请（需登录）
 router.post("/", requireAuth, (req, res) => {
@@ -72,7 +73,11 @@ router.post("/:id/review", requireAuth, requireAdmin("manage_places"), (req, res
         // Build SET clause dynamically
         const keys = Object.keys(proposed).filter(k => ['name', 'description', 'latitude', 'longitude', 'category', 'exterior_images', 'menu_images', 'per_person_cost', 'creator_id', 'updated_time', 'updated_by'].includes(k));
         if (keys.length === 0) return res.status(400).json({ error: "无可应用的变更" });
-        const sets = keys.map(k => `${k} = ?`).join(', ');
+        const semanticChanged = keys.some(k => ['name', 'description', 'category', 'per_person_cost'].includes(k));
+        const sets = [
+            ...keys.map(k => `${k} = ?`),
+            ...(semanticChanged ? ['has_vector = 0'] : [])
+        ].join(', ');
         const values = keys.map(k => {
             if (['exterior_images', 'menu_images'].includes(k)) {
                 return proposed[k] ? JSON.stringify(proposed[k]) : null;
@@ -91,6 +96,7 @@ router.post("/:id/review", requireAuth, requireAdmin("manage_places"), (req, res
                     console.error('Failed to log place request approval', ex && ex.message);
                 }
                 res.json({ success: true });
+                if (semanticChanged) setImmediate(() => queuePlaceVectorSync(reqRow.place_id));
             });
         });
     });

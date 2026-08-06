@@ -3,6 +3,7 @@ const router = express.Router();
 const { db } = require("../db");
 const { requireAuth } = require("../middleware/auth");
 const { hasPermission } = require("../utils/adminPermissions");
+const { queuePlaceVectorSync, deletePlaceVector } = require('../services/placeVectorService');
 
 const PLACE_NAME_MAX_LENGTH = 120;
 const PLACE_CATEGORY_MAX_LENGTH = 240;
@@ -211,6 +212,7 @@ router.post("/", requireAuth, (req, res) => {
         db.get(sel, [this.lastID], (e, row) => {
             if (e) return res.status(500).json({ error: e.message });
             res.json(row);
+            setImmediate(() => queuePlaceVectorSync(row.id));
         });
     });
 });
@@ -278,6 +280,9 @@ router.put("/:id", requireAuth, (req, res) => {
                 fields.push("per_person_cost = ?"); values.push(n);
             }
         }
+        const semanticChanged = [name, description, category, per_person_cost]
+            .some((value) => value !== undefined);
+        if (semanticChanged) fields.push('has_vector = 0');
         if (fields.length === 0) return res.status(400).json({ error: "没有提供要更新的字段" });
 
         // 更新 updated_time 和 updated_by
@@ -299,6 +304,7 @@ router.put("/:id", requireAuth, (req, res) => {
             db.get(sel, [id], (e2, row) => {
                 if (e2) return res.status(500).json({ error: e2.message });
                 res.json(row);
+                if (semanticChanged) setImmediate(() => queuePlaceVectorSync(id));
             });
         });
     });
@@ -322,6 +328,9 @@ router.delete("/:id", requireAuth, (req, res) => {
         }
         db.run("DELETE FROM Place WHERE id = ?", [id], function (e) {
             if (e) return res.status(500).json({ error: e.message });
+            try { deletePlaceVector(id); } catch (vectorError) {
+                console.warn(`Failed to delete vector for place ${id}:`, vectorError.message);
+            }
             res.json({ success: true });
         });
     });

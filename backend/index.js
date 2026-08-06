@@ -25,6 +25,7 @@ const noticesRouter = require("./routes/notices");
 const categoriesRouter = require("./routes/categories");
 const { requireAuth } = require("./middleware/auth");
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const { startVectorRetryWorker } = require('./services/placeVectorService');
 
 const app = express();
 // When running behind an HTTPS reverse proxy (e.g. nginx), enable trust proxy
@@ -162,6 +163,7 @@ app.use("/api/admin/notices", requireAuth, adminNoticesRouter);
 
 
 init();
+startVectorRetryWorker();
 
 app.use('/api', searchRouter);
 app.use("/places", placesRouter);

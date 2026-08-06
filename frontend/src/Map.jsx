@@ -18,36 +18,6 @@ const { normalizeLngLat, readSavedMapView, shouldPersistMapView, MAP_VIEW_STORAG
 const PREFETCH_BOUNDS_RATIO = 1; // prefetch one viewport margin around the visible area
 
 const clampNumber = (value, min, max) => Math.min(Math.max(value, min), max);
-const getAgentRadiusFromMap = (map) => {
-    if (!map || typeof map.getBounds !== "function") return undefined;
-    const bounds = map.getBounds();
-    if (!bounds) return undefined;
-    const center = MapUtils.normalizeLngLat(map.getCenter());
-    if (!center) return undefined;
-    const sw = bounds.getSouthWest();
-    const ne = bounds.getNorthEast();
-    const swLng = typeof sw.lng !== 'undefined' ? sw.lng : sw.getLng();
-    const swLat = typeof sw.lat !== 'undefined' ? sw.lat : sw.getLat();
-    const neLng = typeof ne.lng !== 'undefined' ? ne.lng : ne.getLng();
-    const neLat = typeof ne.lat !== 'undefined' ? ne.lat : ne.getLat();
-    if (!Number.isFinite(swLng) || !Number.isFinite(swLat) || !Number.isFinite(neLng) || !Number.isFinite(neLat)) return undefined;
-    const corners = [
-        { lng: swLng, lat: swLat },
-        { lng: swLng, lat: neLat },
-        { lng: neLng, lat: swLat },
-        { lng: neLng, lat: neLat }
-    ];
-    let maxDist = 0;
-    for (const corner of corners) {
-        const dist = MapUtils.haversineDistanceMeters(center, corner);
-        if (Number.isFinite(dist) && dist > maxDist) maxDist = dist;
-    }
-    if (!Number.isFinite(maxDist) || maxDist <= 0) return undefined;
-    return Math.round(maxDist * 2);
-};
-
-
-
 function buildInfoWindowContent(place) {
     const root = document.createElement("div");
     root.style.minWidth = "160px";
@@ -98,6 +68,8 @@ export default function MapView({
     const [searchTerm, setSearchTerm] = useState("");
     const [searchResults, setSearchResults] = useState(null);
     const [searching, setSearching] = useState(false);
+    const [aiThinking, setAiThinking] = useState(false);
+    const [aiRecommendation, setAiRecommendation] = useState(null);
     const [searchResetKey, setSearchResetKey] = useState(0);
     const showTip = useTips();
     const confirm = useConfirm();
@@ -141,8 +113,13 @@ export default function MapView({
     const searchingRef = useRef(searching);
     useEffect(() => { searchingRef.current = searching; }, [searching]);
     const searchServerRef = useRef(null);
+    const searchRequestIdRef = useRef(0);
+    const searchAbortControllersRef = useRef([]);
     const skipNextSearchRef = useRef(false);
     const skipSearchTimerRef = useRef(null);
+    useEffect(() => () => {
+        searchAbortControllersRef.current.forEach((controller) => controller.abort());
+    }, []);
     useEffect(() => { manageOpenRef.current = manageOpen; }, [manageOpen]);
     useEffect(() => { commentOpenRef.current = commentOpen; }, [commentOpen]);
     const loadPlacesRef = useRef(null);
@@ -151,14 +128,32 @@ export default function MapView({
     const visibleIndividualIdsRef = useRef(new Set());
 
     const clearSearchState = ({ resetTerm = true, closeSearchUi = true, reloadPlaces = true } = {}) => {
+        searchRequestIdRef.current += 1;
+        searchAbortControllersRef.current.forEach((controller) => controller.abort());
+        searchAbortControllersRef.current = [];
         if (resetTerm) setSearchTerm("");
         setSearchResults(null);
         setSearching(false);
+        setAiThinking(false);
+        setAiRecommendation(null);
         if (closeSearchUi) setSearchResetKey((v) => v + 1);
         if (reloadPlaces && loadPlacesRef.current) {
             return loadPlacesRef.current(true);
         }
         return null;
+    };
+
+    const handleSearchTermChange = (value) => {
+        if (value !== searchTermRef.current) {
+            searchRequestIdRef.current += 1;
+            searchAbortControllersRef.current.forEach((controller) => controller.abort());
+            searchAbortControllersRef.current = [];
+            setSearchResults(null);
+            setSearching(false);
+            setAiThinking(false);
+            setAiRecommendation(null);
+        }
+        setSearchTerm(value);
     };
 
     const armSkipAutoSearch = (durationMs = 900) => {
@@ -967,6 +962,8 @@ export default function MapView({
             // 重新加载数据并清除搜索结果（若正在搜索）
             setSearchResults(null);
             setSearching(false);
+            setAiThinking(false);
+            setAiRecommendation(null);
             await loadPlaces(true); // force load since state hasn't updated ref yet
             setAddMode(false);
         } catch (e) {
@@ -975,22 +972,82 @@ export default function MapView({
         }
     };
 
-    // 使用后端 /api/places/search 接口进行搜索，并混合高德地图 API 非标记点结果
+    // 提交搜索时同时启动快速字面匹配与 AI 语义推荐；快速结果不会等待 AI。
     const searchServer = async ({ q = "", center = undefined, limit = undefined, autoFit = true, includeUnmarked = true } = {}) => {
+        const query = String(q || '').trim();
+        if (!query) return;
         const userLocPos = userLocationMarkerRef?.current ? userLocationMarkerRef.current.getPosition() : null;
         const mapCenter = mapRef.current ? mapRef.current.getCenter() : null;
         const effectiveCenter = center || (userLocPos ? { lat: userLocPos.lat, lng: userLocPos.lng } : (mapCenter ? { lat: mapCenter.lat, lng: mapCenter.lng } : undefined));
-        const agentRadius = mapRef.current ? getAgentRadiusFromMap(mapRef.current) : undefined;
         if (!mapRef.current && !effectiveCenter) {
             console.warn("searchServer: 地图尚未就绪且未传入 center，直接返回");
             return;
         }
+
+        searchAbortControllersRef.current.forEach((controller) => controller.abort());
+        const fastController = new AbortController();
+        const aiController = new AbortController();
+        searchAbortControllersRef.current = [fastController, aiController];
+        const requestId = ++searchRequestIdRef.current;
+        let baseData = [];
+        let fastSettled = false;
+        let resolvedRecommendation = null;
+
+        const mergeRecommendation = (data, recommendation) => {
+            if (!recommendation?.place) return data;
+            const recommendedId = String(recommendation.place.id);
+            return [
+                recommendation.place,
+                ...data.filter((place) => String(place.id) !== recommendedId)
+            ];
+        };
+
+        const publishResults = (data, recommendation) => {
+            if (requestId !== searchRequestIdRef.current) return;
+            const merged = mergeRecommendation(data, recommendation);
+            setSearchResults(merged);
+            renderMarkers(mapRef.current, markersRef, merged, showPopup);
+        };
+
         setSearching(true);
+        setAiThinking(true);
+        setAiRecommendation(null);
+
+        // Both network calls are created before either one is awaited.
+        const fastPromise = Api.searchPlacesFast(backendUrl, {
+            q: query,
+            center: effectiveCenter,
+            limit,
+            signal: fastController.signal
+        });
+        const aiPromise = Api.searchPlacesAi(backendUrl, {
+            q: query,
+            limit: 5,
+            signal: aiController.signal
+        });
+
+        aiPromise
+            .then((result) => {
+                if (requestId !== searchRequestIdRef.current) return;
+                resolvedRecommendation = result?.recommendation || null;
+                setAiRecommendation(resolvedRecommendation);
+                if (fastSettled && resolvedRecommendation) publishResults(baseData, resolvedRecommendation);
+            })
+            .catch((error) => {
+                if (error?.name !== 'AbortError' && requestId === searchRequestIdRef.current) {
+                    console.warn('AI search unavailable; keeping fast results:', error.message || error);
+                }
+            })
+            .finally(() => {
+                if (requestId === searchRequestIdRef.current) setAiThinking(false);
+            });
+
         try {
-            const markedData = await Api.searchPlaces(backendUrl, { q, center: effectiveCenter, limit, agentRadius });
+            const markedData = await fastPromise;
+            if (requestId !== searchRequestIdRef.current) return;
 
             let unmarkedData = [];
-            if (window.AMap && q && q.trim()) {
+            if (includeUnmarked && window.AMap) {
                 unmarkedData = await new Promise(resolve => {
                     window.AMap.plugin('AMap.PlaceSearch', () => {
                         const ps = new window.AMap.PlaceSearch({
@@ -1002,7 +1059,7 @@ export default function MapView({
                             : (mapRef.current ? [mapRef.current.getCenter().lng, mapRef.current.getCenter().lat] : null);
 
                         if (cpoint) {
-                            ps.searchNearBy(q.trim(), cpoint, 2000, (status, result) => {
+                            ps.searchNearBy(query, cpoint, 2000, (status, result) => {
                                 if (status === 'complete' && result.info === 'OK') {
                                     resolve(result.poiList.pois || []);
                                 } else {
@@ -1010,7 +1067,7 @@ export default function MapView({
                                 }
                             });
                         } else {
-                            ps.search(q.trim(), (status, result) => {
+                            ps.search(query, (status, result) => {
                                 if (status === 'complete' && result.info === 'OK') {
                                     resolve(result.poiList.pois || []);
                                 } else {
@@ -1021,6 +1078,7 @@ export default function MapView({
                     });
                 });
             }
+            if (requestId !== searchRequestIdRef.current) return;
 
             const processUnmarked = unmarkedData.map(p => {
                 const lng = p.location?.lng;
@@ -1055,10 +1113,10 @@ export default function MapView({
                 };
             }).filter(Boolean);
 
-            const data = includeUnmarked ? [...markedData, ...processUnmarked] : markedData;
+            baseData = includeUnmarked ? [...markedData, ...processUnmarked] : markedData;
+            fastSettled = true;
 
-            setSearchResults(data);
-            renderMarkers(mapRef.current, markersRef, data, showPopup);
+            publishResults(baseData, resolvedRecommendation);
             // 若匹配成功，调整视野到所有匹配 marker
             if (autoFit) {
                 const markers = markersRef.current;
@@ -1074,7 +1132,7 @@ export default function MapView({
                     try {
                         mapRef.current.setFitView(markers);
                     } catch (e) {
-                        const first = data[0];
+                        const first = baseData[0];
                         if (first) {
                             mapRef.current.setCenter([first.longitude, first.latitude]);
                             mapRef.current.setZoom(15);
@@ -1083,9 +1141,13 @@ export default function MapView({
                 }
             }
         } catch (e) {
-            console.error("searchServer error", e);
+            if (e?.name !== 'AbortError') console.error("searchServer error", e);
+            if (requestId === searchRequestIdRef.current) {
+                fastSettled = true;
+                publishResults([], resolvedRecommendation);
+            }
         } finally {
-            setSearching(false);
+            if (requestId === searchRequestIdRef.current) setSearching(false);
         }
     };
     searchServerRef.current = searchServer;
@@ -1478,10 +1540,13 @@ export default function MapView({
                 token={token}
                 containerRef={containerRef}
                 searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
+                setSearchTerm={handleSearchTermChange}
                 clearSearch={clearSearch}
                 searchResetKey={searchResetKey}
                 searchServer={searchServer}
+                searchResults={searchResults}
+                aiThinking={aiThinking}
+                aiRecommendation={aiRecommendation}
                 onProgrammaticMapMove={armSkipAutoSearch}
                 onSelectSuggestion={handleSelectSuggestion}
                 mapReady={mapReady}

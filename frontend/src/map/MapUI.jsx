@@ -163,6 +163,9 @@ export default function MapUI(props) {
         clearSearch,
         searchResetKey,
         searchServer,
+        searchResults,
+        aiThinking,
+        aiRecommendation,
         onProgrammaticMapMove,
         onSelectSuggestion,
         mapReady,
@@ -474,7 +477,7 @@ export default function MapUI(props) {
 
     const handleSearchButtonClick = () => {
         if (!searchTerm || !searchTerm.trim()) return;
-        setSearchResultsVisible(false);
+        setSearchResultsVisible(true);
         searchServer({ q: searchTerm, includeUnmarked: false, autoFit: false });
     };
 
@@ -529,12 +532,65 @@ export default function MapUI(props) {
                             <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1, paddingRight: 8 }}>
                                 {item.address || item.category || item.description || ''}
                             </span>
-                            <span style={{ fontSize: 11, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                距离: {item.dist < 1000 ? `${Math.round(item.dist)}米` : `${(item.dist / 1000).toFixed(1)}公里`}
-                            </span>
+                            {Number.isFinite(item.dist) && (
+                                <span style={{ fontSize: 11, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                    距离: {item.dist < 1000 ? `${Math.round(item.dist)}米` : `${(item.dist / 1000).toFixed(1)}公里`}
+                                </span>
+                            )}
                         </div>
                     </div>
                 ))}
+            </div>
+        );
+    };
+
+    const renderAiRecommendation = () => {
+        const recommendation = aiRecommendation;
+        const place = recommendation?.place;
+        if (!place) return null;
+        const matchPercent = Number.isFinite(Number(recommendation.match_percent))
+            ? Math.round(Number(recommendation.match_percent))
+            : Math.round((Number(recommendation.score) || 0) * 100);
+        return (
+            <div
+                onClick={() => handleSelectSpItem(place)}
+                style={{
+                    margin: '10px 10px 12px',
+                    padding: 12,
+                    cursor: 'pointer',
+                    borderRadius: 12,
+                    border: '1px solid var(--theme-primary)',
+                    borderLeft: '4px solid var(--theme-primary)',
+                    background: 'linear-gradient(135deg, var(--theme-primary-0-2), var(--theme-secondary-0-12)), var(--color-bg-surface)',
+                    boxShadow: '0 0 8px var(--theme-primary-0-25), 0 0 22px var(--theme-secondary-0-2)',
+                    animation: 'yuyuko-card-in 320ms ease-out both'
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-primary)', fontWeight: 800, fontSize: 13 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 20, color: 'var(--theme-icon)' }}>auto_awesome</span>
+                        幽幽子特别推荐
+                    </div>
+                    <span style={{
+                        color: 'var(--color-text-primary)',
+                        background: 'var(--theme-secondary-0-12)',
+                        border: '1px solid var(--theme-secondary)',
+                        borderRadius: 999,
+                        padding: '2px 7px',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap'
+                    }}>匹配度 {matchPercent}%</span>
+                </div>
+                <div style={{ marginTop: 8, fontSize: 16, fontWeight: 800, color: 'var(--color-text-primary)' }}>{place.name}</div>
+                {(place.category || place.per_person_cost) && (
+                    <div style={{ marginTop: 3, color: 'var(--color-text-secondary)', fontSize: 12 }}>
+                        {[place.category, place.per_person_cost ? `人均约 ${place.per_person_cost} 元` : ''].filter(Boolean).join(' · ')}
+                    </div>
+                )}
+                <div style={{ marginTop: 8, color: 'var(--color-text-primary)', fontSize: 13, lineHeight: 1.55 }}>
+                    {recommendation.reason}
+                </div>
             </div>
         );
     };
@@ -618,7 +674,7 @@ export default function MapUI(props) {
                 }}>
                     <input
                         ref={inputRef}
-                        placeholder="搜索关键词（例如：火锅/店名）"
+                        placeholder="搜店名，或说说现在想吃什么"
                         value={searchTerm}
                         onChange={(e) => {
                             const v = e.target.value;
@@ -634,12 +690,12 @@ export default function MapUI(props) {
                             if (e.key === 'Enter') {
                                 e.preventDefault();
                                 if (searchTerm && searchTerm.trim()) {
-                                    setSearchResultsVisible(false);
+                                    setSearchResultsVisible(true);
                                     searchServer({ q: searchTerm, includeUnmarked: false, autoFit: false });
                                 }
                             }
                         }}
-                        disabled={!mapReady || searching}
+                        disabled={!mapReady}
                         style={{
                             position: 'absolute',
                             left: 12,
@@ -662,7 +718,7 @@ export default function MapUI(props) {
                         <Button
                             onClick={handleClearSearchInput}
                             title="清空搜索内容"
-                            disabled={!mapReady || searching}
+                            disabled={!mapReady}
                             style={{
                                 position: 'absolute',
                                 right: 64,
@@ -680,8 +736,8 @@ export default function MapUI(props) {
                                 justifyContent: 'center',
                                 background: 'transparent',
                                 color: 'var(--color-text-secondary)',
-                                cursor: (!mapReady || searching) ? 'not-allowed' : 'pointer',
-                                opacity: (!mapReady || searching) ? 0.55 : 1,
+                                cursor: !mapReady ? 'not-allowed' : 'pointer',
+                                opacity: !mapReady ? 0.55 : 1,
                                 zIndex: 2003
                             }}
                         >
@@ -689,7 +745,7 @@ export default function MapUI(props) {
                         </Button>
                     )}
 
-                    {searchTerm && searchResultsVisible && (spLoading || spResults) && (
+                    {searchTerm && searchResultsVisible && (aiThinking || aiRecommendation || Array.isArray(searchResults) || spLoading || spResults) && (
                         <ScrollableView style={{
                             position: 'absolute',
                             ...(isNarrow ? { bottom: 48 } : { top: 48 }),
@@ -705,7 +761,38 @@ export default function MapUI(props) {
                             flexDirection: 'column',
                             color: 'var(--color-text-primary)'
                         }}>
-                            {spLoading && !spResults ? (
+                            {aiThinking && (
+                                <div style={{
+                                    padding: '10px 12px 6px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 7,
+                                    color: 'var(--color-text-secondary)',
+                                    fontSize: 12,
+                                    fontWeight: 700
+                                }}>
+                                    <span className="material-symbols-outlined" style={{
+                                        color: 'var(--theme-icon)',
+                                        fontSize: 18,
+                                        animation: 'yuyuko-thinking-spin 1s linear infinite'
+                                    }}>progress_activity</span>
+                                    thinking · 幽幽子正在为你寻觅美食…
+                                </div>
+                            )}
+                            {renderAiRecommendation()}
+                            {Array.isArray(searchResults) ? (
+                                <>
+                                    {renderSpSection(
+                                        '基础匹配结果',
+                                        searchResults.filter((place) => String(place.id) !== String(aiRecommendation?.place?.id)),
+                                        false,
+                                        null
+                                    )}
+                                    {!searchResults.length && !aiThinking && !aiRecommendation && (
+                                        <div style={{ padding: 12, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>未找到匹配的结果</div>
+                                    )}
+                                </>
+                            ) : spLoading && !spResults ? (
                                 <div style={{ padding: 12, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>加载中...</div>
                             ) : (
                                 <>
@@ -728,7 +815,7 @@ export default function MapUI(props) {
                         <Tooltip text={tipText} placement="top">
                             <Button
                                 onClick={handleSearchButtonClick}
-                                disabled={!mapReady || searching}
+                                disabled={!mapReady || !searchTerm.trim()}
                                 style={{
                                     width: 44,
                                     height: 44,

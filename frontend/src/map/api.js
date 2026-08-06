@@ -36,20 +36,29 @@ export async function postPlace(backendUrl, token, payload) {
     return res.json();
 }
 
-export async function searchPlaces(backendUrl, opts = {}) {
+export async function searchPlacesFast(backendUrl, opts = {}) {
     const params = new URLSearchParams();
     params.set('q', opts.q || '');
     if (opts.limit) params.set('limit', String(opts.limit));
-    if (opts.center && opts.center.lat != null && opts.center.lng != null) {
-        params.set('centerLat', String(opts.center.lat));
-        params.set('centerLng', String(opts.center.lng));
-    }
-    if (opts.agentRadius) params.set('agentRadius', String(opts.agentRadius));
-
-    const url = `${backendUrl}/api/places/search?${params.toString()}`;
-    const res = await fetch(url);
+    const url = `${backendUrl}/api/places/search/fast?${params.toString()}`;
+    const res = await fetch(url, { signal: opts.signal });
     if (!res.ok) throw new Error(`search failed: ${res.status}`);
     return res.json();
+}
+
+// Kept as the lightweight live-suggestion API.
+export const searchPlaces = searchPlacesFast;
+
+export async function searchPlacesAi(backendUrl, opts = {}) {
+    const res = await fetch(`${backendUrl}/api/places/search/ai`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q: opts.q || '', limit: opts.limit || 5 }),
+        signal: opts.signal
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `AI search failed: ${res.status}`);
+    return data;
 }
 
 export async function putPlace(backendUrl, token, id, payload) {

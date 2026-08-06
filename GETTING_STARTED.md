@@ -63,6 +63,24 @@ npm install       # 安装所有依赖（只需首次或依赖变更时执行）
 npm start         # 启动后端服务，默认监听 http://localhost:3000
 ```
 
+### 可选：启用语义搜索与“幽幽子特别推荐”
+
+复制 `backend/.env.example` 为 `backend/.env`，并只在后端环境中填写：
+
+```bash
+SILICONFLOW_API_KEY=你的SiliconFlow密钥
+DEEPSEEK_API_KEY=你的DeepSeek密钥
+```
+
+项目使用 `Qwen/Qwen3-Embedding-4B` 的 1024 维输出和 SQLite 内的 `sqlite-vec` 余弦 KNN。首次为历史地点生成向量时运行：
+
+```bash
+cd backend
+npm run vectors:backfill
+```
+
+新增地点和语义字段变更会异步更新向量；失败项保持待补刷状态，并由后台任务定时重试。只修改图片或坐标不会重复调用 Embedding API。
+
 > **Windows 用户**：推荐使用 **PowerShell** 或 **Windows Terminal**，避免使用老版 CMD（部分颜色输出可能乱码，但不影响运行）。
 
 ---
