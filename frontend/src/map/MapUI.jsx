@@ -475,7 +475,16 @@ export default function MapUI(props) {
         }
     };
 
+    const hasSubmittedSearch = Array.isArray(searchResults);
+    const searchButtonLabel = hasSubmittedSearch
+        ? (searchResultsVisible ? '折叠搜索结果' : '展开搜索结果')
+        : (tipText || '搜索');
+
     const handleSearchButtonClick = () => {
+        if (hasSubmittedSearch) {
+            setSearchResultsVisible((visible) => !visible);
+            return;
+        }
         if (!searchTerm || !searchTerm.trim()) return;
         setSearchResultsVisible(true);
         searchServer({ q: searchTerm, includeUnmarked: true, autoFit: false });
@@ -832,10 +841,11 @@ export default function MapUI(props) {
                     )}
 
                     <div style={{ position: 'absolute', right: 0, top: 0 }}>
-                        <Tooltip text={tipText} placement="top">
+                        <Tooltip text={searchButtonLabel} placement="top">
                             <Button
                                 onClick={handleSearchButtonClick}
                                 disabled={!mapReady || !searchTerm.trim()}
+                                aria-label={searchButtonLabel}
                                 style={{
                                     width: 44,
                                     height: 44,
@@ -855,6 +865,10 @@ export default function MapUI(props) {
                             >
                                 {searching ? (
                                     <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 36 }}>progress_activity</span>
+                                ) : hasSubmittedSearch ? (
+                                    <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 32 }}>
+                                        {searchResultsVisible ? 'expand_less' : 'expand_more'}
+                                    </span>
                                 ) : (
                                     <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 32 }}>search</span>
                                 )}
