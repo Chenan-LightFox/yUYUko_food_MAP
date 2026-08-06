@@ -124,7 +124,7 @@ function rankSemanticRows(rows, { center, bounds, limit = 5, minimumSemanticScor
         ? (viewRadius === null ? 25 : Math.max(5, Math.min(60, viewRadius * 2)))
         : null;
 
-    const candidates = rows.map((row) => {
+    const candidates = rows.filter((row) => !String(row.category || '').includes('避雷')).map((row) => {
         const semantic = semanticScore(row.vector_distance);
         const placePoint = normalizeCenter({ lat: row.latitude, lng: row.longitude });
         const distanceKm = safeCenter && placePoint ? haversineDistanceKm(safeCenter, placePoint) : null;
@@ -212,6 +212,7 @@ async function searchSemanticPlaces(query, { limit = 5, center = null, bounds = 
         JOIN Place p ON p.id = nearest.place_id
         LEFT JOIN User u ON p.creator_id = u.id
         LEFT JOIN User uu ON p.updated_by = uu.id
+        WHERE instr(COALESCE(p.category, ''), '避雷') = 0
         ORDER BY nearest.distance`).all(vectorBuffer(embedding), candidateLimit);
 
     const matches = rankSemanticRows(rows, {

@@ -51,6 +51,16 @@ async function main() {
         });
         assert.equal(rankedInsideView[0]?.place?.id, 5, 'distance inside the viewport must not override semantic relevance');
         assert.equal(rankedInsideView[0]?.score, rankedInsideView[0]?.semantic_score, 'in-view score should be purely semantic');
+        const rankedWithoutWarnings = rankSemanticRows([
+            { id: 7, name: '高匹配避雷地点', category: '印度菜, 避雷', latitude: 23.1291, longitude: 113.2644, vector_distance: 0.01 },
+            { id: 8, name: '正常推荐地点', category: '印度菜', latitude: 23.13, longitude: 113.265, vector_distance: 0.12 }
+        ], {
+            center: { lat: 23.1291, lng: 113.2644 },
+            bounds: { minLat: 23.1, minLng: 113.23, maxLat: 23.16, maxLng: 113.3 },
+            limit: 5
+        });
+        assert.equal(rankedWithoutWarnings[0]?.place?.id, 8, '避雷地点 must never enter AI recommendations');
+        assert.equal(rankedWithoutWarnings.some((match) => match.place.id === 7), false);
         const parsedExpansion = parseIntentExpansionContent(
             '```json\n{"needs_expansion":true,"retrieval_text":"菜品摆盘精致、适合拍照且用餐环境有氛围感"}\n```',
             '想吃一顿漂亮饭'
