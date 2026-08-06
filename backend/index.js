@@ -22,6 +22,7 @@ const placeRequestsRouter = require("./routes/placeRequests");
 const dinnersRouter = require("./routes/dinners");
 const favoritesRouter = require("./routes/favorites");
 const noticesRouter = require("./routes/notices");
+const categoriesRouter = require("./routes/categories");
 const { requireAuth } = require("./middleware/auth");
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
@@ -169,6 +170,8 @@ app.use("/comments", commentsRouter);
 app.use("/users", usersRouter);
 app.use("/notices", noticesRouter);
 app.use("/api/notices", noticesRouter);
+app.use("/categories", categoriesRouter);
+app.use("/api/categories", categoriesRouter);
 app.use("/place-requests", placeRequestsRouter);
 app.use("/api/place-requests", placeRequestsRouter); // 兼容前端或旧接口可能带 /api 前缀
 app.use("/dinners", dinnersRouter);

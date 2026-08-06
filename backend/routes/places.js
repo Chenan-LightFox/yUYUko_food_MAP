@@ -5,9 +5,43 @@ const { requireAuth } = require("../middleware/auth");
 const { hasPermission } = require("../utils/adminPermissions");
 
 const PLACE_NAME_MAX_LENGTH = 120;
-const PLACE_CATEGORY_MAX_LENGTH = 60;
+const PLACE_CATEGORY_MAX_LENGTH = 240;
 const PLACE_DESCRIPTION_MAX_LENGTH = 1000;
 const HTML_TAG_PATTERN = /<\/?[a-z][^>]*>/i;
+
+function parseCategoryNames(value) {
+    return String(value || '')
+        .split(/[,，]/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .filter((item, index, items) => items.indexOf(item) === index);
+}
+
+function getCategoryNameLength(value) {
+    return Array.from(value).reduce((length, character) => (
+        length + (character.codePointAt(0) > 0x7f ? 2 : 1)
+    ), 0);
+}
+
+function normalizeCategoryList(value) {
+    const names = parseCategoryNames(value);
+    const invalidName = names.find((name) => /[,，]/.test(name) || HTML_TAG_PATTERN.test(name) || getCategoryNameLength(name) > 16);
+    if (invalidName) {
+        return { error: `分类“${invalidName}”不能超过8个汉字或16个英文字符，且仅支持纯文本` };
+    }
+    return { value: names.join(', '), names };
+}
+
+function syncCategoryRegistry(names, creatorId) {
+    if (!Array.isArray(names) || names.length === 0) return;
+    const insert = db._raw.prepare(
+        `INSERT OR IGNORE INTO Category (name, is_common, sort_order, created_by)
+         VALUES (?, 0, 1000, ?)`
+    );
+    db._raw.transaction((items) => {
+        items.forEach((name) => insert.run(name, creatorId || null));
+    })(names);
+}
 
 function normalizePlainTextField(value, {
     fieldLabel,
@@ -125,6 +159,8 @@ router.post("/", requireAuth, (req, res) => {
         maxLength: PLACE_CATEGORY_MAX_LENGTH
     });
     if (normalizedCategory.error) return res.status(400).json({ error: normalizedCategory.error });
+    const normalizedCategoryList = normalizeCategoryList(normalizedCategory.value);
+    if (normalizedCategoryList.error) return res.status(400).json({ error: normalizedCategoryList.error });
 
     const normalizedDescription = normalizePlainTextField(description, {
         fieldLabel: "描述",
@@ -146,6 +182,12 @@ router.post("/", requireAuth, (req, res) => {
     });
     if (normalizedLongitude.error) return res.status(400).json({ error: normalizedLongitude.error });
 
+    try {
+        syncCategoryRegistry(normalizedCategoryList.names, creatorId);
+    } catch (categoryError) {
+        return res.status(500).json({ error: `分类目录同步失败：${categoryError.message}` });
+    }
+
     // 将创建者同时设置为首次修改者（updated_by），并记录 updated_time
     const sql = `INSERT INTO Place (name, description, latitude, longitude, category, exterior_images, menu_images, per_person_cost, creator_id, updated_time, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`;
     db.run(sql, [
@@ -153,7 +195,7 @@ router.post("/", requireAuth, (req, res) => {
         normalizedDescription.value,
         normalizedLatitude.value,
         normalizedLongitude.value,
-        normalizedCategory.value,
+        normalizedCategoryList.value,
         exterior_images ? JSON.stringify(exterior_images) : null,
         menu_images ? JSON.stringify(menu_images) : null,
         normalizedPerPersonCost ? normalizedPerPersonCost.value : null,
@@ -210,7 +252,19 @@ router.put("/:id", requireAuth, (req, res) => {
         const values = [];
         if (name != null) { fields.push("name = ?"); values.push(name); }
         if (description != null) { fields.push("description = ?"); values.push(description); }
-        if (category != null) { fields.push("category = ?"); values.push(category); }
+        let normalizedCategoryNames = null;
+        if (category != null) {
+            const normalizedCategory = normalizePlainTextField(category, {
+                fieldLabel: "分类",
+                maxLength: PLACE_CATEGORY_MAX_LENGTH
+            });
+            if (normalizedCategory.error) return res.status(400).json({ error: normalizedCategory.error });
+            const normalizedCategoryList = normalizeCategoryList(normalizedCategory.value);
+            if (normalizedCategoryList.error) return res.status(400).json({ error: normalizedCategoryList.error });
+            normalizedCategoryNames = normalizedCategoryList.names;
+            fields.push("category = ?");
+            values.push(normalizedCategoryList.value);
+        }
         if (latitude != null) { fields.push("latitude = ?"); values.push(latitude); }
         if (longitude != null) { fields.push("longitude = ?"); values.push(longitude); }
         if (exterior_images !== undefined) { fields.push("exterior_images = ?"); values.push(exterior_images ? JSON.stringify(exterior_images) : null); }
@@ -230,6 +284,11 @@ router.put("/:id", requireAuth, (req, res) => {
         const sql = `UPDATE Place SET ${fields.join(', ')}, updated_time = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ?`;
         values.push(req.user.id);
         values.push(id);
+        try {
+            syncCategoryRegistry(normalizedCategoryNames, req.user.id);
+        } catch (categoryError) {
+            return res.status(500).json({ error: `分类目录同步失败：${categoryError.message}` });
+        }
         db.run(sql, values, function (e) {
             if (e) return res.status(500).json({ error: e.message });
             const sel = `SELECT p.*, u.username AS creator_name, uu.username AS updated_by_name

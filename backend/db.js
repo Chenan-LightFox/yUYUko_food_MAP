@@ -1,8 +1,27 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
 
 const dbFile = path.join(__dirname, 'data.sqlite');
 const SQLITE_UUID_EXPR = "lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6)))";
+
+function loadInitialCategories() {
+    const seedPath = path.join(__dirname, 'seeds', 'categories.json');
+    try {
+        const data = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+        return Array.isArray(data) ? data : [];
+    } catch (error) {
+        console.warn('Failed to load category seed data:', error.message);
+        return [];
+    }
+}
+
+function parseCategoryNames(value) {
+    return String(value || '')
+        .split(/[,，]/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+}
 
 let rawDb;
 try {
@@ -229,6 +248,49 @@ function init() {
         } catch (e) {
             console.warn('Failed to create idx_place_updated_time:', e.message);
         }
+
+        rawDb.exec(`CREATE TABLE IF NOT EXISTS "Category" (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+            is_common INTEGER NOT NULL DEFAULT 0,
+            sort_order INTEGER NOT NULL DEFAULT 1000,
+            created_by TEXT,
+            created_time DATETIME DEFAULT CURRENT_TIMESTAMP
+        );`);
+
+        const insertCategory = rawDb.prepare(
+            `INSERT OR IGNORE INTO Category (name, is_common, sort_order, created_by)
+             VALUES (?, ?, ?, ?)`
+        );
+        const upsertSeedCategory = rawDb.prepare(
+            `INSERT INTO Category (name, is_common, sort_order, created_by)
+             VALUES (?, ?, ?, NULL)
+             ON CONFLICT(name) DO UPDATE SET
+                 is_common = excluded.is_common,
+                 sort_order = excluded.sort_order`
+        );
+        const initializeCategories = rawDb.transaction(() => {
+            loadInitialCategories().forEach((category, index) => {
+                const name = String(category && category.name || '').trim();
+                if (!name) return;
+                upsertSeedCategory.run(
+                    name,
+                    category.is_common ? 1 : 0,
+                    Number.isInteger(category.sort_order) ? category.sort_order : index
+                );
+            });
+
+            const places = rawDb.prepare(
+                `SELECT category FROM Place
+                 WHERE category IS NOT NULL AND trim(category) <> ''`
+            ).all();
+            const existingNames = new Set();
+            places.forEach((place) => {
+                parseCategoryNames(place.category).forEach((name) => existingNames.add(name));
+            });
+            existingNames.forEach((name) => insertCategory.run(name, 0, 1000, null));
+        });
+        initializeCategories();
 
         rawDb.exec(`CREATE TABLE IF NOT EXISTS "Comment" (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

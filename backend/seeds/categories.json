@@ -1,0 +1,12 @@
+[
+    { "name": "快餐", "is_common": true, "sort_order": 0 },
+    { "name": "餐厅", "is_common": true, "sort_order": 1 },
+    { "name": "街边小摊", "is_common": true, "sort_order": 2 },
+    { "name": "排档", "is_common": true, "sort_order": 3 },
+    { "name": "烧烤", "is_common": true, "sort_order": 4 },
+    { "name": "小吃", "is_common": true, "sort_order": 5 },
+    { "name": "奶茶店", "is_common": true, "sort_order": 6 },
+    { "name": "甜品店", "is_common": true, "sort_order": 7 },
+    { "name": "自助餐", "is_common": true, "sort_order": 8 },
+    { "name": "避雷", "is_common": true, "sort_order": 9 }
+]

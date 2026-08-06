@@ -189,3 +189,31 @@ export async function removeFavorite(backendUrl, token, placeId) {
     if (!res.ok) throw new Error(data.error || `取消收藏失败 ${res.status}`);
     return data;
 }
+
+// -------- Categories --------
+
+export async function fetchCategories(backendUrl) {
+    const res = await fetch(`${backendUrl}/categories`);
+    const data = await res.json().catch(() => []);
+    if (!res.ok) throw new Error(data.error || `获取分类失败 ${res.status}`);
+    return Array.isArray(data) ? data : [];
+}
+
+export async function createCategory(backendUrl, token, name, { allowSimilar = false } = {}) {
+    const res = await fetch(`${backendUrl}/categories`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name, allow_similar: allowSimilar })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        const error = new Error(data.error || `创建分类失败 ${res.status}`);
+        error.status = res.status;
+        error.similarCategories = Array.isArray(data.similar_categories) ? data.similar_categories : [];
+        throw error;
+    }
+    return data;
+}
