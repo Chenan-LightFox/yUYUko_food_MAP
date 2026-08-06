@@ -569,7 +569,10 @@ export default function MapView({
                 const edgeMargin = 5; // extra margin before showing/hiding
                 const labels = [];
                 for (const p of currentPlaces) {
-                    if (!p.name || p.isMarked === false) continue;
+                    if (!p.name) continue;
+                    // 高德临时 POI 在普通浏览时不显示名称，避免地图拥挤；
+                    // 搜索模式下它们是明确的搜索结果，应与站内地点一样显示店名。
+                    if (!isSearch && p.isMarked === false) continue;
                     // 搜索模式下不依赖聚类 visibleIds，确保所有搜索结果标签都显示
                     if (!isSearch && visibleIds.size > 0 && !visibleIds.has(p.id)) continue;
                     const point = lngLatToContainerPoint({ longitude: p.longitude, latitude: p.latitude });
