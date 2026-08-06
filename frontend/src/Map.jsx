@@ -69,7 +69,7 @@ export default function MapView({
     const [searchResults, setSearchResults] = useState(null);
     const [searching, setSearching] = useState(false);
     const [aiThinking, setAiThinking] = useState(false);
-    const [aiRecommendation, setAiRecommendation] = useState(null);
+    const [aiRecommendations, setAiRecommendations] = useState([]);
     const [searchResetKey, setSearchResetKey] = useState(0);
     const showTip = useTips();
     const confirm = useConfirm();
@@ -135,7 +135,7 @@ export default function MapView({
         setSearchResults(null);
         setSearching(false);
         setAiThinking(false);
-        setAiRecommendation(null);
+        setAiRecommendations([]);
         if (closeSearchUi) setSearchResetKey((v) => v + 1);
         if (reloadPlaces && loadPlacesRef.current) {
             return loadPlacesRef.current(true);
@@ -151,7 +151,7 @@ export default function MapView({
             setSearchResults(null);
             setSearching(false);
             setAiThinking(false);
-            setAiRecommendation(null);
+            setAiRecommendations([]);
         }
         setSearchTerm(value);
     };
@@ -966,7 +966,7 @@ export default function MapView({
             setSearchResults(null);
             setSearching(false);
             setAiThinking(false);
-            setAiRecommendation(null);
+            setAiRecommendations([]);
             await loadPlaces(true); // force load since state hasn't updated ref yet
             setAddMode(false);
         } catch (e) {
@@ -1007,27 +1007,30 @@ export default function MapView({
         const requestId = ++searchRequestIdRef.current;
         let baseData = [];
         let fastSettled = false;
-        let resolvedRecommendation = null;
+        let resolvedRecommendations = [];
 
-        const mergeRecommendation = (data, recommendation) => {
-            if (!recommendation?.place) return data;
-            const recommendedId = String(recommendation.place.id);
+        const mergeRecommendations = (data, recommendations) => {
+            const validRecommendations = (Array.isArray(recommendations) ? recommendations : [])
+                .filter((recommendation) => recommendation?.place)
+                .slice(0, 3);
+            if (!validRecommendations.length) return data;
+            const recommendedIds = new Set(validRecommendations.map((recommendation) => String(recommendation.place.id)));
             return [
-                recommendation.place,
-                ...data.filter((place) => String(place.id) !== recommendedId)
+                ...validRecommendations.map((recommendation) => recommendation.place),
+                ...data.filter((place) => !recommendedIds.has(String(place.id)))
             ];
         };
 
-        const publishResults = (data, recommendation) => {
+        const publishResults = (data, recommendations) => {
             if (requestId !== searchRequestIdRef.current) return;
-            const merged = mergeRecommendation(data, recommendation);
+            const merged = mergeRecommendations(data, recommendations);
             setSearchResults(merged);
             renderMarkers(mapRef.current, markersRef, merged, showPopup);
         };
 
         setSearching(true);
         setAiThinking(true);
-        setAiRecommendation(null);
+        setAiRecommendations([]);
 
         // Both network calls are created before either one is awaited.
         const fastPromise = Api.searchPlacesFast(backendUrl, {
@@ -1047,9 +1050,11 @@ export default function MapView({
         aiPromise
             .then((result) => {
                 if (requestId !== searchRequestIdRef.current) return;
-                resolvedRecommendation = result?.recommendation || null;
-                setAiRecommendation(resolvedRecommendation);
-                if (fastSettled && resolvedRecommendation) publishResults(baseData, resolvedRecommendation);
+                resolvedRecommendations = Array.isArray(result?.recommendations)
+                    ? result.recommendations.filter((recommendation) => recommendation?.place).slice(0, 3)
+                    : (result?.recommendation?.place ? [result.recommendation] : []);
+                setAiRecommendations(resolvedRecommendations);
+                if (fastSettled && resolvedRecommendations.length) publishResults(baseData, resolvedRecommendations);
             })
             .catch((error) => {
                 if (error?.name !== 'AbortError' && requestId === searchRequestIdRef.current) {
@@ -1146,7 +1151,7 @@ export default function MapView({
             baseData = includeUnmarked ? [...markedResults, ...processUnmarked] : markedResults;
             fastSettled = true;
 
-            publishResults(baseData, resolvedRecommendation);
+            publishResults(baseData, resolvedRecommendations);
             // 若匹配成功，调整视野到所有匹配 marker
             if (autoFit) {
                 const markers = markersRef.current;
@@ -1174,7 +1179,7 @@ export default function MapView({
             if (e?.name !== 'AbortError') console.error("searchServer error", e);
             if (requestId === searchRequestIdRef.current) {
                 fastSettled = true;
-                publishResults([], resolvedRecommendation);
+                publishResults([], resolvedRecommendations);
             }
         } finally {
             if (requestId === searchRequestIdRef.current) setSearching(false);
@@ -1576,7 +1581,7 @@ export default function MapView({
                 searchServer={searchServer}
                 searchResults={searchResults}
                 aiThinking={aiThinking}
-                aiRecommendation={aiRecommendation}
+                aiRecommendations={aiRecommendations}
                 onProgrammaticMapMove={armSkipAutoSearch}
                 onSelectSuggestion={handleSelectSuggestion}
                 mapReady={mapReady}

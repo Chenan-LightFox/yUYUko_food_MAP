@@ -165,7 +165,7 @@ export default function MapUI(props) {
         searchServer,
         searchResults,
         aiThinking,
-        aiRecommendation,
+        aiRecommendations = [],
         onProgrammaticMapMove,
         onSelectSuggestion,
         mapReady,
@@ -544,22 +544,25 @@ export default function MapUI(props) {
         );
     };
 
-    const renderAiRecommendation = () => {
-        const recommendation = aiRecommendation;
-        const place = recommendation?.place;
-        if (!place) return null;
-        const matchPercent = Number.isFinite(Number(recommendation.match_percent))
-            ? Math.round(Number(recommendation.match_percent))
-            : Math.round((Number(recommendation.score) || 0) * 100);
-        const distanceKm = recommendation.distance_km == null ? Number.NaN : Number(recommendation.distance_km);
-        const distanceText = Number.isFinite(distanceKm)
-            ? (distanceKm < 1 ? `距地图中心 ${Math.round(distanceKm * 1000)} 米` : `距地图中心 ${distanceKm.toFixed(1)} 公里`)
-            : '';
-        return (
+    const renderAiRecommendations = () => {
+        const recommendations = (Array.isArray(aiRecommendations) ? aiRecommendations : [])
+            .filter((recommendation) => recommendation?.place)
+            .slice(0, 3);
+        return recommendations.map((recommendation, index) => {
+            const place = recommendation.place;
+            const matchPercent = Number.isFinite(Number(recommendation.match_percent))
+                ? Math.round(Number(recommendation.match_percent))
+                : Math.round((Number(recommendation.score) || 0) * 100);
+            const distanceKm = recommendation.distance_km == null ? Number.NaN : Number(recommendation.distance_km);
+            const distanceText = Number.isFinite(distanceKm)
+                ? (distanceKm < 1 ? `距地图中心 ${Math.round(distanceKm * 1000)} 米` : `距地图中心 ${distanceKm.toFixed(1)} 公里`)
+                : '';
+            return (
             <div
+                key={`ai-recommendation-${place.id ?? index}`}
                 onClick={() => handleSelectSpItem(place)}
                 style={{
-                    margin: '10px 10px 12px',
+                    margin: `${index === 0 ? 10 : 0}px 10px 12px`,
                     padding: 12,
                     cursor: 'pointer',
                     borderRadius: 12,
@@ -567,13 +570,14 @@ export default function MapUI(props) {
                     borderLeft: '4px solid var(--theme-primary)',
                     background: 'linear-gradient(135deg, var(--theme-primary-0-2), var(--theme-secondary-0-12)), var(--color-bg-surface)',
                     boxShadow: '0 0 8px var(--theme-primary-0-25), 0 0 22px var(--theme-secondary-0-2)',
-                    animation: 'yuyuko-card-in 320ms ease-out both'
+                    animation: 'yuyuko-card-in 320ms ease-out both',
+                    animationDelay: `${index * 60}ms`
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-primary)', fontWeight: 800, fontSize: 13 }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 20, color: 'var(--theme-icon)' }}>auto_awesome</span>
-                        幽幽子特别推荐
+                        幽幽子特别推荐{recommendations.length > 1 ? ` ${index + 1}/${recommendations.length}` : ''}
                     </div>
                     <span style={{
                         color: 'var(--color-text-primary)',
@@ -596,7 +600,8 @@ export default function MapUI(props) {
                     {recommendation.reason}
                 </div>
             </div>
-        );
+            );
+        });
     };
 
     const handlePickPlace = () => {
@@ -749,7 +754,7 @@ export default function MapUI(props) {
                         </Button>
                     )}
 
-                    {searchTerm && searchResultsVisible && (aiThinking || aiRecommendation || Array.isArray(searchResults) || spLoading || Array.isArray(spResults)) && (
+                    {searchTerm && searchResultsVisible && (aiThinking || aiRecommendations.length > 0 || Array.isArray(searchResults) || spLoading || Array.isArray(spResults)) && (
                         <ScrollableView style={{
                             position: 'absolute',
                             ...(isNarrow ? { bottom: 48 } : { top: 48 }),
@@ -783,11 +788,12 @@ export default function MapUI(props) {
                                     thinking · 幽幽子正在为你寻觅美食…
                                 </div>
                             )}
-                            {renderAiRecommendation()}
+                            {renderAiRecommendations()}
                             {(() => {
                                 const baseResults = Array.isArray(searchResults) ? searchResults : spResults;
+                                const recommendedIds = new Set(aiRecommendations.map((recommendation) => String(recommendation?.place?.id)));
                                 const visibleResults = Array.isArray(baseResults)
-                                    ? baseResults.filter((place) => String(place.id) !== String(aiRecommendation?.place?.id))
+                                    ? baseResults.filter((place) => !recommendedIds.has(String(place.id)))
                                     : [];
                                 if (!Array.isArray(baseResults) && spLoading) {
                                     return <div style={{ padding: 12, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>加载中...</div>;
@@ -795,7 +801,7 @@ export default function MapUI(props) {
                                 return (
                                     <>
                                         {renderSpSection('基础匹配结果', visibleResults, false, null)}
-                                        {!visibleResults.length && !aiThinking && !aiRecommendation && !spLoading && (
+                                        {!visibleResults.length && !aiThinking && aiRecommendations.length === 0 && !spLoading && (
                                             <div style={{ padding: 12, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>未找到匹配的结果</div>
                                         )}
                                     </>

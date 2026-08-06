@@ -109,6 +109,7 @@ router.post('/places/search/ai', async (req, res) => {
         return res.status(503).json({
             status: 'unavailable',
             recommendation: null,
+            recommendations: [],
             matches: [],
             error: '幽幽子的语义搜索暂时不可用，基础搜索仍可正常使用'
         });

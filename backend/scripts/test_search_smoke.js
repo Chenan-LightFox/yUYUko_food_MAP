@@ -4,7 +4,8 @@ const { db, init } = require('../db');
 process.env.SILICONFLOW_API_KEY = '';
 process.env.DEEPSEEK_API_KEY = '';
 const searchRouter = require('../routes/search');
-const { rankSemanticRows, reasonMatchesPlace } = require('../services/semanticSearch');
+const { rankSemanticRows, reasonMatchesPlace, buildEmbeddingQuery } = require('../services/semanticSearch');
+const { parseIntentExpansionContent, parseYuyukoReasonsContent } = require('../services/aiClients');
 
 async function main() {
     init();
@@ -50,6 +51,35 @@ async function main() {
         });
         assert.equal(rankedInsideView[0]?.place?.id, 5, 'distance inside the viewport must not override semantic relevance');
         assert.equal(rankedInsideView[0]?.score, rankedInsideView[0]?.semantic_score, 'in-view score should be purely semantic');
+        const parsedExpansion = parseIntentExpansionContent(
+            '```json\n{"needs_expansion":true,"retrieval_text":"菜品摆盘精致、适合拍照且用餐环境有氛围感"}\n```',
+            '想吃一顿漂亮饭'
+        );
+        const prettyMealProfile = buildEmbeddingQuery('想吃一顿漂亮饭', parsedExpansion);
+        assert.equal(prettyMealProfile.expanded, true, 'a DeepSeek-classified implicit intent should be expanded');
+        assert.match(prettyMealProfile.text, /摆盘精致/);
+        assert.equal(prettyMealProfile.minimumSemanticScore, 0.55);
+        const parsedLiteral = parseIntentExpansionContent(
+            '{"needs_expansion":false,"retrieval_text":"印度菜"}',
+            '印度菜'
+        );
+        const normalProfile = buildEmbeddingQuery('印度菜', parsedLiteral);
+        assert.equal(normalProfile.expanded, false, 'a DeepSeek-classified literal query should keep the normal threshold');
+        const malformedExpansion = parseIntentExpansionContent('not json', '随便吃点');
+        assert.deepEqual(malformedExpansion, {
+            needs_expansion: false,
+            retrieval_text: '随便吃点',
+            source: 'original'
+        }, 'malformed DeepSeek output should fall back to the original query');
+        const expandedIntentMatch = rankSemanticRows([
+            { id: 6, name: '适合拍照的精致餐厅', latitude: 23.1291, longitude: 113.2644, vector_distance: 0.44 }
+        ], {
+            center: { lat: 23.1291, lng: 113.2644 },
+            bounds: { minLat: 23.1, minLng: 113.23, maxLat: 23.16, maxLng: 113.3 },
+            limit: 5,
+            minimumSemanticScore: prettyMealProfile.minimumSemanticScore
+        });
+        assert.equal(expandedIntentMatch[0]?.place?.id, 6, 'expanded slang intent should allow a moderately similar relevant place');
         const irrelevant = rankSemanticRows([
             { id: 3, name: '附近但不相关地点', latitude: 23.1291, longitude: 113.2644, vector_distance: 0.5 }
         ], {
@@ -61,6 +91,22 @@ async function main() {
         assert.equal(reasonMatchesPlace('推荐 Little PaPa 印度餐厅', '森焱食馆'), false, 'a reason for another shop must be rejected');
         assert.equal(reasonMatchesPlace('森焱食馆不如 Little PaPa', '森焱食馆', ['Little PaPa']), false, 'a reason mentioning another candidate must be rejected');
         assert.equal(reasonMatchesPlace('森焱食馆就在附近', '森焱食馆'), true, 'a reason naming the selected shop should pass');
+        const batchMatches = [
+            { place: { name: '第一家' } },
+            { place: { name: '第二家' } },
+            { place: { name: '第三家' } }
+        ];
+        const batchReasons = parseYuyukoReasonsContent(JSON.stringify({
+            recommendations: [
+                { name: '第二家', reason: '第二家适合想吃清淡口味的时候。' },
+                { name: '第一家', reason: '第一家和你的需求最贴近。' }
+            ]
+        }), batchMatches);
+        assert.deepEqual(batchReasons, [
+            '第一家和你的需求最贴近。',
+            '第二家适合想吃清淡口味的时候。',
+            ''
+        ], 'batch reasons should map to exact place names and preserve ranking order');
 
         const aiResponse = await fetch(`${baseUrl}/api/places/search/ai`, {
             method: 'POST',
@@ -72,7 +118,9 @@ async function main() {
             })
         });
         const aiBody = await aiResponse.json();
-        if (![200, 503].includes(aiResponse.status) || !Object.prototype.hasOwnProperty.call(aiBody, 'recommendation')) {
+        if (![200, 503].includes(aiResponse.status)
+            || !Object.prototype.hasOwnProperty.call(aiBody, 'recommendation')
+            || !Array.isArray(aiBody.recommendations)) {
             throw new Error('AI search returned an invalid response shape');
         }
         console.log(JSON.stringify({

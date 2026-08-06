@@ -2,7 +2,8 @@ const { db, isVectorSearchAvailable } = require('../db');
 const {
     EMBEDDING_DIMENSIONS,
     createEmbedding,
-    createYuyukoReason,
+    expandSearchIntent,
+    createYuyukoReasons,
     hasEmbeddingConfiguration,
     hasDeepseekConfiguration
 } = require('./aiClients');
@@ -13,6 +14,25 @@ const configuredMinimumSemanticScore = Number.parseFloat(process.env.AI_SEARCH_M
 const MIN_SEMANTIC_SCORE = Number.isFinite(configuredMinimumSemanticScore)
     ? Math.max(0, Math.min(1, configuredMinimumSemanticScore))
     : 0.6;
+const configuredExpandedIntentScore = Number.parseFloat(process.env.AI_EXPANDED_INTENT_MIN_SEMANTIC_SCORE);
+const EXPANDED_INTENT_MIN_SEMANTIC_SCORE = Number.isFinite(configuredExpandedIntentScore)
+    ? Math.max(0, Math.min(MIN_SEMANTIC_SCORE, configuredExpandedIntentScore))
+    : Math.min(MIN_SEMANTIC_SCORE, 0.55);
+
+function buildEmbeddingQuery(query, intentExpansion = null) {
+    const original = String(query || '').trim();
+    const retrievalText = String(intentExpansion?.retrieval_text || '').trim();
+    const expanded = intentExpansion?.needs_expansion === true
+        && retrievalText
+        && retrievalText !== original;
+    const intentHint = expanded ? `\nDeepSeek 标准化检索意图：${retrievalText}` : '';
+    return {
+        text: `检索任务：从地点库中找出最符合用户用餐需求的地点。\n用户原始需求：${original}${intentHint}`,
+        minimumSemanticScore: expanded ? EXPANDED_INTENT_MIN_SEMANTIC_SCORE : MIN_SEMANTIC_SCORE,
+        expanded,
+        expansion_source: expanded ? String(intentExpansion?.source || 'deepseek') : 'original'
+    };
+}
 
 function vectorBuffer(embedding) {
     if (!Array.isArray(embedding) || embedding.length !== EMBEDDING_DIMENSIONS) {
@@ -92,10 +112,13 @@ function publicPlace(row) {
     return place;
 }
 
-function rankSemanticRows(rows, { center, bounds, limit = 5 } = {}) {
+function rankSemanticRows(rows, { center, bounds, limit = 5, minimumSemanticScore = MIN_SEMANTIC_SCORE } = {}) {
     const safeCenter = normalizeCenter(center);
     const safeBounds = normalizeBounds(bounds);
     const safeLimit = Math.max(1, Math.min(10, Number.parseInt(limit, 10) || 5));
+    const safeMinimumSemanticScore = Number.isFinite(Number(minimumSemanticScore))
+        ? Math.max(0, Math.min(1, Number(minimumSemanticScore)))
+        : MIN_SEMANTIC_SCORE;
     const viewRadius = viewportRadiusKm(safeCenter, safeBounds);
     const nearbyRadiusKm = safeCenter
         ? (viewRadius === null ? 25 : Math.max(5, Math.min(60, viewRadius * 2)))
@@ -117,7 +140,7 @@ function rankSemanticRows(rows, { center, bounds, limit = 5 } = {}) {
             in_view: inView,
             proximity_score: proximity
         };
-    }).filter((candidate) => candidate.semantic_score >= MIN_SEMANTIC_SCORE);
+    }).filter((candidate) => candidate.semantic_score >= safeMinimumSemanticScore);
 
     const inViewCandidates = candidates.filter((candidate) => candidate.in_view);
     let eligible = candidates;
@@ -174,7 +197,9 @@ async function searchSemanticPlaces(query, { limit = 5, center = null, bounds = 
     if (!isVectorSearchAvailable()) throw new Error('sqlite-vec is unavailable');
     if (!hasEmbeddingConfiguration()) throw new Error('SILICONFLOW_API_KEY is not configured');
     const safeLimit = Math.max(1, Math.min(10, Number.parseInt(limit, 10) || 5));
-    const embedding = await createEmbedding(`检索与这段用餐需求最匹配的地点：${query}`);
+    const intentExpansion = await expandSearchIntent(query);
+    const queryProfile = buildEmbeddingQuery(query, intentExpansion);
+    const embedding = await createEmbedding(queryProfile.text);
     const candidateLimit = Math.max(100, Math.min(MAX_VECTOR_CANDIDATES, safeLimit * 40));
     const rows = db._raw.prepare(`WITH nearest AS (
             SELECT place_id, distance
@@ -189,44 +214,61 @@ async function searchSemanticPlaces(query, { limit = 5, center = null, bounds = 
         LEFT JOIN User uu ON p.updated_by = uu.id
         ORDER BY nearest.distance`).all(vectorBuffer(embedding), candidateLimit);
 
-    const matches = rankSemanticRows(rows, { center, bounds, limit: safeLimit });
+    const matches = rankSemanticRows(rows, {
+        center,
+        bounds,
+        limit: safeLimit,
+        minimumSemanticScore: queryProfile.minimumSemanticScore
+    });
     if (!matches.length) {
-        const hasRelevantCandidate = rows.some((row) => semanticScore(row.vector_distance) >= MIN_SEMANTIC_SCORE);
+        const hasRelevantCandidate = rows.some((row) => semanticScore(row.vector_distance) >= queryProfile.minimumSemanticScore);
         return {
             status: !rows.length ? 'index_empty' : (hasRelevantCandidate ? 'no_nearby_match' : 'no_relevant_match'),
             recommendation: null,
+            recommendations: [],
             matches: []
         };
     }
 
-    let reason = '';
-    let reasonSource = 'fallback';
+    const selectedMatches = matches.slice(0, 3);
+    let generatedReasons = selectedMatches.map(() => '');
     try {
-        reason = await createYuyukoReason(query, matches);
-        const selectedName = String(matches[0].place.name || '').trim();
-        const otherNames = matches.slice(1).map((match) => match.place.name);
-        if (reason && !reasonMatchesPlace(reason, selectedName, otherNames)) {
-            console.warn('DeepSeek recommendation named a different place; using local fallback');
-            reason = '';
-        }
-        if (reason) reasonSource = 'deepseek';
+        generatedReasons = await createYuyukoReasons(query, selectedMatches);
     } catch (error) {
-        console.warn('DeepSeek recommendation failed:', error.message);
+        console.warn('DeepSeek recommendations failed:', error.message);
     }
-    if (!reason) reason = localYuyukoReason(query, matches[0]);
 
-    return {
-        status: hasDeepseekConfiguration() && reasonSource === 'deepseek' ? 'ok' : 'partial',
-        recommendation: {
-            place: matches[0].place,
-            score: matches[0].score,
-            semantic_score: matches[0].semantic_score,
-            match_percent: Math.round(matches[0].score * 100),
-            distance_km: matches[0].distance_km,
-            in_view: matches[0].in_view,
+    let deepseekReasonCount = 0;
+    const selectedNames = selectedMatches.map((match) => String(match.place.name || '').trim());
+    const recommendations = selectedMatches.map((match, index) => {
+        let reason = String(generatedReasons[index] || '').trim();
+        let reasonSource = 'fallback';
+        const otherNames = selectedNames.filter((_, otherIndex) => otherIndex !== index);
+        if (reason && reasonMatchesPlace(reason, selectedNames[index], otherNames)) {
+            reasonSource = 'deepseek';
+            deepseekReasonCount += 1;
+        } else {
+            if (reason) {
+                console.warn(`DeepSeek recommendation mismatched ${selectedNames[index]}; using local fallback`);
+            }
+            reason = localYuyukoReason(query, match);
+        }
+        return {
+            place: match.place,
+            score: match.score,
+            semantic_score: match.semantic_score,
+            match_percent: Math.round(match.score * 100),
+            distance_km: match.distance_km,
+            in_view: match.in_view,
             reason,
             reason_source: reasonSource
-        },
+        };
+    });
+
+    return {
+        status: hasDeepseekConfiguration() && deepseekReasonCount === recommendations.length ? 'ok' : 'partial',
+        recommendation: recommendations[0] || null,
+        recommendations,
         matches
     };
 }
@@ -238,5 +280,6 @@ module.exports = {
     normalizeBounds,
     rankSemanticRows,
     MIN_SEMANTIC_SCORE,
-    reasonMatchesPlace
+    reasonMatchesPlace,
+    buildEmbeddingQuery
 };
