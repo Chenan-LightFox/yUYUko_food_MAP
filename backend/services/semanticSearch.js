@@ -18,6 +18,10 @@ const configuredExpandedIntentScore = Number.parseFloat(process.env.AI_EXPANDED_
 const EXPANDED_INTENT_MIN_SEMANTIC_SCORE = Number.isFinite(configuredExpandedIntentScore)
     ? Math.max(0, Math.min(MIN_SEMANTIC_SCORE, configuredExpandedIntentScore))
     : Math.min(MIN_SEMANTIC_SCORE, 0.55);
+const configuredPlaceDetailWeight = Number.parseFloat(process.env.AI_PLACE_DETAIL_WEIGHT);
+const PLACE_DETAIL_WEIGHT = Number.isFinite(configuredPlaceDetailWeight)
+    ? Math.max(0, Math.min(0.5, configuredPlaceDetailWeight))
+    : 0.25;
 
 function buildEmbeddingQuery(query, intentExpansion = null) {
     const original = String(query || '').trim();
@@ -46,6 +50,27 @@ function semanticScore(distance) {
     const similarity = 1 - Number(distance);
     if (!Number.isFinite(similarity)) return 0;
     return Math.max(0, Math.min(1, similarity));
+}
+
+function placeDetailCompleteness(place) {
+    const rawDescription = String(place?.description || '').replace(/\s+/g, ' ').trim();
+    const description = /^(暂无描述|无描述|未提供|无|[-—]+)$/i.test(rawDescription) ? '' : rawDescription;
+    const descriptionLength = Array.from(description).length;
+    const descriptionScore = descriptionLength >= 80 ? 1
+        : descriptionLength >= 40 ? 0.8
+            : descriptionLength >= 16 ? 0.5
+                : descriptionLength > 0 ? 0.2 : 0;
+
+    const genericCategories = new Set(['其他', '未分类', '餐厅', '美食', '其他美食', '地点']);
+    const categories = String(place?.category || '')
+        .split(/[,，/、|]+/)
+        .map((value) => value.trim())
+        .filter(Boolean);
+    const categoryScore = categories.some((category) => !genericCategories.has(category)) ? 1 : 0;
+    const price = Number(place?.per_person_cost);
+    const priceScore = Number.isFinite(price) && price > 0 ? 1 : 0;
+
+    return Number((descriptionScore * 0.7 + categoryScore * 0.2 + priceScore * 0.1).toFixed(3));
 }
 
 function finiteCoordinate(value, min, max) {
@@ -126,6 +151,8 @@ function rankSemanticRows(rows, { center, bounds, limit = 5, minimumSemanticScor
 
     const candidates = rows.filter((row) => !String(row.category || '').includes('避雷')).map((row) => {
         const semantic = semanticScore(row.vector_distance);
+        const detailCompleteness = placeDetailCompleteness(row);
+        const detailAdjustedSemantic = semantic * (1 - PLACE_DETAIL_WEIGHT + PLACE_DETAIL_WEIGHT * detailCompleteness);
         const placePoint = normalizeCenter({ lat: row.latitude, lng: row.longitude });
         const distanceKm = safeCenter && placePoint ? haversineDistanceKm(safeCenter, placePoint) : null;
         const inView = Boolean(safeBounds && placePoint && isInsideBounds(placePoint, safeBounds));
@@ -133,8 +160,10 @@ function rankSemanticRows(rows, { center, bounds, limit = 5, minimumSemanticScor
         const proximity = distanceKm === null ? 0 : 1 / (1 + (distanceKm / proximityScale) ** 1.35);
         return {
             place: publicPlace(row),
-            score: semantic,
+            score: detailAdjustedSemantic,
             semantic_score: semantic,
+            detail_completeness: detailCompleteness,
+            detail_adjusted_score: detailAdjustedSemantic,
             vector_distance: Number(row.vector_distance),
             distance_km: distanceKm === null ? null : Number(distanceKm.toFixed(3)),
             in_view: inView,
@@ -149,7 +178,7 @@ function rankSemanticRows(rows, { center, bounds, limit = 5, minimumSemanticScor
         // meaning: every in-view candidate is ranked by semantic score alone.
         eligible = inViewCandidates.map((candidate) => ({
             ...candidate,
-            score: candidate.semantic_score
+            score: candidate.detail_adjusted_score
         }));
     } else if (safeCenter) {
         // Only when the viewport contains no suitable result do we look just
@@ -159,7 +188,7 @@ function rankSemanticRows(rows, { center, bounds, limit = 5, minimumSemanticScor
             .map((candidate) => ({
                 ...candidate,
                 score: Math.max(0, Math.min(1,
-                    candidate.semantic_score * 0.88 + candidate.proximity_score * 0.12
+                    candidate.detail_adjusted_score * 0.88 + candidate.proximity_score * 0.12
                 ))
             }));
     }
@@ -169,7 +198,7 @@ function rankSemanticRows(rows, { center, bounds, limit = 5, minimumSemanticScor
             || b.semantic_score - a.semantic_score
             || (a.distance_km ?? Number.POSITIVE_INFINITY) - (b.distance_km ?? Number.POSITIVE_INFINITY))
         .slice(0, safeLimit)
-        .map(({ proximity_score, ...candidate }) => candidate);
+        .map(({ proximity_score, detail_adjusted_score, ...candidate }) => candidate);
 }
 
 function localYuyukoReason(query, match) {
@@ -258,6 +287,7 @@ async function searchSemanticPlaces(query, { limit = 5, center = null, bounds = 
             place: match.place,
             score: match.score,
             semantic_score: match.semantic_score,
+            detail_completeness: match.detail_completeness,
             match_percent: Math.round(match.score * 100),
             distance_km: match.distance_km,
             in_view: match.in_view,
@@ -281,6 +311,8 @@ module.exports = {
     normalizeBounds,
     rankSemanticRows,
     MIN_SEMANTIC_SCORE,
+    PLACE_DETAIL_WEIGHT,
+    placeDetailCompleteness,
     reasonMatchesPlace,
     buildEmbeddingQuery
 };

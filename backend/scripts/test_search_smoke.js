@@ -4,7 +4,12 @@ const { db, init } = require('../db');
 process.env.SILICONFLOW_API_KEY = '';
 process.env.DEEPSEEK_API_KEY = '';
 const searchRouter = require('../routes/search');
-const { rankSemanticRows, reasonMatchesPlace, buildEmbeddingQuery } = require('../services/semanticSearch');
+const {
+    rankSemanticRows,
+    reasonMatchesPlace,
+    buildEmbeddingQuery,
+    placeDetailCompleteness
+} = require('../services/semanticSearch');
 const { parseIntentExpansionContent, parseYuyukoReasonsContent } = require('../services/aiClients');
 
 async function main() {
@@ -50,7 +55,23 @@ async function main() {
             limit: 5
         });
         assert.equal(rankedInsideView[0]?.place?.id, 5, 'distance inside the viewport must not override semantic relevance');
-        assert.equal(rankedInsideView[0]?.score, rankedInsideView[0]?.semantic_score, 'in-view score should be purely semantic');
+        assert.ok(rankedInsideView[0]?.score < rankedInsideView[0]?.semantic_score, 'sparse details should reduce recommendation weight');
+        assert.equal(placeDetailCompleteness({ name: '森焱食馆', category: '其他', description: '', per_person_cost: null }), 0);
+        assert.equal(placeDetailCompleteness({
+            name: '资料完整地点',
+            category: '印度菜',
+            description: '这是一段超过八十字的详细介绍，包含餐厅的招牌风味、用餐环境、适合人群、营业时段和实际体验等有效信息，用于帮助用户理解这家店为什么符合当前搜索需求，而不是只有一个没有上下文的店名。',
+            per_person_cost: 68
+        }), 1);
+        const detailWeighted = rankSemanticRows([
+            { id: 9, name: '高语义但资料空白', category: '其他', description: '', per_person_cost: null, latitude: 23.1291, longitude: 113.2644, vector_distance: 0.03 },
+            { id: 10, name: '资料完整且相关', category: '印度菜', description: '提供详细菜系、招牌风味、用餐环境和适合人群的信息，内容足以支撑推荐理由，并帮助用户判断是否符合当前需求。这家店还有清晰的人均价格和具体分类，不需要模型凭空猜测。', per_person_cost: 68, latitude: 23.13, longitude: 113.265, vector_distance: 0.16 }
+        ], {
+            center: { lat: 23.1291, lng: 113.2644 },
+            bounds: { minLat: 23.1, minLng: 113.23, maxLat: 23.16, maxLng: 113.3 },
+            limit: 5
+        });
+        assert.equal(detailWeighted[0]?.place?.id, 10, 'complete details should outweigh a slightly higher but unsupported semantic match');
         const rankedWithoutWarnings = rankSemanticRows([
             { id: 7, name: '高匹配避雷地点', category: '印度菜, 避雷', latitude: 23.1291, longitude: 113.2644, vector_distance: 0.01 },
             { id: 8, name: '正常推荐地点', category: '印度菜', latitude: 23.13, longitude: 113.265, vector_distance: 0.12 }

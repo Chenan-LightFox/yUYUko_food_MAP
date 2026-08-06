@@ -172,7 +172,7 @@ async function expandSearchIntent(query) {
 }
 
 function recommendedPlacePayload(match) {
-    const { place, score, semantic_score, distance_km, in_view } = match;
+    const { place, score, semantic_score, detail_completeness, distance_km, in_view } = match;
     return {
         name: String(place.name || '').slice(0, 80),
         category: String(place.category || '').slice(0, 120),
@@ -180,6 +180,7 @@ function recommendedPlacePayload(match) {
         description: String(place.description || '').replace(/\s+/g, ' ').slice(0, 300),
         combined_match_percent: Math.round(score * 100),
         semantic_match_percent: Math.round((semantic_score ?? score) * 100),
+        detail_completeness_percent: Math.round((Number(detail_completeness) || 0) * 100),
         distance_from_map_center_km: distance_km == null ? null : Number(distance_km),
         in_current_map_view: Boolean(in_view)
     };
