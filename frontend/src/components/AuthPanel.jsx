@@ -98,12 +98,6 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
             }}
         >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Button
-                    onClick={onGoHome}
-                    style={{ border: 0, background: 'transparent', color: 'var(--color-text-primary)', padding: '8px', textAlign: 'left' }}
-                >
-                    <span style={{ display: 'block', fontSize: 17, fontWeight: 800, lineHeight: 1.1 }}>东方饭联地图</span>
-                </Button>
                 {!isAuth && (
                     <Button
                         onClick={onOpenAuth}
@@ -154,6 +148,12 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                         )}
                     </div>
                 )}
+                <Button
+                    onClick={onGoHome}
+                    style={{ border: 0, background: 'transparent', color: 'var(--color-text-primary)', padding: '8px', textAlign: 'left' }}
+                >
+                    <span style={{ display: 'block', fontSize: 17, fontWeight: 800, lineHeight: 1.1 }}>东方饭联地图</span>
+                </Button>
             </div>
 
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
