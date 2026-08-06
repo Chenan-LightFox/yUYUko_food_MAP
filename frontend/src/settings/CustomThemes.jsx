@@ -232,8 +232,8 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: dark ? '#e5e7eb' : 'inherit' }}>暗黑模式</div>
-                        <div style={{ color: dark ? '#9ca3af' : '#6b7280', fontSize: 13 }}>开启后界面将使用暗色主题</div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-primary)' }}>暗黑模式</div>
+                        <div style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>开启后界面将使用“冥界·夜樱”暗色主题</div>
                     </div>
                     <div>
                         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 12, cursor: loading ? 'not-allowed' : 'pointer' }}>
@@ -248,7 +248,7 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                                 <div style={{
                                     width: '100%',
                                     height: '100%',
-                                    background: darkMode ? '#374151' : '#e5e7eb',
+                                    background: darkMode ? 'var(--color-primary)' : 'var(--color-border)',
                                     borderRadius: 9999,
                                     transition: 'background .18s'
                                 }} />
@@ -259,19 +259,19 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                                     width: 24,
                                     height: 24,
                                     borderRadius: '50%',
-                                    background: '#fff9f6',
+                                    background: 'var(--color-bg-surface)',
                                     boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
                                     transition: 'left .18s'
                                 }} />
                             </div>
-                            <span style={{ color: dark ? '#e5e7eb' : '#6b7280' }}>{darkMode ? '已启用' : '未启用'}</span>
+                            <span style={{ color: 'var(--color-text-secondary)' }}>{darkMode ? '已启用' : '未启用'}</span>
                         </label>
                     </div>
                 </div>
             </div>
             <div style={{ marginTop: 18 }}>
-                <div style={{ fontSize: 16, fontWeight: 600, color: dark ? '#e5e7eb' : 'inherit' }}>主题颜色</div>
-                <div style={{ color: dark ? '#9ca3af' : '#6b7280', fontSize: 13, marginTop: 6 }}>自定义页面主色（用于地图按钮与头像外圈）</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-primary)' }}>主题颜色</div>
+                <div style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginTop: 6 }}>自定义页面主色（用于核心按钮、选中状态与头像外圈）</div>
 
                 <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
                     <input
@@ -283,8 +283,8 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                             width: 56,
                             height: 36,
                             borderRadius: 6,
-                            border: dark ? '1px solid #334155' : '1px solid #d1d5db',
-                            background: dark ? '#07101a' : '#fff9f6',
+                            border: '1px solid var(--color-border)',
+                            background: 'var(--color-bg-overlay)',
                             cursor: loading ? 'not-allowed' : 'pointer',
                             padding: 6,
                             boxSizing: 'border-box',
@@ -303,11 +303,11 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                         disabled={loading}
                         style={{
                             background: themeColor,
-                            color: '#fff9f6',
+                            color: '#2B2533',
                             border: 'none',
                             padding: '8px 12px',
                             borderRadius: 6,
-                            boxShadow: dark ? '0 4px 12px rgba(0,0,0,0.6)' : `0 4px 12px rgba(0,47,167,0.2)`,
+                            boxShadow: '0 4px 12px var(--color-glow)',
                             cursor: loading ? 'not-allowed' : 'pointer',
                             opacity: loading ? 0.6 : 1
                         }}
@@ -317,7 +317,7 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                 </div>
 
                 <div style={{ marginTop: 14 }}>
-                    <div style={{ color: dark ? '#9ca3af' : '#6b7280', fontSize: 13 }}>自定义辅色（用于标签、面板等次要元素背景）</div>
+                    <div style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>自定义辅色（用于标签、次要操作与强调图标）</div>
                     <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
                         <input
                             type="color"
@@ -328,8 +328,8 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                                 width: 56,
                                 height: 36,
                                 borderRadius: 6,
-                                border: dark ? '1px solid #334155' : '1px solid #d1d5db',
-                                background: dark ? '#07101a' : '#fff9f6',
+                                border: '1px solid var(--color-border)',
+                                background: 'var(--color-bg-overlay)',
                                 cursor: loading ? 'not-allowed' : 'pointer',
                                 padding: 6,
                                 boxSizing: 'border-box',
@@ -345,11 +345,11 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                 </div>
             </div>
             <div style={{ marginTop: 18 }}>
-                <div style={{ fontSize: 16, fontWeight: 600, color: dark ? '#e5e7eb' : 'inherit' }}>地图样式</div>
-                <div style={{ color: dark ? '#9ca3af' : '#6b7280', fontSize: 13, marginTop: 6 }}>为当前主题选择地图样式（选择后将保存到服务器或本地）。</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-primary)' }}>地图样式</div>
+                <div style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginTop: 6 }}>为当前主题选择地图样式（选择后将保存到服务器或本地）。</div>
 
                 <div style={{ marginTop: 12, minWidth: 260 }}>
-                    <div style={{ fontSize: 13, color: dark ? '#e5e7eb' : 'inherit', marginBottom: 6 }}>{darkMode ? '暗色样式（当前）' : '亮色样式（当前）'}</div>
+                    <div style={{ fontSize: 13, color: 'var(--color-text-primary)', marginBottom: 6 }}>{darkMode ? '暗色样式（当前）' : '亮色样式（当前）'}</div>
                     {(() => {
                         const options = STYLE_OPTIONS.filter(s => darkMode ? DARK_STYLE_IDS.includes(s.id) : LIGHT_STYLE_IDS.includes(s.id));
                         const value = darkMode ? darkMapStyle : lightMapStyle;

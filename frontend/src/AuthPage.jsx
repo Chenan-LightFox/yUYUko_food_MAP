@@ -13,21 +13,21 @@ const MAX_INVITE_CODE_LENGTH = 64;
 
 function getStaticColors(dark) {
     return {
-        panelBackground: dark ? 'var(--theme-secondary)' : "#fff9f6",
-        textStrong: dark ? '#e5e7eb' : "#1f2328",
-        textMuted: dark ? '#9ca3af' : "#57606a",
-        border: dark ? '#334155' : "#d0d7de",
-        tabGroupBackground: dark ? '#1f2937' : "#f6f8fa",
-        inputBackground: dark ? '#0f172a' : "#fbfdff",
-        successText: dark ? '#4ade80' : "#0f7a0f",
-        successBackground: dark ? '#052e16' : "#edf9ed",
-        errorText: dark ? '#fda4af' : "#b00020",
-        errorBackground: dark ? '#450a0a' : "#fff1f3"
+        panelBackground: 'var(--color-bg-surface)',
+        textStrong: 'var(--color-text-primary)',
+        textMuted: 'var(--color-text-secondary)',
+        border: 'var(--color-border)',
+        tabGroupBackground: 'var(--color-bg-overlay)',
+        inputBackground: 'var(--color-bg-overlay)',
+        successText: 'var(--color-success)',
+        successBackground: dark ? 'rgba(92, 214, 152, 0.12)' : 'rgba(61, 153, 112, 0.10)',
+        errorText: 'var(--color-danger)',
+        errorBackground: dark ? 'rgba(255, 107, 107, 0.12)' : 'rgba(217, 83, 79, 0.10)'
     };
 }
 
 function getThemeUIColors(themeColor) {
-    const primary = themeColor || '#1f6feb';
+    const primary = themeColor || '#E2789F';
     const secondary = getThemeSecondary() || primary;
     const primaryBorder = darkenColor(primary, 0.18);
     const primaryDisabled = colorToRgba(primary, 0.5);
@@ -549,7 +549,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                         marginTop: 12,
                         padding: "9px 11px",
                         borderRadius: 8,
-                        border: `1px solid ${isSuccessMessage ? "#bfe5bf" : "#ffc7cf"}`,
+                        border: `1px solid ${isSuccessMessage ? 'var(--color-success)' : 'var(--color-danger)'}`,
                         color: isSuccessMessage ? uiColors.successText : uiColors.errorText,
                         background: isSuccessMessage ? uiColors.successBackground : uiColors.errorBackground,
                         overflowWrap: "anywhere",

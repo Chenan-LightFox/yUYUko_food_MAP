@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import Button from "./components/Button";
-import useDarkMode from './utils/useDarkMode';
 import AdminPlaces from "./admin/AdminPlaces";
 import AdminUsers from "./admin/AdminUsers";
 import AdminInvitecode from "./admin/AdminInvitecodes";
@@ -30,13 +29,11 @@ export default function AdminDashboard({ user, token, backendUrl, onBackHome, on
     const canManageAnnouncements = useMemo(() => perms.includes("公告发布"), [perms]);
     const canViewAudit = useMemo(() => perms.includes("操作日志"), [perms]);
 
-    const dark = useDarkMode();
-
-    const rootStyle = { minHeight: "var(--app-height, 100vh)", background: dark ? '#0f1724' : '#f6f7f9', padding: 20, boxSizing: "border-box", color: dark ? '#e5e7eb' : 'inherit' };
+    const rootStyle = { minHeight: "var(--app-height, 100vh)", background: 'var(--color-bg-base)', padding: 20, boxSizing: "border-box", color: 'var(--color-text-primary)' };
     const containerStyle = { maxWidth: 960, margin: "0 auto" };
     const headerRow = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 };
-    const cardStyle = { background: dark ? 'var(--theme-secondary)' : '#fff9f6', borderRadius: 8, padding: 16, border: `1px solid ${dark ? '#1f2937' : '#e5e7eb'}` };
-    const panelStyle = { marginTop: 18, background: dark ? 'var(--theme-secondary)' : '#fff9f6', padding: 12, borderRadius: 8, border: `1px solid ${dark ? '#1f2937' : 'transparent'}` };
+    const cardStyle = { background: 'var(--color-bg-surface)', borderRadius: 10, padding: 16, border: '1px solid var(--color-border)', boxShadow: '0 8px 24px var(--color-glow)' };
+    const panelStyle = { marginTop: 18, background: 'var(--color-bg-surface)', padding: 12, borderRadius: 10, border: '1px solid var(--color-border)' };
 
     return (
         <div style={rootStyle}>
@@ -58,7 +55,7 @@ export default function AdminDashboard({ user, token, backendUrl, onBackHome, on
                             </div>
                         </div>
                     ) : (
-                        <div style={{ color: dark ? '#ffb4b4' : '#b00020' }}>当前账号不是管理员，无法访问后台功能。</div>
+                        <div style={{ color: 'var(--color-danger)' }}>当前账号不是管理员，无法访问后台功能。</div>
                     )}
                 </div>
 

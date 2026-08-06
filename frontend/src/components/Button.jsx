@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import useDarkMode from '../utils/useDarkMode';
 import { getThemeColor, parseColorToRgb, pickContrastTextColor } from '../utils/theme';
 
 function normalizeColorValue(color) {
@@ -8,17 +7,17 @@ function normalizeColorValue(color) {
 
 export default function Button({ children, onClick, disabled, style, title, variant = 'default', full = false, type = 'button', themeAware = false, ...rest }) {
     const [hover, setHover] = useState(false);
-    const dark = useDarkMode();
-
     const base = {
         padding: '6px 10px',
         borderRadius: 4,
-        border: '1px solid #ccc',
-        background: '#fff9f6',
+        border: '1px solid var(--color-border)',
+        background: 'var(--color-bg-surface)',
+        color: 'var(--color-text-primary)',
         cursor: 'pointer',
         fontSize: 14,
         textAlign: 'center',
-        display: 'inline-block'
+        display: 'inline-block',
+        transition: 'background-color 160ms ease, border-color 160ms ease, color 160ms ease, opacity 160ms ease, transform 120ms ease'
     };
 
     if (variant === 'menu') {
@@ -41,17 +40,15 @@ export default function Button({ children, onClick, disabled, style, title, vari
         base.background = themeColor || base.background;
     }
 
-    // If this button should adapt to panel theme (admin/settings), adjust defaults for dark mode
+    // If this button should adapt to panel theme (admin/settings), use semantic surface tokens.
     if (themeAware) {
         if (variant === 'menu') {
-            base.color = dark ? '#e5e7eb' : (base.color || 'inherit');
+            base.color = 'var(--color-text-primary)';
         } else {
             // let theme color override dark panel background when user wants themed buttons
-            if (!themeColor) {
-                base.background = dark ? '#111827' : base.background;
-            }
-            base.border = dark ? '1px solid #374151' : '1px solid #e5e7eb';
-            base.color = dark ? '#e5e7eb' : (base.color || 'inherit');
+                if (!themeColor) base.background = 'var(--color-bg-overlay)';
+                base.border = '1px solid var(--color-border)';
+                base.color = 'var(--color-text-primary)';
         }
     }
 
@@ -61,7 +58,7 @@ export default function Button({ children, onClick, disabled, style, title, vari
         base.boxSizing = 'border-box';
     }
 
-    const hoverStyle = hover ? (variant === 'menu' ? (themeAware && dark ? { background: '#162033' } : { background: '#f3f4f6' }) : { opacity: 0.98 }) : {};
+    const hoverStyle = hover ? (variant === 'menu' ? { background: 'var(--color-bg-overlay)' } : { opacity: 0.9 }) : {};
 
     const merged = { ...base, ...userStyle, ...hoverStyle };
 
@@ -72,9 +69,9 @@ export default function Button({ children, onClick, disabled, style, title, vari
 
     // If disabled, apply disabled appearance but do not override explicit user-provided colors/styles
     if (disabled) {
-        if (userStyle.background === undefined) merged.background = themeAware && dark ? '#1f2937' : '#f5f5f5';
-        if (userStyle.color === undefined) merged.color = themeAware && dark ? '#6b7280' : '#999';
-        if (userStyle.border === undefined) merged.border = themeAware && dark ? '1px solid #374151' : '1px solid #e6e6e6';
+        if (userStyle.background === undefined) merged.background = 'var(--color-bg-overlay)';
+        if (userStyle.color === undefined) merged.color = 'var(--color-text-muted)';
+        if (userStyle.border === undefined) merged.border = '1px solid var(--color-border)';
         merged.cursor = 'not-allowed';
         if (userStyle.opacity === undefined) merged.opacity = 0.9;
     }

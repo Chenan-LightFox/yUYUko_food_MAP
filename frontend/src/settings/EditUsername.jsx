@@ -58,7 +58,7 @@ export default function EditUsername({ user, onBack, backendUrl, token, onUpdate
         >
             <form onSubmit={handleSubmit}>
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>用户名</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>用户名</div>
                     <TextInput
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}

@@ -17,36 +17,36 @@ export default function PlaceDetailPanel({ place, onClose }) {
         <>
             <div style={{
                 position: 'absolute', top: 120, right: 30, width: 350, bottom: 220,
-                background: dark ? '#0f172a' : '#fff9f6', color: dark ? '#f8fafc' : '#333',
-                borderRadius: 8, boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
+                background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)',
+                borderRadius: 10, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-surface)',
                 display: 'flex', flexDirection: 'column', zIndex: 5000
             }}>
-                <div style={{ padding: '16px 20px', borderBottom: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h2 style={{ margin: 0, fontSize: 18 }}>{place.name} 详情</h2>
-                    <Button variant="secondary" onClick={onClose} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: 'transparent', fontSize: 18, lineHeight: 1, color: dark ? '#e5e7eb' : undefined }} title="关闭">×</Button>
+                    <Button variant="secondary" onClick={onClose} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: 'transparent', fontSize: 18, lineHeight: 1, color: 'var(--color-text-secondary)' }} title="关闭">×</Button>
                 </div>
 
                 <ScrollableView style={{ flex: 1, padding: '20px' }}>
                     <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 13, color: dark ? '#94a3b8' : '#64748b', marginBottom: 4 }}>分类</div>
+                        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 4 }}>分类</div>
                         <div>{place.category || '暂无'}</div>
                     </div>
 
                     <div style={{ marginBottom: 24 }}>
-                        <div style={{ fontSize: 13, color: dark ? '#94a3b8' : '#64748b', marginBottom: 4 }}>描述</div>
+                        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 4 }}>描述</div>
                         <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{place.description || '暂无描述'}</div>
                     </div>
 
                     {place.per_person_cost != null && (
                         <div style={{ marginBottom: 16 }}>
-                            <div style={{ fontSize: 13, color: dark ? '#94a3b8' : '#64748b', marginBottom: 4 }}>人均</div>
+                            <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 4 }}>人均</div>
                             <div>¥{place.per_person_cost}</div>
                         </div>
                     )}
 
                     {exteriorImages.length > 0 && (
                         <div style={{ marginBottom: 24 }}>
-                            <div style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 8, color: dark ? '#cbd5e1' : '#475569' }}>外观/招牌</div>
+                            <div style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 8, color: 'var(--color-text-secondary)' }}>外观/招牌</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 {exteriorImages.map((url, i) => (
                                     <img
@@ -64,7 +64,7 @@ export default function PlaceDetailPanel({ place, onClose }) {
 
                     {menuImages.length > 0 && (
                         <div style={{ marginBottom: 24 }}>
-                            <div style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 8, color: dark ? '#cbd5e1' : '#475569' }}>菜单</div>
+                            <div style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 8, color: 'var(--color-text-secondary)' }}>菜单</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 {menuImages.map((url, i) => (
                                     <img
@@ -81,7 +81,7 @@ export default function PlaceDetailPanel({ place, onClose }) {
                     )}
 
                     {exteriorImages.length === 0 && menuImages.length === 0 && (
-                        <div style={{ color: dark ? '#64748b' : '#94a3b8', fontStyle: 'italic', fontSize: 13, marginTop: 24, textAlign: 'center' }}>
+                        <div style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: 13, marginTop: 24, textAlign: 'center' }}>
                             暂无相关图片
                         </div>
                     )}
@@ -117,7 +117,7 @@ export default function PlaceDetailPanel({ place, onClose }) {
                             borderRadius: 999,
                             border: 'none',
                             background: 'rgba(255, 255, 255, 0.14)',
-                            color: '#fff9f6',
+                            color: '#FFFFFF',
                             fontSize: 26,
                             lineHeight: '40px',
                             cursor: 'pointer',

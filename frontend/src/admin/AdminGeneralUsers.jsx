@@ -133,7 +133,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
         }
     };
 
-    if (!canManage) return <div style={{ color: '#b00020' }}>您的账号无权访问此面板。</div>;
+    if (!canManage) return <div style={{ color: 'var(--color-danger)' }}>您的账号无权访问此面板。</div>;
 
     const filteredUsers = users.filter(u => {
         if (!searchQuery) return true;
@@ -153,7 +153,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                         placeholder="搜索用户名称、id、qq号"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        style={{ padding: '6px 12px', width: '100%', boxSizing: 'border-box', border: dark ? '1px solid #334155' : '1px solid #d1d5db', background: dark ? '#07101a' : '#fff9f6', color: dark ? '#e5e7eb' : 'inherit', borderRadius: 6 }}
+                        style={{ padding: '6px 12px', width: '100%', boxSizing: 'border-box', border: '1px solid var(--color-border)', background: 'var(--color-bg-overlay)', color: 'var(--color-text-primary)', borderRadius: 6 }}
                     />
                 </div>
                 <Button themeAware onClick={fetchUsers} disabled={loading}>刷新</Button>
@@ -167,7 +167,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                     {filteredUsers.length === 0 ? (
                         <div>当前没有匹配的普通用户记录。</div>
                     ) : (
-                        <ResponsiveTable minWidth={750} cellPadding="8" style={{ border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
+                        <ResponsiveTable minWidth={750} cellPadding="8" style={{ border: '1px solid var(--color-border)' }}>
                             <thead>
                                 <tr>
                                     <th style={{ textAlign: 'left', padding: 8, minWidth: 100 }}>ID</th>
@@ -179,7 +179,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                             </thead>
                             <tbody>
                                 {filteredUsers.map((u, idx) => (
-                                    <tr key={u.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
+                                    <tr key={u.id} style={{ background: idx % 2 === 0 ? 'var(--color-bg-overlay)' : undefined }}>
                                         <td style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={u.id}>{u.id}</td>
                                         <td>{u.username}</td>
                                         <td>{u.qq || '-'}</td>
@@ -191,7 +191,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                                             )}
                                         </td>
                                         <td style={{ minWidth: 100 }}>
-                                            <Button themeAware onClick={() => deleteUser(u.id)} disabled={processing[u.id]} style={{ background: '#e02424', color: '#fff9f6', fontSize: 12, padding: '4px 6px' }}>删除</Button>
+                                            <Button themeAware onClick={() => deleteUser(u.id)} disabled={processing[u.id]} style={{ background: 'var(--color-danger)', color: 'var(--color-on-emphasis)', fontSize: 12, padding: '4px 6px' }}>删除</Button>
                                         </td>
                                     </tr>
                                 ))}

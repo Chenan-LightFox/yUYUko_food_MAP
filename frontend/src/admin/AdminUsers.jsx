@@ -263,7 +263,7 @@ export default function AdminUsers({ backendUrl = null }) {
         }
     };
 
-    if (!canManage) return <div style={{ color: '#b00020' }}>您的账号无权访问此面板。</div>;
+    if (!canManage) return <div style={{ color: 'var(--color-danger)' }}>您的账号无权访问此面板。</div>;
 
     const PAGE_SIZE = 10;
 
@@ -299,7 +299,7 @@ export default function AdminUsers({ backendUrl = null }) {
             ) : filtered.length === 0 ? (
                 <div>未找到匹配的用户。</div>
             ) : (
-                <ResponsiveTable minWidth={900} cellPadding="8" style={{ border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
+                <ResponsiveTable minWidth={900} cellPadding="8" style={{ border: '1px solid var(--color-border)' }}>
                     <thead>
                         <tr>
                             <th style={{ textAlign: 'left', padding: 8, minWidth: 100 }}>ID</th>
@@ -315,7 +315,7 @@ export default function AdminUsers({ backendUrl = null }) {
                             const isSelf = user && u.id === user.id;
                             const isSuper = u.admin_level === "YUYUKO";
                             return (
-                                <tr key={u.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
+                                <tr key={u.id} style={{ background: idx % 2 === 0 ? 'var(--color-bg-overlay)' : undefined }}>
                                     <td style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={u.id}>{u.id}</td>
                                     <td>{u.username}</td>
                                     <td>{u.qq || "-"}</td>
@@ -355,7 +355,7 @@ export default function AdminUsers({ backendUrl = null }) {
                                                     onClick={() => onBanClick(u)}
                                                     disabled={isSelf || isSuper || processing[u.id]}
                                                     title={isSuper ? '超级管理员不可操作' : (isSelf ? '不可操作自己' : '')}
-                                                    style={{ background: '#a04400', color: '#fff9f6', fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap', minWidth: 60 }}
+                                                    style={{ background: 'var(--color-warning)', color: 'var(--color-on-emphasis)', fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap', minWidth: 60 }}
                                                 >
                                                     封禁
                                                 </Button>
@@ -365,7 +365,7 @@ export default function AdminUsers({ backendUrl = null }) {
                                                 onClick={() => deleteUser(u.id)}
                                                 disabled={isSelf || isSuper || processing[u.id]}
                                                 title={isSuper ? '超级管理员不可操作' : (isSelf ? '不可操作自己' : '')}
-                                                style={{ background: '#e02424', color: '#fff9f6', fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap', minWidth: 60 }}
+                                                style={{ background: 'var(--color-danger)', color: 'var(--color-on-emphasis)', fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap', minWidth: 60 }}
                                             >
                                                 删除
                                             </Button>

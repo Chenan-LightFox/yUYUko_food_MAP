@@ -10,8 +10,8 @@ import { createMapPoster } from './utils/posterCanvas';
 function pageStyle(dark) {
     return {
         minHeight: 'var(--app-height, 100vh)',
-        background: dark ? '#0f1724' : '#f6f7f9',
-        color: dark ? '#e5e7eb' : 'inherit',
+        background: 'var(--color-bg-base)',
+        color: 'var(--color-text-primary)',
         padding: 20,
         boxSizing: 'border-box'
     };
@@ -19,9 +19,10 @@ function pageStyle(dark) {
 
 function cardStyle(dark) {
     return {
-        borderRadius: 8,
-        border: `1px solid ${dark ? '#1f2937' : '#e5e7eb'}`,
-        background: dark ? 'var(--theme-secondary)' : '#fff9f6',
+        borderRadius: 10,
+        border: '1px solid var(--color-border)',
+        background: 'var(--color-bg-surface)',
+        boxShadow: '0 8px 24px var(--color-glow)',
         padding: 20
     };
 }
@@ -237,7 +238,7 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
                 </div>
 
                 <div style={cardStyle(dark)}>
-                    <p style={{ marginTop: 0, color: dark ? '#9fb3c8' : '#486581' }}>
+                    <p style={{ marginTop: 0, color: 'var(--color-text-secondary)' }}>
                         选择多个地点，生成一张可直接分享的高清 PNG 海报
                     </p>
 
@@ -268,9 +269,9 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
                                     rows={5}
                                     style={{
                                         borderRadius: 12,
-                                        border: dark ? '1px solid #334155' : '1px solid #bcccdc',
-                                        background: dark ? 'var(--theme-secondary)' : '#fff9f6',
-                                        color: dark ? '#e5e7eb' : '#102a43',
+                                        border: '1px solid var(--color-border)',
+                                        background: 'var(--color-bg-overlay)',
+                                        color: 'var(--color-text-primary)',
                                         padding: 12
                                     }}
                                 />
@@ -284,19 +285,19 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
                                 justifyContent: 'space-between'
                             }}>
                                 <h3 id="poster-place-heading" style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>选择地点</h3>
-                                <span style={{ color: dark ? '#94a3b8' : '#627d98', fontSize: 13 }}>
+                                <span style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>
                                     已选择 {selectedPlaces.length} 个
                                 </span>
                             </div>
 
                             <div style={{
-                                border: `1px solid ${dark ? '#334155' : '#d9e2ec'}`,
+                                border: '1px solid var(--color-border)',
                                 borderRadius: 12,
                                 overflow: 'hidden',
-                                background: dark ? 'rgba(15, 23, 42, 0.32)' : '#fff'
+                                background: 'var(--color-bg-surface)'
                             }}>
                                 {selectedPlaces.length === 0 ? (
-                                    <div style={{ padding: '22px 14px', textAlign: 'center', color: dark ? '#94a3b8' : '#627d98' }}>
+                                    <div style={{ padding: '22px 14px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
                                         还没有选择地点
                                     </div>
                                 ) : (
@@ -308,7 +309,7 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
                                                 display: 'flex',
                                                 gap: 12,
                                                 alignItems: 'center',
-                                                borderBottom: index < selectedPlaces.length - 1 ? `1px solid ${dark ? '#1f2937' : '#f0f2f5'}` : 'none'
+                                                borderBottom: index < selectedPlaces.length - 1 ? '1px solid var(--color-border)' : 'none'
                                             }}
                                         >
                                             <span style={{
@@ -320,7 +321,7 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
                                                 justifyContent: 'center',
                                                 flexShrink: 0,
                                                 background: 'var(--theme-primary)',
-                                                color: '#fff9f6',
+                                                color: '#2B2533',
                                                 fontSize: 12,
                                                 fontWeight: 700
                                             }}>
@@ -328,7 +329,7 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
                                             </span>
                                             <div style={{ minWidth: 0, flex: 1 }}>
                                                 <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getPlaceName(place)}</div>
-                                                <div style={{ marginTop: 2, color: dark ? '#94a3b8' : '#627d98', fontSize: 12 }}>
+                                                <div style={{ marginTop: 2, color: 'var(--color-text-secondary)', fontSize: 12 }}>
                                                     {place?.category || '未分类'}
                                                     {place?.per_person_cost !== undefined && place?.per_person_cost !== null ? ` · 人均 ¥${place.per_person_cost}` : ''}
                                                 </div>
@@ -337,7 +338,7 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
                                                 type="button"
                                                 onClick={() => removeSelectedPlace(place)}
                                                 aria-label={`移除${getPlaceName(place)}`}
-                                                style={{ padding: '5px 9px', background: 'transparent', color: dark ? '#ff8a93' : '#b00020', border: `1px solid ${dark ? '#7f1d1d' : '#fecaca'}` }}
+                                                style={{ padding: '5px 9px', background: 'transparent', color: 'var(--color-danger)', border: '1px solid var(--color-danger)' }}
                                             >
                                                 移除
                                             </Button>
@@ -347,7 +348,7 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
                             </div>
 
                             <div>
-                                <Button type="button" onClick={() => setPickerOpen(true)} style={{ color: '#fff9f6', border: 0 }}>
+                                <Button type="button" onClick={() => setPickerOpen(true)} style={{ border: 0 }}>
                                     前往地图选择
                                 </Button>
                             </div>
@@ -360,16 +361,16 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
                                 justifyContent: 'space-between'
                             }}>
                                 <h3 id="poster-preview-heading" style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>海报预览</h3>
-                                <span style={{ color: dark ? '#94a3b8' : '#627d98', fontSize: 13 }}>
+                                <span style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>
                                     {previewing ? '正在更新' : previewReady ? '预览已生成' : '等待生成'}
                                 </span>
                             </div>
 
                             <div style={{
-                                border: `1px solid ${dark ? '#334155' : '#d9e2ec'}`,
+                                border: '1px solid var(--color-border)',
                                 borderRadius: 12,
                                 overflow: 'hidden',
-                                background: dark ? 'rgba(15, 23, 42, 0.32)' : '#fff'
+                                background: 'var(--color-bg-surface)'
                             }}>
                                 <div style={{
                                     position: 'relative',
@@ -378,7 +379,7 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     overflow: 'hidden',
-                                    background: dark ? '#111827' : '#eef2f6'
+                                    background: 'var(--color-bg-overlay)'
                                 }}>
                                     {previewCanvas ? (
                                         <canvas
@@ -392,7 +393,7 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
                                         <div style={{
                                             padding: 24,
                                             textAlign: 'center',
-                                            color: dark ? '#94a3b8' : '#627d98',
+                                            color: 'var(--color-text-secondary)',
                                             fontSize: 14
                                         }}>
                                             {previewError ? '暂时无法显示预览' : '填写标题并选择地点后，将在这里生成海报预览'}
@@ -425,14 +426,14 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
                                         alignItems: 'center',
                                         justifyContent: 'space-between',
                                         gap: 12,
-                                        color: '#ef4444',
+                                        color: 'var(--color-danger)',
                                         fontSize: 13
                                     }}>
                                         <span>{previewError}</span>
                                         <Button
                                             type="button"
                                             onClick={() => setPreviewRetryKey((value) => value + 1)}
-                                            style={{ flexShrink: 0, background: 'transparent', color: dark ? '#fda4af' : '#b91c1c' }}
+                                            style={{ flexShrink: 0, background: 'transparent', color: 'var(--color-danger)' }}
                                         >
                                             重试
                                         </Button>
@@ -441,14 +442,14 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
                             </div>
                         </section>
 
-                        {!!error && <div role="alert" style={{ color: '#ef4444' }}>{error}</div>}
+                        {!!error && <div role="alert" style={{ color: 'var(--color-danger)' }}>{error}</div>}
 
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             <Button
                                 type="button"
                                 onClick={exportPoster}
                                 disabled={exporting || previewing || !previewReady}
-                                style={{ color: '#fff9f6', border: 0 }}
+                                style={{ border: 0 }}
                             >
                                 {exporting ? '正在导出...' : previewing ? '正在生成预览...' : '导出海报'}
                             </Button>
@@ -458,7 +459,7 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
             </div>
 
             {pickerOpen && (
-                <div style={{ position: 'fixed', inset: 0, zIndex: 3500, background: dark ? 'var(--theme-secondary)' : '#f8fafc' }}>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 3500, background: 'var(--color-bg-base)' }}>
                     <MapView
                         backendUrl={backendUrl}
                         token={token}

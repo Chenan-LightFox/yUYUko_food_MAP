@@ -1,7 +1,7 @@
-export const DEFAULT_PRIMARY = '#f8a7d3';
-export const DEFAULT_SECONDARY = '#d0f8ff';
-export const DEFAULT_DARK_PRIMARY = '#733456';
-export const DEFAULT_DARK_SECONDARY = '#162833';
+export const DEFAULT_PRIMARY = '#E2789F';
+export const DEFAULT_SECONDARY = '#8C6BB1';
+export const DEFAULT_DARK_PRIMARY = '#FF8FB1';
+export const DEFAULT_DARK_SECONDARY = '#A882DD';
 
 export function applyDarkMode(enabled) {
     if (typeof document === 'undefined') return;
@@ -115,11 +115,11 @@ export function srgbToLinear(v) {
 
 export function pickContrastTextColor(bgColor) {
     const rgb = parseColorToRgb(bgColor);
-    if (!rgb) return '#592943';
+    if (!rgb) return '#2B2533';
     const luminance = 0.2126 * srgbToLinear(rgb.r) + 0.7152 * srgbToLinear(rgb.g) + 0.0722 * srgbToLinear(rgb.b);
     const contrastWithBlack = (luminance + 0.05) / 0.05;
     const contrastWithWhite = 1.05 / (luminance + 0.05);
-    return contrastWithBlack >= contrastWithWhite ? '#592943' : '#fff9f6';
+    return contrastWithBlack >= contrastWithWhite ? '#2B2533' : '#F3EFEF';
 }
 
 // Resolve the effective primary color: user overrides or dark/light default
@@ -177,7 +177,7 @@ export function applyThemeColors(primary, secondary) {
     // Set icon color: in light mode use dark primary, in dark mode keep light
     try {
         const root = document.documentElement;
-        const iconColor = isDarkMode() ? (secondary || DEFAULT_DARK_SECONDARY) : DEFAULT_DARK_PRIMARY;
+        const iconColor = secondary || (isDarkMode() ? DEFAULT_DARK_SECONDARY : DEFAULT_SECONDARY);
         root.style.setProperty('--theme-icon', iconColor);
     } catch (e) { /* ignore */ }
     try {

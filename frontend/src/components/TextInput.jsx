@@ -18,16 +18,16 @@ function hexToRgba(hex, a = 1) {
 
 const TextInput = forwardRef(({ style = {}, className, ...rest }, ref) => {
     const dark = useDarkMode();
-    const themeColor = getThemeColor() || '#2065d6';
+    const themeColor = getThemeColor() || '#E2789F';
 
     const base = {
         padding: '6px 12px',
         height: 44,
         boxSizing: 'border-box',
         borderRadius: 22,
-        border: dark ? '2px solid rgba(255,255,255,0.06)' : `2px solid ${themeColor}`,
-        background: dark ? 'var(--theme-secondary)' : '#fff9f6',
-        color: dark ? '#e5e7eb' : undefined,
+        border: `2px solid ${dark ? 'var(--color-border)' : themeColor}`,
+        background: 'var(--color-bg-overlay)',
+        color: 'var(--color-text-primary)',
         outline: 'none',
         boxShadow: `0 4px 12px ${hexToRgba(themeColor, 0.2)}, 0 0 8px ${hexToRgba(themeColor, 0.25)}`
     };

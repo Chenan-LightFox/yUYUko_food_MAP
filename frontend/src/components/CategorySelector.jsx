@@ -80,16 +80,16 @@ function getMatchScore(option, rawQuery) {
 }
 
 function tagStyle(dark, themeColor, selected) {
-    const background = selected ? themeColor : (dark ? '#334155' : '#f1f5f9');
+    const background = selected ? themeColor : 'var(--color-bg-overlay)';
     return {
         display: 'inline-flex',
         alignItems: 'center',
         height: 28,
         padding: '0 10px',
         borderRadius: 14,
-        border: `1px solid ${selected ? themeColor : (dark ? '#475569' : '#cbd5e1')}`,
+        border: `1px solid ${selected ? themeColor : 'var(--color-border)'}`,
         background,
-        color: selected ? pickContrastTextColor(background) : (dark ? '#e2e8f0' : '#333'),
+        color: selected ? pickContrastTextColor(background) : 'var(--color-text-primary)',
         fontSize: 12,
         lineHeight: '28px',
         whiteSpace: 'nowrap',
@@ -121,7 +121,7 @@ export default function CategorySelector({ backendUrl, token, value, onChange, p
     const [loading, setLoading] = useState(false);
     const [categoryError, setCategoryError] = useState('');
     const [creating, setCreating] = useState(false);
-    const themeColor = getThemeColor() || '#3b82f6';
+    const themeColor = getThemeColor() || '#E2789F';
     const selectedCategories = useMemo(() => parseCategories(value), [value]);
     const normalizedQuery = searchQuery.trim();
 
@@ -290,9 +290,9 @@ export default function CategorySelector({ backendUrl, token, value, onChange, p
                     flexWrap: 'wrap',
                     gap: 6,
                     borderRadius: 22,
-                    border: dark ? '2px solid rgba(255,255,255,0.06)' : `2px solid ${themeColor}`,
-                    background: dark ? 'var(--theme-secondary)' : '#fff9f6',
-                    color: dark ? '#e5e7eb' : undefined,
+                    border: `2px solid ${dark ? 'var(--color-border)' : themeColor}`,
+                    background: 'var(--color-bg-overlay)',
+                    color: 'var(--color-text-primary)',
                     boxShadow: `0 4px 12px ${colorToRgba(themeColor, 0.2)}, 0 0 8px ${colorToRgba(themeColor, 0.25)}`,
                     cursor: 'text'
                 }}
@@ -331,7 +331,7 @@ export default function CategorySelector({ backendUrl, token, value, onChange, p
                         border: 0,
                         outline: 'none',
                         background: 'transparent',
-                        color: dark ? '#e5e7eb' : '#111827',
+                        color: 'var(--color-text-primary)',
                         fontSize: 14
                     }}
                 />
@@ -345,18 +345,18 @@ export default function CategorySelector({ backendUrl, token, value, onChange, p
                     width: '100%',
                     zIndex: 20,
                     overflow: 'hidden',
-                    border: `1px solid ${dark ? '#334155' : '#ccc'}`,
+                    border: '1px solid var(--color-border)',
                     borderRadius: 8,
-                    background: dark ? '#1e293b' : '#fff9f6',
-                    boxShadow: '0 6px 18px rgba(0,0,0,0.16)'
+                    background: 'var(--color-bg-surface)',
+                    boxShadow: 'var(--shadow-surface)'
                 }}>
                     <ScrollableView style={{ maxHeight: 220, padding: 10 }}>
-                        <div style={{ marginBottom: 8, color: dark ? '#94a3b8' : '#64748b', fontSize: 12, fontWeight: 600 }}>
+                        <div style={{ marginBottom: 8, color: 'var(--color-text-secondary)', fontSize: 12, fontWeight: 600 }}>
                             {normalizedQuery ? '匹配分类' : '常用分类'}
                         </div>
 
-                        {loading && <div style={{ color: dark ? '#94a3b8' : '#64748b', fontSize: 12 }}>正在加载分类...</div>}
-                        {!loading && categoryError && <div style={{ color: '#ef4444', fontSize: 12 }}>{categoryError}</div>}
+                        {loading && <div style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>正在加载分类...</div>}
+                        {!loading && categoryError && <div style={{ color: 'var(--color-danger)', fontSize: 12 }}>{categoryError}</div>}
 
                         {!loading && !categoryError && displayedCategories.length > 0 && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -378,15 +378,15 @@ export default function CategorySelector({ backendUrl, token, value, onChange, p
                         )}
 
                         {!loading && !categoryError && !normalizedQuery && displayedCategories.length === 0 && (
-                            <div style={{ color: dark ? '#94a3b8' : '#64748b', fontSize: 12 }}>暂无常用分类</div>
+                            <div style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>暂无常用分类</div>
                         )}
 
                         {!loading && !categoryError && !!normalizedQuery && (
                             <div style={{
                                 marginTop: displayedCategories.length ? 10 : 0,
                                 paddingTop: displayedCategories.length ? 9 : 0,
-                                borderTop: displayedCategories.length ? `1px solid ${dark ? '#334155' : '#e5e7eb'}` : 'none',
-                                color: dark ? '#cbd5e1' : '#475569',
+                                borderTop: displayedCategories.length ? '1px solid var(--color-border)' : 'none',
+                                color: 'var(--color-text-secondary)',
                                 fontSize: 12,
                                 lineHeight: 1.5
                             }}>

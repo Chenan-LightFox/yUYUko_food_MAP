@@ -150,7 +150,7 @@ export default function AdminComments({ backendUrl = null }) {
         }
     };
 
-    if (!canManage) return <div style={{ color: '#b00020' }}>您的账号无权访问此面板。</div>;
+    if (!canManage) return <div style={{ color: 'var(--color-danger)' }}>您的账号无权访问此面板。</div>;
 
     return (
         <div style={{ marginTop: 12 }}>
@@ -186,7 +186,7 @@ export default function AdminComments({ backendUrl = null }) {
 
                             return (
                                 <div>
-                                    <ResponsiveTable minWidth={850} cellPadding="8" style={{ border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
+                                    <ResponsiveTable minWidth={850} cellPadding="8" style={{ border: '1px solid var(--color-border)' }}>
                                         <thead>
                                             <tr>
                                                 <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>ID</th>
@@ -199,7 +199,7 @@ export default function AdminComments({ backendUrl = null }) {
                                         </thead>
                                         <tbody>
                                             {pageItems.map((c, idx) => (
-                                                <tr key={c.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
+                                                <tr key={c.id} style={{ background: idx % 2 === 0 ? 'var(--color-bg-overlay)' : undefined }}>
                                                     <td style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.id}>{c.id}</td>
                                                     <td style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.place_id || c.placeId}>{c.place_id || c.placeId || '-'}</td>
                                                     <td style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.user_id || c.userId}>{c.user_id || c.userId || '-'}</td>
@@ -208,7 +208,7 @@ export default function AdminComments({ backendUrl = null }) {
                                                     </td>
                                                     <td>{c.created_time || c.createdTime || '-'}</td>
                                                     <td style={{ minWidth: 100 }}>
-                                                        <Button themeAware onClick={() => deleteComment(c.id)} disabled={processing[c.id]} style={{ background: '#e02424', color: '#fff9f6', fontSize: 12, padding: '4px 6px' }}>删除</Button>
+                                                        <Button themeAware onClick={() => deleteComment(c.id)} disabled={processing[c.id]} style={{ background: 'var(--color-danger)', color: 'var(--color-on-emphasis)', fontSize: 12, padding: '4px 6px' }}>删除</Button>
                                                     </td>
                                                 </tr>
                                             ))}

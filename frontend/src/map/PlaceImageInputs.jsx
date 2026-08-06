@@ -1,12 +1,10 @@
 import React, { useRef, useState } from "react";
 import Button from "../components/Button";
-import useDarkMode from "../utils/useDarkMode";
 import { useTips } from "../components/Tips";
 
 export default function PlaceImageInputs({ backendUrl, token, images, setImages, label }) {
     const fileInputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
-    const dark = useDarkMode();
     const showTip = useTips();
 
     const handleUploadClick = () => {
@@ -65,7 +63,7 @@ export default function PlaceImageInputs({ backendUrl, token, images, setImages,
                     marginBottom: "5px",
                     fontSize: "14px",
                     fontWeight: "bold",
-                    color: dark ? "#e5e7eb" : undefined
+                    color: 'var(--color-text-primary)'
                 }}
             >
                 {label}

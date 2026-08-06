@@ -3,7 +3,6 @@ import Button from '../components/Button';
 import TextInput from '../components/TextInput';
 import PlaceImageInputs from './PlaceImageInputs';
 import { useTips } from '../components/Tips';
-import useDarkMode from '../utils/useDarkMode';
 import ScrollableView from '../components/ScrollableView';
 import CategorySelector from '../components/CategorySelector';
 
@@ -15,7 +14,6 @@ export default function AddForm({ backendUrl, token, defaultPos, defaultName = "
     const [menuImages, setMenuImages] = useState([]);
     const [perPersonCost, setPerPersonCost] = useState('');
     const showTip = useTips();
-    const dark = useDarkMode();
 
     const handle = () => {
         if (!name) { showTip("请输入名称"); return; }
@@ -34,7 +32,7 @@ export default function AddForm({ backendUrl, token, defaultPos, defaultName = "
 
     return (
         <div style={{ width: 320 }}>
-            <div><strong style={{ color: dark ? '#e5e7eb' : undefined }}>经纬度：</strong><span style={{ color: dark ? '#e5e7eb' : undefined }}>{defaultPos[1].toFixed(6)}, {defaultPos[0].toFixed(6)}</span></div>
+            <div><strong style={{ color: 'var(--color-text-primary)' }}>经纬度：</strong><span style={{ color: 'var(--color-text-primary)' }}>{defaultPos[1].toFixed(6)}, {defaultPos[0].toFixed(6)}</span></div>
             <div style={{ marginTop: 8 }}>
                 <TextInput placeholder="店名" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%" }} />
             </div>

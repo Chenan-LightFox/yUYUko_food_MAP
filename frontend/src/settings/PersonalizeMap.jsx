@@ -128,7 +128,7 @@ export default function PersonalizeMap({ user, onBack, backendUrl, token, onUpda
         <PageTemplate breadcrumb={[{ label: '设置', onClick: onBack }, { label: '个性化地图' }]}>
             <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>地图样式</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>地图样式</div>
                     <SelectInput value={style} onChange={(e) => setStyle(e.target.value)} style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4 }}>
                         <option value="standard">标准</option>
                         <option value="satellite" disabled>卫星</option>
@@ -137,17 +137,17 @@ export default function PersonalizeMap({ user, onBack, backendUrl, token, onUpda
                 </label>
 
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>默认中心纬度 (lat)</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>默认中心纬度 (lat)</div>
                     <TextInput value={lat} onChange={(e) => setLat(e.target.value)} placeholder="23.016485" style={{ width: '100%' }} />
                 </label>
 
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>默认中心经度 (lng)</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>默认中心经度 (lng)</div>
                     <TextInput value={lng} onChange={(e) => setLng(e.target.value)} placeholder="113.394405" style={{ width: '100%' }} />
                 </label>
 
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>默认缩放等级</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>默认缩放等级</div>
                     <TextInput value={zoom} onChange={(e) => setZoom(e.target.value)} placeholder="24" style={{ width: '100%' }} />
                 </label>
 

@@ -197,7 +197,7 @@ export default function AdminNotices({ backendUrl = null }) {
         }
     };
 
-    if (!canManage) return <div style={{ color: '#b00020' }}>您的账号无权访问此面板。</div>;
+    if (!canManage) return <div style={{ color: 'var(--color-danger)' }}>您的账号无权访问此面板。</div>;
 
     const previewNotice = {
         title: title.trim() || '公告预览',
@@ -224,10 +224,10 @@ export default function AdminNotices({ backendUrl = null }) {
                     </Notice>
                 </div>
             ) : (
-                <div style={{ marginBottom: 16, color: dark ? '#9ca3af' : '#666' }}>当前没有生效的公告。</div>
+                <div style={{ marginBottom: 16, color: 'var(--color-text-secondary)' }}>当前没有生效的公告。</div>
             )}
 
-            <div style={{ marginBottom: 12, padding: 12, border: dark ? '1px solid #1f2937' : '1px solid #e5e7eb', borderRadius: 8, background: dark ? 'var(--theme-secondary)' : '#fff9f6' }}>
+            <div style={{ marginBottom: 12, padding: 12, border: '1px solid var(--color-border)', borderRadius: 8, background: 'var(--color-bg-overlay)' }}>
                 <div style={{ marginBottom: 10, fontWeight: 700 }}>发布新公告</div>
                 <div style={{ display: 'grid', gap: 10 }}>
                     <TextInput
@@ -258,7 +258,7 @@ export default function AdminNotices({ backendUrl = null }) {
                                         height: 34,
                                         padding: 0,
                                         borderRadius: '50%',
-                                        border: colorKey === option.key ? '2px solid #111827' : '1px solid #d1d5db',
+                                        border: colorKey === option.key ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
                                         background: option.backgroundColor,
                                         boxSizing: 'border-box',
                                         cursor: 'pointer'

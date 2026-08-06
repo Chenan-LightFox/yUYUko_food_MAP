@@ -9,7 +9,7 @@ import PageTemplate from '../components/PageTemplate';
 import { getThemeColor, pickContrastTextColor } from '../utils/theme';
 
 export default function EditAvatar({ user, onBack, backendUrl, token, onUpdateUser }) {
-    const themeColor = getThemeColor() || '#3b82f6';
+    const themeColor = getThemeColor() || '#E2789F';
     const dark = useDarkMode();
     const [file, setFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState('');
@@ -105,9 +105,9 @@ export default function EditAvatar({ user, onBack, backendUrl, token, onUpdateUs
                     </div>
                 ) : (
                     <div style={{
-                        width: 150, height: 150, borderRadius: '50%', background: dark ? '#1f2937' : '#f3f4f6',
+                        width: 150, height: 150, borderRadius: '50%', background: 'var(--color-bg-overlay)',
                         display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden',
-                        border: `1px solid ${dark ? '#374151' : '#e5e7eb'}`
+                        border: '1px solid var(--color-border)'
                     }}>
                         {user && user.has_avatar ? (
                             <img src={`${backendUrl}/users/${user.id}/avatar?t=${Date.now()}`} alt="Current Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -142,13 +142,13 @@ export default function EditAvatar({ user, onBack, backendUrl, token, onUpdateUs
                     <Button
                         themeAware
                         onClick={() => fileInputRef.current.click()}
-                        style={{ padding: '8px 16px', background: dark ? '#374151' : '#e5e7eb', color: dark ? '#f9fafb' : '#374151', border: 'none' }}
+                        style={{ padding: '8px 16px', background: 'var(--color-bg-overlay)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}
                     >
                         选择图片
                     </Button>
                 </div>
 
-                {error && <div style={{ color: dark ? '#fda4af' : '#ef4444', fontSize: 14 }}>{error}</div>}
+                {error && <div style={{ color: 'var(--color-danger)', fontSize: 14 }}>{error}</div>}
 
                 <div style={{ marginTop: 10, width: '100%' }}>
                     <Button
@@ -156,8 +156,8 @@ export default function EditAvatar({ user, onBack, backendUrl, token, onUpdateUs
                         onClick={handleUpload}
                         disabled={uploading || !file}
                         style={{
-                            width: '100%', padding: '12px', background: !file ? (dark ? '#374151' : '#e5e7eb') : themeColor,
-                            color: !file ? (dark ? '#9ca3af' : '#9ca3af') : pickContrastTextColor(themeColor), border: 'none',
+                            width: '100%', padding: '12px', background: !file ? 'var(--color-bg-overlay)' : themeColor,
+                            color: !file ? 'var(--color-text-muted)' : pickContrastTextColor(themeColor), border: 'none',
                             fontWeight: 600
                         }}
                     >

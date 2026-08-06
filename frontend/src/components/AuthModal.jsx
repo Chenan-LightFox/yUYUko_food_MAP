@@ -8,7 +8,7 @@ export default function AuthModal({ backendUrl, onLoginSuccess, onClose }) {
     const overlayStyle = {
         position: "absolute",
         left: 0, top: 0, right: 0, bottom: 0,
-        background: dark ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.25)",
+        background: 'var(--color-backdrop)',
         display: "flex", alignItems: "center", justifyContent: "center", zIndex: 5000
     };
 

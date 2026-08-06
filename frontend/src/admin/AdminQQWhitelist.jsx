@@ -193,7 +193,7 @@ export default function AdminQQWhitelist({ backendUrl = null }) {
         }
     };
 
-    if (!canManage) return <div style={{ color: '#b00020' }}>您的账号无权访问此面板。</div>;
+    if (!canManage) return <div style={{ color: 'var(--color-danger)' }}>您的账号无权访问此面板。</div>;
 
     const PAGE_SIZE = 30;
 
@@ -222,10 +222,10 @@ export default function AdminQQWhitelist({ backendUrl = null }) {
                 <Button themeAware onClick={fetchEntries} disabled={loading}>刷新</Button>
             </div>
 
-            <div style={{ marginBottom: 12, padding: 8, border: dark ? '1px solid #1f2937' : '1px solid #eee', borderRadius: 6, background: dark ? 'var(--theme-secondary)' : undefined }}>
+            <div style={{ marginBottom: 12, padding: 8, border: '1px solid var(--color-border)', borderRadius: 8, background: 'var(--color-bg-overlay)' }}>
                 <div style={{ marginBottom: 8 }}><strong>添加QQ号到白名单</strong></div>
                 <div style={{ marginBottom: 8 }}>
-                    <label style={{ marginRight: 8, color: dark ? '#9ca3af' : 'inherit' }}>单个QQ号：</label>
+                    <label style={{ marginRight: 8, color: 'var(--color-text-secondary)' }}>单个QQ号：</label>
                     <TextInput
                         placeholder="输入QQ号"
                         value={qqInput}
@@ -234,7 +234,7 @@ export default function AdminQQWhitelist({ backendUrl = null }) {
                     />
                 </div>
                 <div style={{ marginBottom: 8 }}>
-                    <label style={{ display: 'block', marginBottom: 4, color: dark ? '#9ca3af' : 'inherit' }}>批量导入（每行一个，或用逗号分隔）：</label>
+                    <label style={{ display: 'block', marginBottom: 4, color: 'var(--color-text-secondary)' }}>批量导入（每行一个，或用逗号分隔）：</label>
                     <textarea
                         placeholder={"123456789\n987654321"}
                         value={batchInput}
@@ -246,9 +246,9 @@ export default function AdminQQWhitelist({ backendUrl = null }) {
                             boxSizing: 'border-box',
                             padding: '8px 10px',
                             borderRadius: 8,
-                            border: dark ? '1px solid #1f2937' : '1px solid #ccc',
-                            background: dark ? 'var(--theme-secondary)' : '#fff9f6',
-                            color: dark ? '#e5e7eb' : 'inherit',
+                            border: '1px solid var(--color-border)',
+                            background: 'var(--color-bg-overlay)',
+                            color: 'var(--color-text-primary)',
                             resize: 'vertical',
                             fontSize: 14
                         }}
@@ -266,7 +266,7 @@ export default function AdminQQWhitelist({ backendUrl = null }) {
                     {filteredEntries.length === 0 ? (
                         <div>当前白名单为空，请先添加QQ号。</div>
                     ) : (
-                        <ResponsiveTable minWidth={600} cellPadding="8" style={{ border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
+                        <ResponsiveTable minWidth={600} cellPadding="8" style={{ border: '1px solid var(--color-border)' }}>
                             <thead>
                                 <tr>
                                     <th style={{ textAlign: 'left', padding: 8, minWidth: 60 }}>ID</th>
@@ -277,7 +277,7 @@ export default function AdminQQWhitelist({ backendUrl = null }) {
                             </thead>
                             <tbody>
                                 {pageEntries.map((entry, idx) => (
-                                    <tr key={entry.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
+                                    <tr key={entry.id} style={{ background: idx % 2 === 0 ? 'var(--color-bg-overlay)' : undefined }}>
                                         <td>{entry.id}</td>
                                         <td>{entry.qq}</td>
                                         <td>{entry.created_time || "-"}</td>
@@ -286,7 +286,7 @@ export default function AdminQQWhitelist({ backendUrl = null }) {
                                                 themeAware
                                                 onClick={() => deleteEntry(entry.id)}
                                                 disabled={processing[entry.id]}
-                                                style={{ background: '#e02424', color: '#fff9f6', fontSize: 12, padding: '4px 6px' }}
+                                                style={{ background: 'var(--color-danger)', color: 'var(--color-on-emphasis)', fontSize: 12, padding: '4px 6px' }}
                                             >
                                                 删除
                                             </Button>

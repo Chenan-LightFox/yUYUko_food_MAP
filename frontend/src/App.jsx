@@ -457,7 +457,7 @@ export default function App() {
     };
 
     const dark = useDarkMode();
-    const placeholderStyle = { minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center", color: dark ? '#e5e7eb' : 'inherit', background: dark ? 'var(--theme-secondary)' : undefined };
+    const placeholderStyle = { minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center", color: 'var(--color-text-primary)', background: 'var(--color-bg-base)' };
 
     return (
         <AuthProvider value={authValue}>

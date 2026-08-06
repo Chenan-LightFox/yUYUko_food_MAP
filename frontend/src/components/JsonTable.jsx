@@ -1,6 +1,5 @@
 import React from 'react';
 import ResponsiveTable from './ResponsiveTable';
-import useDarkMode from '../utils/useDarkMode';
 
 function isJsonString(v) {
     if (typeof v !== 'string') return false;
@@ -10,7 +9,6 @@ function isJsonString(v) {
 }
 
 export default function JsonTable({ value, maxWidth = 420 }) {
-    const dark = useDarkMode();
 
     let parsed = value;
     if (typeof value === 'string' && isJsonString(value)) {
@@ -22,7 +20,7 @@ export default function JsonTable({ value, maxWidth = 420 }) {
     }
 
     const renderValue = (v) => {
-        if (v === null || v === undefined) return <span style={{ color: dark ? '#9ca3af' : '#666' }}>-</span>;
+        if (v === null || v === undefined) return <span style={{ color: 'var(--color-text-secondary)' }}>-</span>;
         if (typeof v === 'boolean' || typeof v === 'number') return String(v);
         if (typeof v === 'string') {
             if (v.length > 200) return <div title={v} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth }}>{v}</div>;
@@ -39,13 +37,13 @@ export default function JsonTable({ value, maxWidth = 420 }) {
         }
         if (typeof v === 'object') {
             const keys = Object.keys(v);
-            if (keys.length === 0) return <span style={{ color: dark ? '#9ca3af' : '#666' }}>{'{}'}</span>;
+            if (keys.length === 0) return <span style={{ color: 'var(--color-text-secondary)' }}>{'{}'}</span>;
             return (
                 <ResponsiveTable minWidth={320} wrapperStyle={{ maxWidth: '100%' }} style={{ width: '100%' }}>
                     <tbody>
                         {keys.map(k => (
                             <tr key={k}>
-                                <td style={{ verticalAlign: 'top', padding: 6, fontWeight: 600, width: '30%', color: dark ? '#e5e7eb' : undefined }}>{k}</td>
+                                <td style={{ verticalAlign: 'top', padding: 6, fontWeight: 600, width: '30%', color: 'var(--color-text-primary)' }}>{k}</td>
                                 <td style={{ verticalAlign: 'top', padding: 6 }}>{renderValue(v[k])}</td>
                             </tr>
                         ))}

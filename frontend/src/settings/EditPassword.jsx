@@ -72,17 +72,17 @@ export default function EditPassword({ user, onBack, backendUrl, token, onUpdate
         <PageTemplate breadcrumb={[{ label: '设置', onClick: onBack }, { label: '修改密码' }]}>
             <form onSubmit={handleSubmit}>
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>当前密码</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>当前密码</div>
                     <TextInput type="password" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)} style={{ width: '100%' }} />
                 </label>
 
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>新密码</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>新密码</div>
                     <TextInput type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} style={{ width: '100%' }} />
                 </label>
 
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#666', marginBottom: 6 }}>确认新密码</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>确认新密码</div>
                     <TextInput type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} style={{ width: '100%' }} />
                 </label>
 

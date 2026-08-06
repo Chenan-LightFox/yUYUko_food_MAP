@@ -219,7 +219,7 @@ export default function AdminInvitecode({ backendUrl = null }) {
         }
     };
 
-    if (!canManage) return <div style={{ color: '#b00020' }}>您的账号无权访问此面板。</div>;
+    if (!canManage) return <div style={{ color: 'var(--color-danger)' }}>您的账号无权访问此面板。</div>;
 
     return (
         <div style={{ marginTop: 12 }}>
@@ -229,10 +229,10 @@ export default function AdminInvitecode({ backendUrl = null }) {
             </div>
 
 
-            <div style={{ marginBottom: 12, padding: 8, border: dark ? '1px solid #1f2937' : '1px solid #eee', borderRadius: 6, background: dark ? 'var(--theme-secondary)' : undefined }}>
+            <div style={{ marginBottom: 12, padding: 8, border: '1px solid var(--color-border)', borderRadius: 8, background: 'var(--color-bg-overlay)' }}>
                 <div style={{ marginBottom: 8 }}><strong>创建新邀请码</strong></div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <label style={{ marginRight: 8, color: dark ? '#9ca3af' : 'inherit' }}>可用次数：</label>
+                    <label style={{ marginRight: 8, color: 'var(--color-text-secondary)' }}>可用次数：</label>
                     <TextInput type="number" value={maxUses} onChange={e => setMaxUses(Number(e.target.value))} min={1} style={{ width: 120, marginRight: 8 }} />
                     <Button themeAware onClick={() => createInvite()} disabled={creating}>生成并创建</Button>
                 </div>
@@ -251,7 +251,7 @@ export default function AdminInvitecode({ backendUrl = null }) {
                     {invites.length === 0 ? (
                         <div>当前没有邀请码记录。</div>
                     ) : (
-                        <ResponsiveTable minWidth={900} cellPadding="8" style={{ border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
+                        <ResponsiveTable minWidth={900} cellPadding="8" style={{ border: '1px solid var(--color-border)' }}>
                             <thead>
                                 <tr>
                                     <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>ID</th>
@@ -264,14 +264,14 @@ export default function AdminInvitecode({ backendUrl = null }) {
                             </thead>
                             <tbody>
                                 {invites.map((inv, idx) => (
-                                    <tr key={inv.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
+                                    <tr key={inv.id} style={{ background: idx % 2 === 0 ? 'var(--color-bg-overlay)' : undefined }}>
                                         <td style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={inv.id}>{inv.id}</td>
                                         <td style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={inv.code || inv.hashed}>{inv.code || inv.hashed || "-"}</td>
                                         <td>{inv.max_uses != null ? inv.max_uses : (inv.maxUses || "-")}</td>
                                         <td>{inv.current_uses != null ? inv.current_uses : (inv.currentUses || 0)}</td>
                                         <td>{inv.created_time || inv.createdTime || "-"}</td>
                                         <td style={{ minWidth: 100 }}>
-                                            <Button themeAware onClick={() => deleteInvite(inv.id)} disabled={processing[inv.id]} style={{ background: '#e02424', color: '#fff9f6', fontSize: 12, padding: '4px 6px' }}>删除</Button>
+                                            <Button themeAware onClick={() => deleteInvite(inv.id)} disabled={processing[inv.id]} style={{ background: 'var(--color-danger)', color: 'var(--color-on-emphasis)', fontSize: 12, padding: '4px 6px' }}>删除</Button>
                                         </td>
                                     </tr>
                                 ))}

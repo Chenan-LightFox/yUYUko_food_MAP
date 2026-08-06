@@ -190,7 +190,7 @@ export default function AdminPlaces({ backendUrl = null }) {
     return (
         <div style={{ marginTop: 12 }}>
             <h3>地点修改申请</h3>
-            {!canManage && <div style={{ color: '#b00020' }}>您的账号无权访问此面板。</div>}
+            {!canManage && <div style={{ color: 'var(--color-danger)' }}>您的账号无权访问此面板。</div>}
             {canManage && (
                 <div>
                     <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -210,7 +210,7 @@ export default function AdminPlaces({ backendUrl = null }) {
                                 <div>当前没有匹配的待处理申请。</div>
                             ) : (
                                 <div>
-                                    <ResponsiveTable minWidth={950} cellPadding="8" style={{ border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
+                                    <ResponsiveTable minWidth={950} cellPadding="8" style={{ border: '1px solid var(--color-border)' }}>
                                         <thead>
                                             <tr>
                                                 <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>ID</th>
@@ -224,7 +224,7 @@ export default function AdminPlaces({ backendUrl = null }) {
                                         </thead>
                                         <tbody>
                                             {pageItems.map((r, idx) => (
-                                                <tr key={r.id} style={{ background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
+                                                <tr key={r.id} style={{ background: idx % 2 === 0 ? 'var(--color-bg-overlay)' : undefined }}>
                                                     <td style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.id}>{r.id}</td>
                                                     <td style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.place_id}>{r.place_id}</td>
                                                     <td style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.requester_id}>{r.requester_id}</td>
@@ -232,12 +232,12 @@ export default function AdminPlaces({ backendUrl = null }) {
                                                     <td>{r.status}</td>
                                                     <td style={{ maxWidth: 420, verticalAlign: 'top' }}>
                                                         <JsonTable value={r.proposed} />
-                                                        {r.note ? <div style={{ color: '#666', marginTop: 6 }}>备注: {r.note}</div> : null}
+                                                        {r.note ? <div style={{ color: 'var(--color-text-secondary)', marginTop: 6 }}>备注: {r.note}</div> : null}
                                                     </td>
                                                     <td style={{ minWidth: 140 }}>
                                                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                                                             <Button themeAware onClick={() => review(r.id, 'approve')} disabled={processing[r.id]} style={{ fontSize: 12, padding: '4px 6px' }}>通过</Button>
-                                                            <Button themeAware onClick={() => review(r.id, 'reject')} disabled={processing[r.id]} style={{ background: '#e02424', color: '#fff9f6', fontSize: 12, padding: '4px 6px' }}>驳回</Button>
+                                                            <Button themeAware onClick={() => review(r.id, 'reject')} disabled={processing[r.id]} style={{ background: 'var(--color-danger)', color: 'var(--color-on-emphasis)', fontSize: 12, padding: '4px 6px' }}>驳回</Button>
                                                         </div>
                                                     </td>
                                                 </tr>

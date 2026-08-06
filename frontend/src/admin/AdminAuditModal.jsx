@@ -1,32 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import Button from '../components/Button';
-import useDarkMode from '../utils/useDarkMode';
 import ResponsiveTable from '../components/ResponsiveTable';
 import ScrollableView from '../components/ScrollableView';
-import { getThemeColor } from '../utils/theme';
 import JsonTable from '../components/JsonTable';
 
 export default function AdminAuditModal({ open, onClose, backendUrl, token }) {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(false);
     const base = backendUrl || (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:2053` : 'http://localhost:2053');
-
-    const dark = useDarkMode();
-    const themeColor = getThemeColor();
-
-    const hexToRgba = (hex, a = 1) => {
-        try {
-            let h = (hex || '').replace('#', '');
-            if (h.length === 3) h = h.split('').map(c => c + c).join('');
-            const bigint = parseInt(h, 16);
-            const r = (bigint >> 16) & 255;
-            const g = (bigint >> 8) & 255;
-            const b = bigint & 255;
-            return `rgba(${r},${g},${b},${a})`;
-        } catch (e) {
-            return `rgba(0,0,0,${a})`;
-        }
-    };
 
     useEffect(() => {
         if (!open) return;
@@ -58,17 +39,18 @@ export default function AdminAuditModal({ open, onClose, backendUrl, token }) {
     return (
         <div style={{ position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', zIndex: 6000 }}>
             <ScrollableView style={{
-                background: dark ? 'var(--theme-secondary)' : '#fff9f6',
+                background: 'var(--color-bg-surface)',
                 padding: 12,
                 boxSizing: 'border-box',
-                borderRadius: 6,
+                borderRadius: 10,
+                border: '1px solid var(--color-border)',
                 width: 'min(640px, calc(100vw - 24px))',
                 minWidth: 0,
                 maxWidth: 'calc(100vw - 24px)',
                 maxHeight: '80vh',
                 overflowY: 'auto',
-                boxShadow: dark ? '0 6px 24px rgba(0,0,0,0.6)' : '0 8px 40px rgba(0,0,0,0.25)',
-                color: dark ? '#e5e7eb' : undefined
+                boxShadow: 'var(--shadow-surface)',
+                color: 'var(--color-text-primary)'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 style={{ margin: 0 }}>管理员操作日志（最近 200 条）</h3>
@@ -82,9 +64,9 @@ export default function AdminAuditModal({ open, onClose, backendUrl, token }) {
                     ) : (
                         <div>
                             {logs.length === 0 ? (
-                                <div style={{ color: dark ? '#9ca3af' : '#666' }}>暂无操作记录</div>
+                                <div style={{ color: 'var(--color-text-secondary)' }}>暂无操作记录</div>
                             ) : (
-                                <ResponsiveTable minWidth={900} cellPadding="8" style={{ border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #ddd' }}>
+                                <ResponsiveTable minWidth={900} cellPadding="8" style={{ border: '1px solid var(--color-border)' }}>
                                     <thead>
                                         <tr>
                                             <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>ID</th>
@@ -97,7 +79,7 @@ export default function AdminAuditModal({ open, onClose, backendUrl, token }) {
                                     </thead>
                                     <tbody>
                                         {logs.map((l, idx) => (
-                                            <tr key={l.id} style={{ borderTop: dark ? '1px solid rgba(255,255,255,0.04)' : undefined, background: idx % 2 === 0 ? (dark ? 'rgba(255,255,255,0.02)' : '#fafafa') : undefined }}>
+                                            <tr key={l.id} style={{ borderTop: '1px solid var(--color-border)', background: idx % 2 === 0 ? 'var(--color-bg-overlay)' : undefined }}>
                                                 <td style={{ padding: 8, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.id}>{l.id}</td>
                                                 <td style={{ padding: 8, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.admin_id}>{l.admin_id}</td>
                                                 <td style={{ padding: 8 }}>{l.action}</td>

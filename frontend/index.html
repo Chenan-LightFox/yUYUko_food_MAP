@@ -45,6 +45,73 @@
     <style>
         :root {
             --app-height: 100vh;
+            color-scheme: light;
+
+            /* 白玉楼·春：语义色彩令牌 */
+            --color-bg-base: #F9F8FA;
+            --color-bg-surface: #FFFFFF;
+            --color-bg-overlay: #F2EEF5;
+            --color-border: #E6DCEB;
+            --color-text-primary: #2B2533;
+            --color-text-secondary: #6E6578;
+            --color-text-muted: #9E95A8;
+
+            --color-primary: #E2789F;
+            --color-primary-hover: #D4628B;
+            --color-primary-active: #C2517A;
+            --color-secondary: #8C6BB1;
+            --color-glow: rgba(226, 120, 159, 0.2);
+
+            --color-success: #3D9970;
+            --color-warning: #E67E22;
+            --color-danger: #D9534F;
+            --color-info: #3498DB;
+            --color-on-emphasis: #2B2533;
+
+            --color-backdrop: rgba(18, 16, 22, 0.32);
+            --shadow-surface: 0 8px 28px rgba(43, 37, 51, 0.14);
+            --theme-primary: #E2789F;
+            --theme-secondary: #8C6BB1;
+            --theme-icon: #8C6BB1;
+            --theme-primary-0-2: var(--color-glow);
+            --theme-primary-0-25: rgba(226, 120, 159, 0.25);
+            --theme-secondary-0-12: rgba(140, 107, 177, 0.12);
+            --theme-secondary-0-2: rgba(140, 107, 177, 0.2);
+        }
+
+        :root[data-theme='dark'] {
+            color-scheme: dark;
+
+            /* 冥界·夜樱：语义色彩令牌 */
+            --color-bg-base: #121016;
+            --color-bg-surface: #1A1625;
+            --color-bg-overlay: #251F34;
+            --color-border: #382E47;
+            --color-text-primary: #F3EFEF;
+            --color-text-secondary: #9E97A9;
+            --color-text-muted: #60586E;
+
+            --color-primary: #FF8FB1;
+            --color-primary-hover: #FFA6C1;
+            --color-primary-active: #E87A9C;
+            --color-secondary: #A882DD;
+            --color-glow: rgba(255, 143, 177, 0.3);
+
+            --color-success: #5CD698;
+            --color-warning: #FFB049;
+            --color-danger: #FF6B6B;
+            --color-info: #64B5F6;
+            --color-on-emphasis: #2B2533;
+
+            --color-backdrop: rgba(8, 6, 12, 0.68);
+            --shadow-surface: 0 10px 32px rgba(0, 0, 0, 0.48), 0 0 18px rgba(255, 143, 177, 0.08);
+            --theme-primary: #FF8FB1;
+            --theme-secondary: #A882DD;
+            --theme-icon: #A882DD;
+            --theme-primary-0-2: rgba(255, 143, 177, 0.2);
+            --theme-primary-0-25: rgba(255, 143, 177, 0.25);
+            --theme-secondary-0-12: rgba(168, 130, 221, 0.12);
+            --theme-secondary-0-2: rgba(168, 130, 221, 0.2);
         }
 
         @supports (height: 100dvh) {
@@ -62,6 +129,16 @@
             padding: 0;
         }
 
+        body {
+            background: var(--color-bg-base);
+            color: var(--color-text-primary);
+        }
+
+        ::selection {
+            background: var(--color-glow);
+            color: var(--color-text-primary);
+        }
+
         #map {
             width: 100%;
             height: 100%;
@@ -72,16 +149,24 @@
             top: 8px;
             left: 8px;
             z-index: 2000;
-            background: white;
+            background: var(--color-bg-surface);
+            color: var(--color-text-primary);
             padding: 8px;
             border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--color-border);
+            box-shadow: var(--shadow-surface);
         }
 
         input,
         textarea,
         select {
             font-size: 16px;
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: var(--color-text-muted);
+            opacity: 1;
         }
 
     </style>

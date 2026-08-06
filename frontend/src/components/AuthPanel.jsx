@@ -13,7 +13,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
     const [themeColor, setThemeColor] = useState(() => isDarkMode() ? DEFAULT_DARK_PRIMARY : DEFAULT_PRIMARY);
 
     const dark = useDarkMode();
-    const menuTextColor = dark ? '#e5e7eb' : 'inherit';
+    const menuTextColor = 'var(--color-text-primary)';
 
     useEffect(() => {
         if (!open && !moreOpen) return;
@@ -110,7 +110,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
     const isOnSettings = typeof currentPath === 'string' && currentPath.startsWith('/settings');
     const isOnDinners = typeof currentPath === 'string' && currentPath.startsWith('/dinners');
     const isOnPosterExport = currentPath === '/posters/new';
-    const divider = <div style={{ height: 1, background: dark ? '#293649' : '#a2a2a2' }} />;
+    const divider = <div style={{ height: 1, background: 'var(--color-border)' }} />;
 
     return (
         <div
@@ -146,7 +146,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: interactionDisabled ? 'default' : 'pointer',
-                    boxShadow: dark ? '0 1px 3px rgba(0,0,0,0.6)' : '0 1px 3px rgba(0,0,0,0.15)',
+                    boxShadow: '0 2px 10px var(--color-glow)',
                     overflow: 'hidden',
                     border: `3px solid ${themeColor}`,
                     boxSizing: 'border-box'
@@ -173,12 +173,12 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                         left: 12,
                         top: 64,
                         minWidth: 200,
-                        background: dark ? 'var(--theme-secondary)' : '#fff9f6',
+                        background: 'var(--color-bg-surface)',
                         borderRadius: 8,
-                        boxShadow: dark ? '0 6px 24px rgba(0,0,0,0.6)' : '0 6px 24px rgba(0,0,0,0.15)',
+                        boxShadow: 'var(--shadow-surface)',
                         padding: 8,
-                        border: dark ? '1px solid #1f2937' : '1px solid rgba(16,24,40,0.06)',
-                        color: dark ? '#e5e7eb' : 'inherit'
+                        border: '1px solid var(--color-border)',
+                        color: 'var(--color-text-primary)'
                     }}
                 >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -191,7 +191,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                             {isOnSettings ? '返回地图' : '设置'}
                         </Button>
                         {divider}
-                        <Button themeAware variant="menu" full onClick={() => { setOpen(false); onLogout && onLogout(); }} style={{ color: dark ? '#ff8a93' : '#b00020' }}>
+                        <Button themeAware variant="menu" full onClick={() => { setOpen(false); onLogout && onLogout(); }} style={{ color: 'var(--color-danger)' }}>
                             注销
                         </Button>
                     </div>
@@ -214,9 +214,9 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 background: themeColor,
-                                color: '#fff9f6',
+                                color: '#FFFFFF',
                                 border: 'none',
-                                boxShadow: dark ? '0 4px 12px rgba(0,0,0,0.45)' : '0 4px 12px rgba(0,0,0,0.18)',
+                                boxShadow: '0 4px 12px var(--color-glow)',
                                 cursor: 'pointer'
                             }}
                         >
@@ -234,12 +234,12 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                         left: 16,
                         bottom: isNarrow ? 144 : 88,
                         minWidth: 180,
-                        background: dark ? 'var(--theme-secondary)' : '#fff9f6',
+                        background: 'var(--color-bg-surface)',
                         borderRadius: 8,
-                        boxShadow: dark ? '0 6px 24px rgba(0,0,0,0.6)' : '0 6px 24px rgba(0,0,0,0.15)',
+                        boxShadow: 'var(--shadow-surface)',
                         padding: 8,
-                        border: dark ? '1px solid #1f2937' : '1px solid rgba(16,24,40,0.06)',
-                        color: dark ? '#e5e7eb' : 'inherit'
+                        border: '1px solid var(--color-border)',
+                        color: 'var(--color-text-primary)'
                     }}
                 >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>

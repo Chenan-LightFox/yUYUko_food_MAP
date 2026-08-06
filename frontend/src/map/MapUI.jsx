@@ -130,8 +130,8 @@ function ShareOptionButton({ icon, label, description, onClick, dark }) {
             onClick,
             style: {
                 background: 'transparent',
-                border: dark ? '1px solid rgba(255,255,255,0.08)' : '2px solid rgba(0,0,0,0.12)',
-                color: dark ? '#e5e7eb' : undefined,
+                border: '1px solid var(--color-border)',
+                color: 'var(--color-text-primary)',
                 padding: '10px 12px',
                 borderRadius: 6,
                 textAlign: 'left',
@@ -144,7 +144,7 @@ function ShareOptionButton({ icon, label, description, onClick, dark }) {
             React.createElement('span', { className: 'material-symbols-outlined', style: { fontSize: 24, flexShrink: 0, marginTop: 2 } }, icon),
             React.createElement('div', { style: { flex: 1 } },
                 React.createElement('div', { style: { fontSize: 14, fontWeight: 500 } }, label),
-                React.createElement('div', { style: { fontSize: 11, color: dark ? '#9ca3af' : '#6b7280', marginTop: 2 } }, description)
+                React.createElement('div', { style: { fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 } }, description)
             )
         )
     );
@@ -262,6 +262,23 @@ export default function MapUI(props) {
     const isPosterPicker = pickerMode && pickerContext === 'poster';
     const normalizedPickedPlaces = Array.isArray(pickedPlaces) ? pickedPlaces : [];
     const selectedPlaceAlreadyPicked = !!selectedPlace && normalizedPickedPlaces.some((place) => getPlaceKey(place) === getPlaceKey(selectedPlace));
+    const popupActionButtonStyle = {
+        background: 'transparent',
+        border: '1px solid var(--color-border)',
+        color: 'var(--color-text-primary)',
+        padding: '9px 10px',
+        minWidth: 44,
+        minHeight: 44,
+        borderRadius: 8,
+        lineHeight: 1,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        touchAction: 'manipulation'
+    };
+    const popupActionIconStyle = { display: 'inline-block', fontSize: 20 };
+    const popupActionLabelStyle = { fontSize: 11, fontWeight: 600, lineHeight: 1, whiteSpace: 'nowrap' };
 
     useEffect(() => {
         const onResize = () => setIsNarrow(window.innerWidth <= 500);
@@ -446,7 +463,7 @@ export default function MapUI(props) {
         if (!items || items.length === 0) return null;
         return (
             <div style={{ marginBottom: 12 }}>
-                <div style={{ padding: '4px 12px', fontSize: 12, color: dark ? '#9ca3af' : '#6b7280', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ padding: '4px 12px', fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
                     <span>{title}</span>
                     {hasMore && onMore && (
                         <span onClick={onMore} style={{ cursor: 'pointer', color: customThemeSecondary || customThemeColor }}>查看更多</span>
@@ -459,19 +476,19 @@ export default function MapUI(props) {
                         style={{
                             padding: '8px 12px',
                             cursor: 'pointer',
-                            borderBottom: `1px solid ${dark ? '#1f2937' : '#f3f4f6'}`,
+                            borderBottom: '1px solid var(--color-border)',
                             display: 'flex',
                             flexDirection: 'column'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = dark ? '#1f2937' : '#f9fafb'}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-overlay)'}
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
-                        <span style={{ fontSize: 14, color: dark ? '#f3f4f6' : '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
+                        <span style={{ fontSize: 14, color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                            <span style={{ fontSize: 12, color: dark ? '#9ca3af' : '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1, paddingRight: 8 }}>
+                            <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1, paddingRight: 8 }}>
                                 {item.address || item.category || item.description || ''}
                             </span>
-                            <span style={{ fontSize: 11, color: dark ? '#6b7280' : '#9ca3af', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            <span style={{ fontSize: 11, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                 距离: {item.dist < 1000 ? `${Math.round(item.dist)}米` : `${(item.dist / 1000).toFixed(1)}公里`}
                             </span>
                         </div>
@@ -520,14 +537,14 @@ export default function MapUI(props) {
                             transform: 'translateX(-50%)',
                             zIndex: 1500,
                             pointerEvents: 'none',
-                            background: dark ? 'var(--theme-secondary)' : '#fff9f6',
-                            color: dark ? '#e5e7eb' : '#1f2937',
+                            background: 'var(--color-bg-surface)',
+                            color: 'var(--color-text-primary)',
                             fontSize: 12,
                             lineHeight: '16px',
                             padding: '2px 8px 2px 6px',
                             borderRadius: 2,
                             border: '1px solid var(--theme-primary)',
-                            borderLeft: isThunder ? '5px solid #dc2626' : '5px solid var(--theme-primary)',
+                            borderLeft: isThunder ? '5px solid var(--color-danger)' : '5px solid var(--theme-primary)',
                             whiteSpace: 'nowrap',
                             boxShadow: '0 1px 4px rgba(0,0,0,0.15)'
                         }}
@@ -584,9 +601,9 @@ export default function MapUI(props) {
                             boxSizing: 'border-box',
                             padding: '6px 34px 6px 12px',
                             borderRadius: 22,
-                            border: dark ? '2px solid rgba(255,255,255,0.06)' : `2px solid ${customThemeColor}`,
-                            background: dark ? 'var(--theme-secondary)' : '#fff9f6',
-                            color: dark ? '#e5e7eb' : 'inherit',
+                            border: `2px solid ${dark ? 'var(--color-border)' : customThemeColor}`,
+                            background: 'var(--color-bg-overlay)',
+                            color: 'var(--color-text-primary)',
                             outline: 'none',
                             boxShadow: `0 4px 12px ${hexToRgba(customThemeColor, 0.2)}, 0 0 8px ${hexToRgba(customThemeColor, 0.25)}`,
                             zIndex: 2002
@@ -614,7 +631,7 @@ export default function MapUI(props) {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 background: 'transparent',
-                                color: dark ? '#e5e7eb' : '#4b5563',
+                                color: 'var(--color-text-secondary)',
                                 cursor: (!mapReady || searching) ? 'not-allowed' : 'pointer',
                                 opacity: (!mapReady || searching) ? 0.55 : 1,
                                 zIndex: 2003
@@ -631,17 +648,17 @@ export default function MapUI(props) {
                             right: 0,
                             width: '100%',
                             maxHeight: '60vh',
-                            background: dark ? 'var(--theme-secondary)' : '#fff9f6',
+                            background: 'var(--color-bg-surface)',
                             borderRadius: 8,
                             boxShadow: `0 4px 12px ${hexToRgba(customThemeColor, 0.2)}`,
-                            border: dark ? '1px solid rgba(255,255,255,0.06)' : `1px solid ${hexToRgba(customThemeColor, 0.5)}`,
+                            border: `1px solid ${dark ? 'var(--color-border)' : hexToRgba(customThemeColor, 0.5)}`,
                             zIndex: 2002,
                             display: 'flex',
                             flexDirection: 'column',
-                            color: dark ? '#e5e7eb' : '#1f2937'
+                            color: 'var(--color-text-primary)'
                         }}>
                             {spLoading && !spResults ? (
-                                <div style={{ padding: 12, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>加载中...</div>
+                                <div style={{ padding: 12, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>加载中...</div>
                             ) : (
                                 <>
                                     {renderSpSection('标记点结果', spResults?.markedInView, spResults?.hasMoreMarkedInView, () => searchServer({ q: searchTerm }))}
@@ -652,7 +669,7 @@ export default function MapUI(props) {
                                     })}
                                     {renderSpSection('其他匹配结果', spResults?.others, false, null)}
                                     {(!spResults?.markedInView?.length && !spResults?.unmarkedInView?.length && !spResults?.others?.length) && (
-                                        <div style={{ padding: 12, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>未找到匹配的结果</div>
+                                        <div style={{ padding: 12, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>未找到匹配的结果</div>
                                     )}
                                 </>
                             )}
@@ -673,7 +690,7 @@ export default function MapUI(props) {
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     background: customThemeColor,
-                                    color: '#fff9f6',
+                                    color: '#FFFFFF',
                                     border: 'none',
                                     boxShadow: `0 4px 12px ${hexToRgba(customThemeColor, 0.2)}`,
                                     transition: 'background 180ms ease, transform 220ms ease',
@@ -708,7 +725,7 @@ export default function MapUI(props) {
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     background: customThemeColor,
-                                    color: '#fff9f6',
+                                    color: '#FFFFFF',
                                     border: 'none',
                                     boxShadow: `0 4px 12px ${hexToRgba(customThemeColor, 0.2)}`,
                                     transition: 'background 180ms ease, transform 220ms ease',
@@ -727,7 +744,7 @@ export default function MapUI(props) {
             {!hideNonSearchButtons && (
                 <div style={{ position: "absolute", right: 8, top: 8, zIndex: 2000 }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
-                        <div style={{ padding: "4px 8px", background: "rgba(0,0,0,0.5)", color: "#fff9f6", borderRadius: "12px", fontSize: "12px", pointerEvents: "none", userSelect: "none" }}>
+                        <div style={{ padding: "4px 8px", background: "var(--color-backdrop)", color: "#F3EFEF", borderRadius: "12px", fontSize: "12px", pointerEvents: "none", userSelect: "none" }}>
                             v1.8.1
                         </div>
 
@@ -747,10 +764,10 @@ export default function MapUI(props) {
                                                 display: 'inline-flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                background: addMode ? '#e02424' : customThemeColor,
-                                                color: '#fff9f6',
+                                                background: addMode ? 'var(--color-danger)' : customThemeColor,
+                                                color: addMode ? 'var(--color-on-emphasis)' : '#FFFFFF',
                                                 border: 'none',
-                                                boxShadow: addMode ? '0 4px 12px rgba(224,36,36,0.2)' : '0 4px 12px rgba(0,47,167,0.2)',
+                                                boxShadow: addMode ? '0 4px 12px rgba(217,83,79,0.22)' : '0 4px 12px var(--color-glow)',
                                                 transition: 'background 180ms ease, transform 220ms ease',
                                                 cursor: (!mapReady || authPending) ? 'not-allowed' : 'pointer',
                                                 opacity: (!mapReady || authPending) ? 0.6 : 1
@@ -780,8 +797,8 @@ export default function MapUI(props) {
                                         display: 'inline-flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        background: favPageOpen ? '#f5220b' : customThemeColor,
-                                        color: '#fff9f6',
+                                        background: favPageOpen ? 'var(--color-primary-active)' : customThemeColor,
+                                        color: favPageOpen ? 'var(--color-on-emphasis)' : '#FFFFFF',
                                         border: 'none',
                                         transition: 'background 180ms ease, transform 220ms ease',
                                         cursor: (!mapReady || authPending) ? 'not-allowed' : 'pointer',
@@ -812,8 +829,8 @@ export default function MapUI(props) {
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             position: 'relative',
-                                            background: pickedPageOpen ? '#f5220b' : customThemeColor,
-                                            color: '#fff9f6',
+                                            background: pickedPageOpen ? 'var(--color-primary-active)' : customThemeColor,
+                                            color: pickedPageOpen ? 'var(--color-on-emphasis)' : '#FFFFFF',
                                             border: 'none',
                                             transition: 'background 180ms ease, transform 220ms ease',
                                             cursor: !mapReady ? 'not-allowed' : 'pointer',
@@ -833,7 +850,7 @@ export default function MapUI(props) {
                                             display: 'inline-flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            background: '#fff9f6',
+                                            background: 'var(--color-bg-surface)',
                                             color: customThemeColor,
                                             border: `1px solid ${customThemeColor}`,
                                             fontSize: 10,
@@ -861,8 +878,8 @@ export default function MapUI(props) {
                                             display: 'inline-flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            background: locating ? '#089938' : customThemeColor,
-                                            color: '#fff9f6',
+                                            background: locating ? 'var(--color-success)' : customThemeColor,
+                                            color: locating ? 'var(--color-on-emphasis)' : '#FFFFFF',
                                             border: 'none',
                                             transition: 'background 180ms ease, transform 220ms ease',
                                             cursor: (!mapReady || authPending) ? 'not-allowed' : 'pointer',
@@ -893,14 +910,14 @@ export default function MapUI(props) {
                         pointerEvents: "auto"
                     }}
                 >
-                    <div ref={popupRef} style={{ background: dark ? 'var(--theme-secondary)' : '#fff9f6', padding: 10, borderRadius: 6, boxShadow: dark ? "0 6px 24px rgba(0,0,0,0.6)" : "0 2px 12px rgba(0,0,0,0.25)", minWidth: 200, width: 'min(92vw, 320px)', maxWidth: 'min(92vw, 320px)' }}>
+                    <div ref={popupRef} style={{ background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-surface)', minWidth: 200, width: 'min(92vw, 320px)', maxWidth: 'min(92vw, 320px)' }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <strong style={{ fontSize: 14, color: dark ? '#e5e7eb' : undefined }}>{selectedPlace.name}</strong>
+                            <strong style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{selectedPlace.name}</strong>
                             {!hideNonSearchButtons && (
-                                <Button onClick={closePopup} style={{ padding: "2px 8px", borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", fontSize: 18, lineHeight: 1, color: dark ? '#e5e7eb' : undefined }} title="关闭">×</Button>
+                                <Button onClick={closePopup} style={{ padding: "2px 8px", borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", fontSize: 18, lineHeight: 1, color: 'var(--color-text-secondary)' }} title="关闭">×</Button>
                             )}
                         </div>
-                        <div style={{ marginTop: 6, fontSize: 13, color: dark ? '#e5e7eb' : undefined, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                        <div style={{ marginTop: 6, fontSize: 13, color: 'var(--color-text-primary)', lineHeight: 1.5, wordBreak: 'break-word' }}>
                             {(() => {
                                 const { text, hasMore } = getPopupDescriptionPreview(selectedPlace);
                                 return (
@@ -909,7 +926,7 @@ export default function MapUI(props) {
                                         {hasMore && !pickerMode && (
                                             <span
                                                 onClick={openDetailPanel}
-                                                style={{ marginLeft: 4, color: '#9ca3af', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                                style={{ marginLeft: 4, color: 'var(--color-text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                                 title="在详情中查看更多"
                                             >
                                                 [在详情中查看更多]
@@ -919,13 +936,13 @@ export default function MapUI(props) {
                                 );
                             })()}
                         </div>
-                        <div style={{ marginTop: 6, color: dark ? '#9ca3af' : '#666', fontSize: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ marginTop: 6, color: 'var(--color-text-secondary)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
                             <span>分类: {selectedPlace.category || "-"}</span>
                             {selectedPlace.per_person_cost != null && <span>人均 ¥{selectedPlace.per_person_cost}</span>}
                         </div>
 
                         {!pickerMode && (
-                            <div style={{ marginTop: 8, color: dark ? '#9ca3af' : '#888', fontSize: 12 }}>
+                            <div style={{ marginTop: 8, color: 'var(--color-text-muted)', fontSize: 12 }}>
                                 最近修改：{getLastModifierText(selectedPlace)}
                             </div>
                         )}
@@ -937,8 +954,8 @@ export default function MapUI(props) {
                                         onClick={handlePickPlace}
                                         aria-label={isPosterPicker && selectedPlaceAlreadyPicked ? '取消选择此地点' : '选择此地点'}
                                         style={{
-                                            ...(isPosterPicker && selectedPlaceAlreadyPicked ? { background: '#dc2626' } : {}),
-                                            color: '#fff9f6',
+                                            ...(isPosterPicker && selectedPlaceAlreadyPicked ? { background: 'var(--color-danger)' } : {}),
+                                            color: isPosterPicker && selectedPlaceAlreadyPicked ? 'var(--color-on-emphasis)' : '#FFFFFF',
                                             border: 0
                                         }}
                                     >
@@ -948,29 +965,32 @@ export default function MapUI(props) {
                             </div>
                         ) : (
                             !hideNonSearchButtons && (
-                                <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+                                <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                     <Tooltip text={hasNavigationTarget ? '发送到设备地图 App' : '该地点缺少坐标，无法导航'}>
                                         <Button
                                             onClick={handleNavigate}
                                             disabled={!hasNavigationTarget}
-                                            style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : '2px solid rgba(0,0,0,0.1)', color: dark ? '#e5e7eb' : '#592943', padding: '6px 10px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                            aria-label="导航到此地点"
+                                            style={popupActionButtonStyle}
                                         >
-                                            <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 20 }}>near_me</span>
+                                            <span className="material-symbols-outlined" style={popupActionIconStyle}>near_me</span>
+                                            <span style={popupActionLabelStyle}>导航</span>
                                         </Button>
                                     </Tooltip>
                                     <Tooltip text="分享此地点">
                                         <Button
                                             onClick={() => setShareOpen(true)}
-                                            style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : '2px solid rgba(0,0,0,0.1)', color: dark ? '#e5e7eb' : '#592943', padding: '6px 10px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                            aria-label="分享此地点"
+                                            style={popupActionButtonStyle}
                                         >
-                                            <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 20 }}>
+                                            <span className="material-symbols-outlined" style={popupActionIconStyle}>
                                                 share
                                             </span>
                                         </Button>
                                     </Tooltip>
                                     {/* 评论功能暂不开放，待敏感词机制完善后再开放 */}
                                     { /*<Tooltip text="在这里留下你的评论">
-                                    <Button onClick={openCommentPanel} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : undefined, color: dark ? '#e5e7eb' : '#592943', padding: '6px 10px', borderRadius: 4 }}>评论</Button>
+                                    <Button onClick={openCommentPanel} style={{ background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', padding: '6px 10px', borderRadius: 4 }}>评论</Button>
                                 </Tooltip>
                                 <span style={{ padding: 4 }}></span> */ }
                                     {selectedPlace.isMarked !== false && (
@@ -978,28 +998,31 @@ export default function MapUI(props) {
                                             <Button
                                                 onClick={() => onToggleFavorite && onToggleFavorite(selectedPlace)}
                                                 disabled={favoriteLoading}
-                                                style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : '2px solid rgba(0,0,0,0.1)', color: favoriteIds && favoriteIds.has(selectedPlace.id) ? '#f5220b' : (dark ? '#e5e7eb' : '#592943'), padding: '6px 10px', borderRadius: 4, lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                                aria-label={favoriteIds && favoriteIds.has(selectedPlace.id) ? '取消收藏此地点' : '收藏此地点'}
+                                                aria-pressed={favoriteIds && favoriteIds.has(selectedPlace.id)}
+                                                style={{ ...popupActionButtonStyle, color: favoriteIds && favoriteIds.has(selectedPlace.id) ? 'var(--color-primary)' : popupActionButtonStyle.color }}
                                             >
-                                                <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 20 }}>
+                                                <span className="material-symbols-outlined" style={popupActionIconStyle}>
                                                     {favoriteIds && favoriteIds.has(selectedPlace.id) ? 'heart_minus' : 'heart_plus'}
                                                 </span>
+                                                <span style={popupActionLabelStyle}>收藏</span>
                                             </Button>
                                         </Tooltip>
                                     )}
                                     <Tooltip text={selectedPlace.isMarked === false ? '创建此地点' : '管理此地点'}>
                                         {selectedPlace.isMarked === false ? (
-                                            <Button onClick={openCreateFromPoi} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : '2px solid rgba(0,0,0,0.1)', color: dark ? '#e5e7eb' : '#592943', padding: '6px 10px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 20 }}>add_circle</span>
+                                            <Button onClick={openCreateFromPoi} aria-label="创建此地点" style={popupActionButtonStyle}>
+                                                <span className="material-symbols-outlined" style={popupActionIconStyle}>add_circle</span>
                                             </Button>
                                         ) : (
-                                            <Button onClick={openManagePanel} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : '2px solid rgba(0,0,0,0.1)', color: dark ? '#e5e7eb' : '#592943', padding: '6px 10px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 20 }}>edit</span>
+                                            <Button onClick={openManagePanel} aria-label="编辑此地点" style={popupActionButtonStyle}>
+                                                <span className="material-symbols-outlined" style={popupActionIconStyle}>edit</span>
                                             </Button>
                                         )}
                                     </Tooltip>
                                     <Tooltip text="查看详情与图片">
-                                        <Button onClick={() => setDetailOpen(true)} style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.06)' : '2px solid rgba(0,0,0,0.1)', color: dark ? '#e5e7eb' : '#592943', padding: '6px 10px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <span className="material-symbols-outlined" style={{ display: 'inline-block', fontSize: 20 }}>more_horiz</span>
+                                        <Button onClick={() => setDetailOpen(true)} aria-label="查看更多地点详情" style={popupActionButtonStyle}>
+                                            <span className="material-symbols-outlined" style={popupActionIconStyle}>more_horiz</span>
                                         </Button>
                                     </Tooltip>
                                 </div>
@@ -1033,7 +1056,7 @@ export default function MapUI(props) {
                     top: 0,
                     right: 0,
                     bottom: 0,
-                    background: dark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.35)',
+                    background: 'var(--color-backdrop)',
                     zIndex: 5600,
                     display: 'flex',
                     alignItems: 'center',
@@ -1042,19 +1065,19 @@ export default function MapUI(props) {
                 }}>
                     <div style={{
                         width: 'min(420px, 92vw)',
-                        background: dark ? 'var(--theme-secondary)' : '#fff9f6',
+                        background: 'var(--color-bg-surface)',
                         borderRadius: 10,
-                        boxShadow: dark ? '0 8px 32px rgba(0,0,0,0.65)' : '0 8px 32px rgba(0,0,0,0.24)',
-                        border: dark ? '1px solid #334155' : '1px solid #e5e7eb',
-                        color: dark ? '#e5e7eb' : '#111827',
+                        boxShadow: 'var(--shadow-surface)',
+                        border: '1px solid var(--color-border)',
+                        color: 'var(--color-text-primary)',
                         padding: 14
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                             <strong style={{ fontSize: 15 }}>选择导航应用</strong>
-                            <Button onClick={() => setNavPickerOpen(false)} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: 'transparent', fontSize: 18, lineHeight: 1, color: dark ? '#e5e7eb' : undefined }}>×</Button>
+                            <Button onClick={() => setNavPickerOpen(false)} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: 'transparent', fontSize: 18, lineHeight: 1, color: 'var(--color-text-secondary)' }}>×</Button>
                         </div>
 
-                        <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#6b7280', marginBottom: 10 }}>
+                        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 10 }}>
                             将前往: {selectedPlace?.name || '该地点'}
                         </div>
 
@@ -1066,7 +1089,7 @@ export default function MapUI(props) {
                                         setNavPickerOpen(false);
                                         openNavigationTarget(target);
                                     }}
-                                    style={{ background: 'transparent', border: dark ? '1px solid rgba(255,255,255,0.08)' : '2px solid rgba(0,0,0,0.12)', color: dark ? '#e5e7eb' : undefined, padding: '8px 10px', borderRadius: 6, textAlign: 'left' }}
+                                    style={{ background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', padding: '8px 10px', borderRadius: 6, textAlign: 'left' }}
                                     full
                                 >
                                     {target.name}
@@ -1084,7 +1107,7 @@ export default function MapUI(props) {
                     top: 0,
                     right: 0,
                     bottom: 0,
-                    background: dark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.35)',
+                    background: 'var(--color-backdrop)',
                     zIndex: 5600,
                     display: 'flex',
                     alignItems: 'center',
@@ -1095,19 +1118,19 @@ export default function MapUI(props) {
                 >
                     <div style={{
                         width: 'min(420px, 92vw)',
-                        background: dark ? 'var(--theme-secondary)' : '#fff9f6',
+                        background: 'var(--color-bg-surface)',
                         borderRadius: 10,
-                        boxShadow: dark ? '0 8px 32px rgba(0,0,0,0.65)' : '0 8px 32px rgba(0,0,0,0.24)',
-                        border: dark ? '1px solid #334155' : '1px solid #e5e7eb',
-                        color: dark ? '#e5e7eb' : '#111827',
+                        boxShadow: 'var(--shadow-surface)',
+                        border: '1px solid var(--color-border)',
+                        color: 'var(--color-text-primary)',
                         padding: 14
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                             <strong style={{ fontSize: 15 }}>分享地点</strong>
-                            <Button onClick={() => setShareOpen(false)} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: 'transparent', fontSize: 18, lineHeight: 1, color: dark ? '#e5e7eb' : undefined }}>×</Button>
+                            <Button onClick={() => setShareOpen(false)} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: 'transparent', fontSize: 18, lineHeight: 1, color: 'var(--color-text-secondary)' }}>×</Button>
                         </div>
 
-                        <div style={{ fontSize: 12, color: dark ? '#9ca3af' : '#6b7280', marginBottom: 10 }}>
+                        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 10 }}>
                             正在分享: {selectedPlace.name || '该地点'}
                         </div>
 
@@ -1177,9 +1200,9 @@ export default function MapUI(props) {
             {!hideNonSearchButtons && !pickerMode && addingPos && (
                 <div style={{
                     position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
-                    background: dark ? 'var(--theme-secondary)' : '#fff9f6', padding: 12, zIndex: 3000, borderRadius: 6, boxShadow: dark ? "0 6px 24px rgba(0,0,0,0.6)" : "0 2px 12px rgba(0,0,0,0.3)"
+                    background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)', padding: 12, zIndex: 3000, borderRadius: 10, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-surface)'
                 }}>
-                    <h4 style={{ margin: '0 0 12px 0', color: dark ? '#e5e7eb' : 'inherit' }}>添加地点</h4>
+                    <h4 style={{ margin: '0 0 12px 0', color: 'var(--color-text-primary)' }}>添加地点</h4>
                     <AddForm backendUrl={backendUrl} token={token} defaultPos={addingPos} onCancel={onAddCancel} onSubmit={onAddSubmit} defaultName={addingPrefill?.name} defaultCategory={addingPrefill?.category} defaultDescription={addingPrefill?.description} />
                 </div>
             )}
@@ -1192,41 +1215,42 @@ export default function MapUI(props) {
                 <div style={{
                     position: 'absolute', right: 60, top: 8,
                     width: 300, maxHeight: '60vh',
-                    background: dark ? '#0f172a' : '#fff9f6',
-                    color: dark ? '#f8fafc' : '#333',
-                    borderRadius: 8,
-                    boxShadow: dark ? '0 4px 24px rgba(0,0,0,0.6)' : '0 4px 24px rgba(0,0,0,0.2)',
+                    background: 'var(--color-bg-surface)',
+                    color: 'var(--color-text-primary)',
+                    borderRadius: 10,
+                    border: '1px solid var(--color-border)',
+                    boxShadow: 'var(--shadow-surface)',
                     display: 'flex', flexDirection: 'column',
                     zIndex: 5000
                 }}>
                     <div style={{
                         padding: '12px 16px',
-                        borderBottom: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
+                        borderBottom: '1px solid var(--color-border)',
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         flexShrink: 0
                     }}>
-                        <h3 style={{ margin: 0, fontSize: 16, color: dark ? '#f8fafc' : '#111827' }}>我的收藏</h3>
+                        <h3 style={{ margin: 0, fontSize: 16, color: 'var(--color-text-primary)' }}>我的收藏</h3>
                         <Button
                             onClick={() => setFavPageOpen(false)}
-                            style={{ padding: '2px 8px', background: 'transparent', border: 'none', color: dark ? '#e5e7eb' : '#374151', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}
+                            style={{ padding: '2px 8px', background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}
                         >×</Button>
                     </div>
 
                     <ScrollableView style={{ flex: 1 }}>
                         {!isAuthenticated ? (
-                            <div style={{ padding: 16, textAlign: 'center', color: dark ? '#9ca3af' : '#6b7280', fontSize: 13 }}>
+                            <div style={{ padding: 16, textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 13 }}>
                                 请登录后查看收藏
                             </div>
                         ) : favLoading ? (
-                            <div style={{ padding: 16, textAlign: 'center', color: dark ? '#9ca3af' : '#6b7280', fontSize: 13 }}>
+                            <div style={{ padding: 16, textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 13 }}>
                                 加载中...
                             </div>
                         ) : favError ? (
-                            <div style={{ padding: 16, textAlign: 'center', color: '#ef4444', fontSize: 13 }}>
+                            <div style={{ padding: 16, textAlign: 'center', color: 'var(--color-danger)', fontSize: 13 }}>
                                 {favError}
                             </div>
                         ) : favItems.length === 0 ? (
-                            <div style={{ padding: 16, textAlign: 'center', color: dark ? '#9ca3af' : '#6b7280', fontSize: 13 }}>
+                            <div style={{ padding: 16, textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 13 }}>
                                 暂无收藏地点
                             </div>
                         ) : (
@@ -1240,21 +1264,21 @@ export default function MapUI(props) {
                                     style={{
                                         padding: '10px 16px',
                                         cursor: (item.longitude && item.latitude) ? 'pointer' : 'default',
-                                        borderBottom: `1px solid ${dark ? '#1f2937' : '#f3f4f6'}`,
+                                        borderBottom: '1px solid var(--color-border)',
                                         display: 'flex',
                                         flexDirection: 'column'
                                     }}
-                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = dark ? '#1f2937' : '#f9fafb'}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-overlay)'}
                                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                 >
-                                    <span style={{ fontSize: 14, color: item.name ? (dark ? '#f3f4f6' : '#111827') : (dark ? '#9ca3af' : '#6b7280'), fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    <span style={{ fontSize: 14, color: item.name ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {item.name || `地点 #${item.place_id}（已删除）`}
                                     </span>
                                     {item.category && (
-                                        <span style={{ fontSize: 12, color: dark ? '#9ca3af' : '#6b7280', marginTop: 2 }}>{item.category}</span>
+                                        <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>{item.category}</span>
                                     )}
                                     {item.name && (!item.longitude || !item.latitude) && (
-                                        <span style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>坐标缺失，无法定位</span>
+                                        <span style={{ fontSize: 11, color: 'var(--color-warning)', marginTop: 2 }}>坐标缺失，无法定位</span>
                                     )}
                                 </div>
                             ))
@@ -1270,29 +1294,30 @@ export default function MapUI(props) {
                     top: 8,
                     width: 'min(300px, calc(100vw - 80px))',
                     maxHeight: '60vh',
-                    background: dark ? '#0f172a' : '#fff9f6',
-                    color: dark ? '#f8fafc' : '#333',
-                    borderRadius: 8,
-                    boxShadow: dark ? '0 4px 24px rgba(0,0,0,0.6)' : '0 4px 24px rgba(0,0,0,0.2)',
+                    background: 'var(--color-bg-surface)',
+                    color: 'var(--color-text-primary)',
+                    borderRadius: 10,
+                    border: '1px solid var(--color-border)',
+                    boxShadow: 'var(--shadow-surface)',
                     display: 'flex',
                     flexDirection: 'column',
                     zIndex: 5000
                 }}>
                     <div style={{
                         padding: '12px 16px',
-                        borderBottom: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
+                        borderBottom: '1px solid var(--color-border)',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         flexShrink: 0
                     }}>
-                        <h3 style={{ margin: 0, fontSize: 16, color: dark ? '#f8fafc' : '#111827' }}>
+                        <h3 style={{ margin: 0, fontSize: 16, color: 'var(--color-text-primary)' }}>
                             已选择地点（{normalizedPickedPlaces.length}）
                         </h3>
                         <Button
                             onClick={() => setPickedPageOpen(false)}
                             aria-label="关闭已选择地点"
-                            style={{ padding: '2px 8px', background: 'transparent', border: 'none', color: dark ? '#e5e7eb' : '#374151', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}
+                            style={{ padding: '2px 8px', background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}
                         >
                             ×
                         </Button>
@@ -1300,7 +1325,7 @@ export default function MapUI(props) {
 
                     <ScrollableView style={{ flex: 1 }}>
                         {normalizedPickedPlaces.length === 0 ? (
-                            <div style={{ padding: 16, textAlign: 'center', color: dark ? '#9ca3af' : '#6b7280', fontSize: 13 }}>
+                            <div style={{ padding: 16, textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 13 }}>
                                 点击地图 Marker，再选择此地点
                             </div>
                         ) : (
@@ -1314,12 +1339,12 @@ export default function MapUI(props) {
                                     style={{
                                         padding: '10px 12px 10px 16px',
                                         cursor: (item.longitude && item.latitude) ? 'pointer' : 'default',
-                                        borderBottom: `1px solid ${dark ? '#1f2937' : '#f3f4f6'}`,
+                                        borderBottom: '1px solid var(--color-border)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: 9
                                     }}
-                                    onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = dark ? '#1f2937' : '#f9fafb'; }}
+                                    onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = 'var(--color-bg-overlay)'; }}
                                     onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = 'transparent'; }}
                                 >
                                     <span style={{
@@ -1331,17 +1356,17 @@ export default function MapUI(props) {
                                         justifyContent: 'center',
                                         flexShrink: 0,
                                         background: customThemeColor,
-                                        color: '#fff9f6',
+                                        color: '#FFFFFF',
                                         fontSize: 11,
                                         fontWeight: 700
                                     }}>
                                         {index + 1}
                                     </span>
                                     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                                        <span style={{ fontSize: 14, color: dark ? '#f3f4f6' : '#111827', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        <span style={{ fontSize: 14, color: 'var(--color-text-primary)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                             {item.name || item.address || '未命名地点'}
                                         </span>
-                                        <span style={{ fontSize: 12, color: dark ? '#9ca3af' : '#6b7280', marginTop: 2 }}>
+                                        <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>
                                             {item.category || '未分类'}
                                         </span>
                                     </div>
@@ -1352,7 +1377,7 @@ export default function MapUI(props) {
                                             if (typeof onRemovePickedPlace === 'function') onRemovePickedPlace(item);
                                         }}
                                         aria-label={`移除${item.name || item.address || '此地点'}`}
-                                        style={{ padding: '3px 7px', background: 'transparent', border: 'none', color: dark ? '#ff8a93' : '#b00020', fontSize: 12 }}
+                                        style={{ padding: '3px 7px', background: 'transparent', border: 'none', color: 'var(--color-danger)', fontSize: 12 }}
                                     >
                                         移除
                                     </Button>

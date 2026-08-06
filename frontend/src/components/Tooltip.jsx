@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
-import useDarkMode from '../utils/useDarkMode';
 
 export default function Tooltip({ text, children, placement = 'bottom' }) {
     const [show, setShow] = useState(false);
-    const dark = useDarkMode();
-
     const containerStyle = {
         position: 'relative',
         display: 'inline-block'
@@ -15,14 +12,15 @@ export default function Tooltip({ text, children, placement = 'bottom' }) {
         top: placement === 'bottom' ? 'calc(100% + 6px)' : 'auto',
         bottom: placement === 'top' ? 'calc(100% + 6px)' : 'auto',
         right: 0,
-        background: dark ? '#374151' : 'rgba(0,0,0,0.75)',
-        color: dark ? '#e5e7eb' : '#fff9f6',
+        background: 'var(--color-bg-overlay)',
+        color: 'var(--color-text-primary)',
+        border: '1px solid var(--color-border)',
         padding: '6px 8px',
         borderRadius: 4,
         fontSize: 12,
         whiteSpace: 'nowrap',
         zIndex: 4000,
-        boxShadow: dark ? '0 2px 8px rgba(0,0,0,0.6)' : '0 2px 8px rgba(0,0,0,0.25)'
+        boxShadow: 'var(--shadow-surface)'
     };
 
     return (

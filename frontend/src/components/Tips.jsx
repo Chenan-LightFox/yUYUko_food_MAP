@@ -69,12 +69,13 @@ export function TipsProvider({ children }) {
         pointerEvents: 'auto',
         minWidth: 200,
         maxWidth: '80%',
-        background: dark ? 'rgba(17,24,39,0.92)' : 'rgba(255, 255, 255, 0.85)',
-        color: dark ? '#e5e7eb' : '#3f3f3f',
+        background: 'var(--color-bg-surface)',
+        color: 'var(--color-text-primary)',
         padding: '12px 16px',
         borderRadius: 8,
         textAlign: 'center',
-        boxShadow: dark ? '0 6px 20px rgba(0,0,0,0.6)' : '0 6px 20px rgba(0,0,0,0.25)',
+        border: '1px solid var(--color-border)',
+        boxShadow: 'var(--shadow-surface)',
         position: 'relative'
     };
 
@@ -93,7 +94,7 @@ export function TipsProvider({ children }) {
         transform: 'translateY(-50%)',
         border: 'none',
         background: 'transparent',
-        color: dark ? '#e5e7eb' : '#3f3f3f',
+        color: 'var(--color-text-secondary)',
         fontSize: 18,
         cursor: 'pointer',
         padding: 0,
