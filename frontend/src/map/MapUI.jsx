@@ -415,14 +415,15 @@ export default function MapUI(props) {
         popupOpenedAtRef.current = window.performance.now();
     }, [selectedPlace, Boolean(popupPoint)]);
 
-    const handlePopupFavoriteClick = (event) => {
-        event.stopPropagation();
+    const handlePopupButtonClickCapture = (event) => {
+        const button = event.target.closest?.('button');
+        if (!button || !event.currentTarget.contains(button)) return;
         const elapsed = window.performance.now() - popupOpenedAtRef.current;
         if (popupOpenedAtRef.current && elapsed < POPUP_GHOST_CLICK_GUARD_MS) {
             event.preventDefault();
+            event.stopPropagation();
             return;
         }
-        onToggleFavorite?.(selectedPlace);
     };
 
     const { results: spResults, loading: spLoading } = useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, places);
@@ -1295,7 +1296,7 @@ export default function MapUI(props) {
                         pointerEvents: "auto"
                     }}
                 >
-                    <div ref={popupRef} style={{ background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-surface)', minWidth: 200, width: 'min(92vw, 320px)', maxWidth: 'min(92vw, 320px)' }}>
+                    <div ref={popupRef} onClickCapture={handlePopupButtonClickCapture} style={{ background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-surface)', minWidth: 200, width: 'min(92vw, 320px)', maxWidth: 'min(92vw, 320px)' }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <strong style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{selectedPlace.name}</strong>
                             {!hideNonSearchButtons && (
@@ -1382,7 +1383,7 @@ export default function MapUI(props) {
                                     {selectedPlace.isMarked !== false && (
                                         <Tooltip text={favoriteIds && favoriteIds.has(selectedPlace.id) ? '已收藏，点击取消收藏' : (isAuthenticated ? '点击收藏此地点' : '登录后可收藏')}>
                                             <Button
-                                                onClick={handlePopupFavoriteClick}
+                                                onClick={() => onToggleFavorite && onToggleFavorite(selectedPlace)}
                                                 disabled={favoriteLoading}
                                                 aria-label={favoriteIds && favoriteIds.has(selectedPlace.id) ? '取消收藏此地点' : '收藏此地点'}
                                                 aria-pressed={favoriteIds && favoriteIds.has(selectedPlace.id)}
