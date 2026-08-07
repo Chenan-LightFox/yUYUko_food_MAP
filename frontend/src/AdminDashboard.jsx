@@ -8,6 +8,7 @@ import AdminGeneralUsers from "./admin/AdminGeneralUsers";
 import AdminQQWhitelist from "./admin/AdminQQWhitelist";
 import AdminAuditModal from "./admin/AdminAuditModal";
 import AdminNotices from "./admin/AdminNotices";
+import ScrollableView from "./components/ScrollableView";
 
 const PERMISSIONS = {
     YUYUKO: ["用户管理", "操作日志", "标记点管理", "邀请码管理", "评论管理", "QQ白名单管理", "公告发布"],
@@ -29,14 +30,14 @@ export default function AdminDashboard({ user, token, backendUrl, onBackHome, on
     const canManageAnnouncements = useMemo(() => perms.includes("公告发布"), [perms]);
     const canViewAudit = useMemo(() => perms.includes("操作日志"), [perms]);
 
-    const rootStyle = { minHeight: "var(--app-height, 100vh)", background: 'var(--color-bg-base)', padding: 20, boxSizing: "border-box", color: 'var(--color-text-primary)' };
+    const rootStyle = { height: "100%", minHeight: 0, background: 'var(--color-bg-base)', padding: 20, boxSizing: "border-box", color: 'var(--color-text-primary)' };
     const containerStyle = { maxWidth: 960, margin: "0 auto" };
     const headerRow = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 };
     const cardStyle = { background: 'var(--color-bg-surface)', borderRadius: 10, padding: 16, border: '1px solid var(--color-border)', boxShadow: '0 8px 24px var(--color-glow)' };
     const panelStyle = { marginTop: 18, background: 'var(--color-bg-surface)', padding: 12, borderRadius: 10, border: '1px solid var(--color-border)' };
 
     return (
-        <div style={rootStyle}>
+        <ScrollableView as="main" style={rootStyle}>
             <div style={containerStyle}>
                 <div style={{ ...headerRow, marginTop: 50 }}>
                     <h2 style={{ margin: 0 }}>管理员后台</h2>
@@ -109,6 +110,6 @@ export default function AdminDashboard({ user, token, backendUrl, onBackHome, on
                 )*/}
             </div>
             <AdminAuditModal open={auditOpen} onClose={() => setAuditOpen(false)} backendUrl={backendUrl} token={token} />
-        </div>
+        </ScrollableView>
     );
 }

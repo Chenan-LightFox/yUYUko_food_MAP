@@ -6,10 +6,12 @@ import MapView from './Map';
 import { useTips } from './components/Tips';
 import useDarkMode from './utils/useDarkMode';
 import { createMapPoster } from './utils/posterCanvas';
+import ScrollableView from './components/ScrollableView';
 
 function pageStyle(dark) {
     return {
-        minHeight: 'var(--app-height, 100vh)',
+        height: '100%',
+        minHeight: 0,
         background: 'var(--color-bg-base)',
         color: 'var(--color-text-primary)',
         padding: 20,
@@ -231,7 +233,7 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
     };
 
     return (
-        <div style={pageStyle(dark)}>
+        <ScrollableView as="main" style={pageStyle(dark)}>
             <div style={{ maxWidth: 960, margin: '0 auto' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, marginTop: 50 }}>
                     <h2 style={{ margin: 0 }}>导出地点海报</h2>
@@ -476,6 +478,6 @@ export default function PosterExportPage({ backendUrl, token, isAuth, onRequireA
                     />
                 </div>
             )}
-        </div>
+        </ScrollableView>
     );
 }

@@ -8,6 +8,7 @@ import { useTips } from './components/Tips';
 import useDarkMode from './utils/useDarkMode';
 import MapView from './Map';
 import Tooltip from './components/Tooltip';
+import ScrollableView from './components/ScrollableView';
 
 function formatDateTime(value) {
     if (!value) return '时间待定';
@@ -44,7 +45,8 @@ function buildShareUrl(id, backendUrl) {
 
 function pageStyle(dark) {
     return {
-        minHeight: 'var(--app-height, 100vh)',
+        height: '100%',
+        minHeight: 0,
         background: 'var(--color-bg-base)',
         color: 'var(--color-text-primary)',
         padding: 20,
@@ -115,7 +117,7 @@ export function DinnerListPage({ backendUrl, onGoCreate, onOpenDetail, onGoHome 
     }, [backendUrl]);
 
     return (
-        <div style={pageStyle(dark)}>
+        <ScrollableView as="main" style={pageStyle(dark)}>
             <div style={containerStyle()}>
                 <div style={titleRowStyle()}>
                     <h2 style={{ margin: 0 }}>聚餐活动</h2>
@@ -154,7 +156,7 @@ export function DinnerListPage({ backendUrl, onGoCreate, onOpenDetail, onGoHome 
                     )}
                 </div>
             </div>
-        </div>
+        </ScrollableView>
     );
 }
 
@@ -229,7 +231,7 @@ export function DinnerCreatePage({ backendUrl, token, isAuth, onCreated, onRequi
     };
 
     return (
-        <div style={pageStyle(dark)}>
+        <ScrollableView as="main" style={pageStyle(dark)}>
             <div style={containerStyle()}>
                 <div style={titleRowStyle()}>
                     <h2 style={{ margin: 0 }}>发起聚餐</h2>
@@ -334,7 +336,7 @@ export function DinnerCreatePage({ backendUrl, token, isAuth, onCreated, onRequi
                     />
                 </div>
             )}
-        </div>
+        </ScrollableView>
     );
 }
 
@@ -396,7 +398,7 @@ export function DinnerDetailPage({ backendUrl, dinnerId, token, currentUserId, i
     };
 
     return (
-        <div style={pageStyle(dark)}>
+        <ScrollableView as="main" style={pageStyle(dark)}>
             <div style={containerStyle()}>
                 <div style={titleRowStyle()}>
                     <h2 style={{ margin: 0 }}>聚餐详情</h2>
@@ -455,7 +457,7 @@ export function DinnerDetailPage({ backendUrl, dinnerId, token, currentUserId, i
                     )}
                 </div>
             </div>
-        </div>
+        </ScrollableView>
     );
 }
 

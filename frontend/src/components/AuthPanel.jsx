@@ -1,15 +1,20 @@
-import React, { forwardRef, useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Button from './Button';
 import defaultAvatar from '../img/default.png';
 import { DEFAULT_DARK_PRIMARY, DEFAULT_PRIMARY, isDarkMode, pickContrastTextColor } from '../utils/theme';
 import useMediaQuery from '../utils/useMediaQuery';
 
-const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onOpenDinners, onOpenPosterExport, onGoHome, pathname, backendUrl, interactionDisabled = false }, forwardedRef) {
+const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onOpenDinners, onOpenPosterExport, onGoHome, onMenuOpenChange, pathname, backendUrl, interactionDisabled = false }, forwardedRef) {
     const [userOpen, setUserOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
     const [themeColor, setThemeColor] = useState(() => isDarkMode() ? DEFAULT_DARK_PRIMARY : DEFAULT_PRIMARY);
     const isMobile = useMediaQuery('(max-width: 640px)');
     const rootRef = useRef(null);
+
+    useLayoutEffect(() => {
+        const openMenu = isMobile ? null : (moreOpen ? 'more' : (isAuth && userOpen ? 'user' : null));
+        onMenuOpenChange?.(openMenu);
+    }, [isMobile, isAuth, userOpen, moreOpen, onMenuOpenChange]);
 
     const assignRef = (node) => {
         rootRef.current = node;
@@ -85,7 +90,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                 top: 0,
                 height: 64,
                 zIndex: 1800,
-                padding: '0 14px',
+                padding: '0 8px',
                 boxSizing: 'border-box',
                 display: 'flex',
                 alignItems: 'center',
@@ -119,7 +124,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                             aria-expanded={userOpen}
                             style={{
                                 maxWidth: 180,
-                                height: 42,
+                                height: 44,
                                 padding: '3px 11px 3px 3px',
                                 borderRadius: 999,
                                 border: `2px solid ${themeColor}`,
@@ -161,16 +166,17 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                     onClick={() => { if (!interactionDisabled) { setMoreOpen((value) => !value); setUserOpen(false); } }}
                     aria-haspopup="menu"
                     aria-expanded={moreOpen}
-                    style={{ width: 42, height: 42, padding: 0, borderRadius: 12, border: '1px solid var(--color-border)', background: 'var(--color-bg-overlay)', color: 'var(--color-text-primary)' }}
+                    style={{ width: 44, height: 44, fontSize: 14, padding: 0, borderRadius: '50%', border: '1px solid var(--color-border)', background: 'var(--color-bg-overlay)', color: 'var(--color-text-primary)' }}
                 >
                     <span className="material-symbols-outlined">more_horiz</span>
                 </Button>
                 {moreOpen && (
                     <div role="menu" aria-label="更多功能" style={{ ...menuStyle, right: 0 }}>
-                        <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); isOnDinners ? onGoHome?.() : onOpenDinners?.(); }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 19, marginRight: 7, verticalAlign: 'middle' }}>groups</span>
-                            {isOnDinners ? '返回地图' : '聚餐活动'}
-                        </Button>
+                        {isAuth && (
+                            <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); isOnDinners ? onGoHome?.() : onOpenDinners?.(); }}>
+                                {isOnDinners ? '返回地图' : '聚餐活动'}
+                            </Button>
+                        )}
                         {divider}
                         {isAuth && (isAdmin || isOnAdmin) && (
                             <>

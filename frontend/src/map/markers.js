@@ -56,7 +56,7 @@ function buildClusterContent(count) {
     return `
         <div style="position:relative;width:36px;height:52px;overflow:visible;">
             <img src="${unionIcon}" style="display:block;width:36px;height:52px;position:relative;z-index:1;" draggable="false" />
-            <div style="position:absolute;left:54%;top:30%;transform:translate(-50%, -50%);z-index:2;font-weight:600;font-size:20px;color:var(--color-text-primary);text-shadow:0 0 3px var(--color-bg-surface),0 0 3px var(--color-bg-surface),0 0 3px var(--color-bg-surface);pointer-events:none;line-height:1;">${count}</div>
+            <div style="position:absolute;left:54%;top:30%;transform:translate(-50%, -50%);z-index:2;font-weight:600;font-size:20px;color:#000000;pointer-events:none;line-height:1;">${count}</div>
         </div>
     `;
 }
