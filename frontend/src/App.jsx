@@ -266,8 +266,11 @@ export default function App() {
 
         const root = document.documentElement;
         const updateViewportHeight = () => {
-            const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            const viewport = window.visualViewport;
+            const viewportHeight = viewport ? viewport.height : window.innerHeight;
+            const viewportTop = viewport ? viewport.offsetTop : 0;
             root.style.setProperty("--app-height", `${Math.round(viewportHeight)}px`);
+            root.style.setProperty("--app-offset-top", `${Math.round(viewportTop)}px`);
         };
 
         updateViewportHeight();
@@ -277,6 +280,7 @@ export default function App() {
         window.addEventListener("orientationchange", updateViewportHeight);
         if (visualViewport) {
             visualViewport.addEventListener("resize", updateViewportHeight);
+            visualViewport.addEventListener("scroll", updateViewportHeight);
         }
 
         return () => {
@@ -284,6 +288,7 @@ export default function App() {
             window.removeEventListener("orientationchange", updateViewportHeight);
             if (visualViewport) {
                 visualViewport.removeEventListener("resize", updateViewportHeight);
+                visualViewport.removeEventListener("scroll", updateViewportHeight);
             }
         };
     }, []);
@@ -464,7 +469,17 @@ export default function App() {
         <AuthProvider value={authValue}>
             <TipsProvider>
                 <ConfirmProvider>
-                    <div style={{ height: "var(--app-height, 100vh)", position: "relative" }}>
+                    <div style={{
+                        position: 'fixed',
+                        left: 0,
+                        right: 0,
+                        top: 'var(--app-offset-top, 0px)',
+                        height: "var(--app-height, 100vh)",
+                        overflowX: 'hidden',
+                        overflowY: showMapPage ? 'hidden' : 'auto',
+                        overscrollBehavior: showMapPage ? 'none' : 'contain',
+                        WebkitOverflowScrolling: 'touch'
+                    }}>
                         <BanNotice style={siteNoticeVisible ? { top: noticeLayout.banTop + 55 } : undefined} />
                         {siteNoticeVisible && (
                             <Notice
@@ -488,8 +503,17 @@ export default function App() {
                                 backendUrl={BACKEND_URL}
                                 token={token}
                                 isAuthenticated={isAuth}
+                                isAdmin={isAdmin}
                                 onRequireAuth={() => setShowAuth(true)}
                                 onOpenDinners={() => goPath('/dinners')}
+                                onOpenAdmin={() => goPath('/admin')}
+                                onOpenPosterExport={() => {
+                                    if (!isAuth) {
+                                        setShowAuth(true);
+                                        return;
+                                    }
+                                    goPath('/posters/new');
+                                }}
                                 onOpenMine={() => {
                                     if (!isAuth) {
                                         setShowAuth(true);

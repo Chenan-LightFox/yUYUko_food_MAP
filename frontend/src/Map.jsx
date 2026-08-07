@@ -41,9 +41,12 @@ export default function MapView({
     backendUrl,
     token,
     isAuthenticated,
+    isAdmin,
     onRequireAuth,
     onOpenDinners,
     onOpenMine,
+    onOpenAdmin,
+    onOpenPosterExport,
     pickerMode = false,
     pickerContext = 'dinner',
     pickedPlaces = [],
@@ -1624,9 +1627,12 @@ export default function MapView({
                 favoriteLoading={favoriteLoading}
                 onToggleFavorite={handleToggleFavorite}
                 isAuthenticated={isAuthenticated}
+                isAdmin={isAdmin}
                 onRequireAuth={onRequireAuth}
                 onOpenDinners={onOpenDinners}
                 onOpenMine={onOpenMine}
+                onOpenAdmin={onOpenAdmin}
+                onOpenPosterExport={onOpenPosterExport}
                 pickerMode={pickerMode}
                 pickerContext={pickerContext}
                 pickedPlaces={pickedPlaces}

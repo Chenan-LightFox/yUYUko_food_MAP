@@ -206,9 +206,12 @@ export default function MapUI(props) {
         favoriteLoading,
         onToggleFavorite,
         isAuthenticated,
+        isAdmin,
         onRequireAuth,
         onOpenDinners,
         onOpenMine,
+        onOpenAdmin,
+        onOpenPosterExport,
         pickerMode,
         pickerContext,
         pickedPlaces,
@@ -248,8 +251,7 @@ export default function MapUI(props) {
         setNavPickerOpen(true);
     };
 
-    const [searchOpen, setSearchOpen] = useState(true);
-    const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+    const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
     const [searchResultsVisible, setSearchResultsVisible] = useState(true);
     const [detailOpen, setDetailOpen] = useState(false);
     const [favPageOpen, setFavPageOpen] = useState(false);
@@ -313,16 +315,30 @@ export default function MapUI(props) {
         }
         setFavPageOpen((open) => !open);
         setPickedPageOpen(false);
-        setMobileSearchOpen(false);
+        setMobileMoreOpen(false);
     };
 
-    const openMobileSearch = () => {
-        setMobileSearchOpen((open) => {
-            const next = !open;
-            if (next) window.requestAnimationFrame(() => inputRef.current?.focus());
-            return next;
-        });
+    const toggleMobileMore = () => {
+        setMobileMoreOpen((open) => !open);
         setFavPageOpen(false);
+    };
+
+    const runMobileMoreAction = (action) => {
+        setMobileMoreOpen(false);
+        action?.();
+    };
+
+    const stabilizeMobileSearchViewport = () => {
+        if (!isNarrow) return;
+        const anchorViewport = () => {
+            // Mobile browsers may scroll the layout viewport while revealing the keyboard.
+            // The map is a fixed app surface, so always keep that viewport anchored at zero.
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+        };
+        window.requestAnimationFrame(anchorViewport);
+        window.setTimeout(anchorViewport, 250);
     };
 
     useEffect(() => {
@@ -701,7 +717,7 @@ export default function MapUI(props) {
                         left: 12,
                         right: 12,
                         bottom: pickerMode ? 12 : 78,
-                        display: (pickerMode || mobileSearchOpen) ? 'block' : 'none'
+                        display: 'block'
                     };
                 }
                 return { ...base, top: 10, left: '50%', transform: 'translateX(-50%)' };
@@ -714,6 +730,7 @@ export default function MapUI(props) {
                         ref={inputRef}
                         placeholder="搜店名，或说说现在想吃什么"
                         value={searchTerm}
+                        onFocus={stabilizeMobileSearchViewport}
                         onChange={(e) => {
                             const v = e.target.value;
                             setSearchTerm(v);
@@ -1073,7 +1090,7 @@ export default function MapUI(props) {
                         style={{
                             position: 'absolute',
                             right: 12,
-                            bottom: mobileSearchOpen ? 134 : 82,
+                            bottom: 134,
                             zIndex: 2100,
                             width: 48,
                             height: 48,
@@ -1090,6 +1107,56 @@ export default function MapUI(props) {
                     >
                         <span className="material-symbols-outlined" style={{ fontSize: 27 }}>{locating ? 'my_location' : 'location_searching'}</span>
                     </Button>
+
+                    {mobileMoreOpen && (
+                        <div
+                            role="menu"
+                            aria-label="更多地图功能"
+                            style={{
+                                position: 'absolute',
+                                left: 12,
+                                right: 12,
+                                bottom: 76,
+                                zIndex: 2200,
+                                maxHeight: 'min(52vh, 420px)',
+                                overflowY: 'auto',
+                                padding: 8,
+                                borderRadius: 14,
+                                border: '1px solid var(--color-border)',
+                                background: 'var(--color-bg-surface)',
+                                color: 'var(--color-text-primary)',
+                                boxShadow: 'var(--shadow-surface)'
+                            }}
+                        >
+                            <div style={{ padding: '7px 10px 9px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                <strong>更多功能</strong>
+                                <Button onClick={() => setMobileMoreOpen(false)} aria-label="关闭更多功能" style={{ width: 36, height: 36, padding: 0, borderRadius: '50%', background: 'var(--color-bg-overlay)', color: 'var(--color-text-primary)' }}>×</Button>
+                            </div>
+                            <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenMine)}>
+                                <span className="material-symbols-outlined" style={{ fontSize: 19, verticalAlign: 'middle', marginRight: 7 }}>person</span>
+                                {isAuthenticated ? '账号与地图设置' : '登录账号'}
+                            </Button>
+                            <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenDinners)}>
+                                <span className="material-symbols-outlined" style={{ fontSize: 19, verticalAlign: 'middle', marginRight: 7 }}>groups</span>
+                                聚餐活动
+                            </Button>
+                            {isAuthenticated && (
+                                <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenPosterExport)}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 19, verticalAlign: 'middle', marginRight: 7 }}>image</span>
+                                    导出海报
+                                </Button>
+                            )}
+                            {isAdmin && (
+                                <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenAdmin)}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 19, verticalAlign: 'middle', marginRight: 7 }}>admin_panel_settings</span>
+                                    管理后台
+                                </Button>
+                            )}
+                            <div style={{ marginTop: 4, padding: '10px', borderTop: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', fontSize: 12 }}>
+                                东方饭联地图 · v1.8.1
+                            </div>
+                        </div>
+                    )}
 
                     <nav
                         aria-label="地图主要操作"
@@ -1111,9 +1178,9 @@ export default function MapUI(props) {
                             backdropFilter: 'blur(12px)'
                         }}
                     >
-                        <Button onClick={openMobileSearch} aria-pressed={mobileSearchOpen} style={{ ...mobileNavButtonStyle, color: mobileSearchOpen ? customThemeColor : mobileNavButtonStyle.color }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>search</span>
-                            <span>搜索</span>
+                        <Button onClick={toggleMobileMore} aria-pressed={mobileMoreOpen} style={{ ...mobileNavButtonStyle, color: mobileMoreOpen ? customThemeColor : mobileNavButtonStyle.color }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>more_horiz</span>
+                            <span>更多</span>
                         </Button>
                         <Button onClick={toggleFavorites} aria-pressed={favPageOpen} style={{ ...mobileNavButtonStyle, color: favPageOpen ? customThemeColor : mobileNavButtonStyle.color }}>
                             <span className="material-symbols-outlined" style={{ fontSize: 24 }}>favorite</span>
@@ -1122,7 +1189,7 @@ export default function MapUI(props) {
                         <Button
                             onClick={() => {
                                 handleToggleAddMode();
-                                setMobileSearchOpen(false);
+                                setMobileMoreOpen(false);
                                 setFavPageOpen(false);
                             }}
                             disabled={!mapReady || authPending}

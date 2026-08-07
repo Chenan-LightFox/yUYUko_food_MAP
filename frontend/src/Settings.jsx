@@ -48,6 +48,14 @@ export default function Settings({ user, onBack, onOpenEditAvatar, onOpenEditUse
             <div style={container}>
                 <div style={{ ...titleRow, marginTop: 50 }}>
                     <h2 style={{ margin: 0 }}>用户设置</h2>
+                    <Button
+                        themeAware
+                        onClick={onBack}
+                        style={{ minHeight: 40, padding: '7px 11px', display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
+                    >
+                        <span className="material-symbols-outlined" style={{ fontSize: 19 }}>arrow_back</span>
+                        返回地图
+                    </Button>
                 </div>
 
                 <div style={captionStyle}>
