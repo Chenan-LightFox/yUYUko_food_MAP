@@ -251,7 +251,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                     <div role="menu" aria-label="更多功能" style={{ ...menuStyle, right: 0 }}>
                         {isAuth && (
                             <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); isOnDinners ? onGoHome?.() : onOpenDinners?.(); }}>
-                                {isOnDinners ? '返回地图' : '聚餐活动'}
+                                {isOnDinners ? '返回地图' : '聚餐活动 (beta)'}
                             </Button>
                         )}
                         {divider}

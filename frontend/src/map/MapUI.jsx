@@ -1163,12 +1163,12 @@ export default function MapUI(props) {
                             </div>
                             {isAuthenticated && (
                                 <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenDinners)}>
-                                    聚餐活动
+                                    聚餐活动 (beta)
                                 </Button>
                             )}
                             {isAuthenticated && (
                                 <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenPosterExport)}>
-                                    导出海报
+                                    导出海报 (beta)
                                 </Button>
                             )}
                             {isAdmin && (
