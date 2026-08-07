@@ -756,7 +756,7 @@ export default function MapUI(props) {
                 <Notice title={isPosterPicker ? `正在选择海报地点 · 已选 ${normalizedPickedPlaces.length} 个` : '正在选择聚餐地点'} tone="warning" />
             )}
 
-            <div ref={searchBarRef} style={(() => {
+            <div ref={searchBarRef} data-map-search-bar style={(() => {
                 const base = { position: "absolute", zIndex: 2000 };
                 if (isNarrow) {
                     return {
