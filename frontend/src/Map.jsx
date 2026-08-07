@@ -1627,6 +1627,7 @@ export default function MapView({
                 favoriteLoading={favoriteLoading}
                 onToggleFavorite={handleToggleFavorite}
                 isAuthenticated={isAuthenticated}
+                currentUser={currentUser}
                 isAdmin={isAdmin}
                 onRequireAuth={onRequireAuth}
                 onOpenDinners={onOpenDinners}

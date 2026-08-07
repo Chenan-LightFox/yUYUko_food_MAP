@@ -10,6 +10,7 @@ import ScrollableView from '../components/ScrollableView';
 import Notice from '../components/Notice';
 import { fetchFavorites } from './api';
 import { pickContrastTextColor } from '../utils/theme';
+import defaultAvatar from '../img/default.png';
 
 function getPlaceKey(place) {
     if (place?.id !== undefined && place?.id !== null && String(place.id) !== '') {
@@ -206,6 +207,7 @@ export default function MapUI(props) {
         favoriteLoading,
         onToggleFavorite,
         isAuthenticated,
+        currentUser,
         isAdmin,
         onRequireAuth,
         onOpenDinners,
@@ -1082,32 +1084,6 @@ export default function MapUI(props) {
 
             {!hideNonSearchButtons && isNarrow && !pickerMode && (
                 <>
-                    <Button
-                        onClick={handleLocateMe}
-                        disabled={!mapReady || locating}
-                        aria-label="定位到我的位置"
-                        title="定位到我的位置"
-                        style={{
-                            position: 'absolute',
-                            right: 12,
-                            bottom: 134,
-                            zIndex: 2100,
-                            width: 48,
-                            height: 48,
-                            padding: 0,
-                            borderRadius: '50%',
-                            border: '1px solid var(--color-border)',
-                            background: locating ? 'var(--color-success)' : 'var(--color-bg-surface)',
-                            color: locating ? 'var(--color-on-emphasis)' : customThemeColor,
-                            boxShadow: 'var(--shadow-surface)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}
-                    >
-                        <span className="material-symbols-outlined" style={{ fontSize: 27 }}>{locating ? 'my_location' : 'location_searching'}</span>
-                    </Button>
-
                     {mobileMoreOpen && (
                         <div
                             role="menu"
@@ -1199,13 +1175,23 @@ export default function MapUI(props) {
                             <span className="material-symbols-outlined" style={{ fontSize: 27, transform: addMode ? 'rotate(-45deg)' : 'none', transition: 'transform 180ms ease' }}>add_circle</span>
                             <span>{addMode ? '取消添加' : '添加'}</span>
                         </Button>
-                        <Button onClick={onOpenDinners} style={mobileNavButtonStyle}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>groups</span>
-                            <span>聚餐</span>
+                        <Button onClick={handleLocateMe} disabled={!mapReady || locating} style={{ ...mobileNavButtonStyle, color: locating ? 'var(--color-success)' : mobileNavButtonStyle.color }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>{locating ? 'my_location' : 'location_searching'}</span>
+                            <span>{locating ? '定位中' : '定位'}</span>
                         </Button>
-                        <Button onClick={onOpenMine} style={mobileNavButtonStyle}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>person</span>
-                            <span>我的</span>
+                        <Button onClick={onOpenMine} aria-label={isAuthenticated ? `打开用户 ${currentUser?.username || ''} 的设置` : '登录'} style={mobileNavButtonStyle}>
+                            {isAuthenticated && currentUser ? (
+                                <img
+                                    src={currentUser.has_avatar ? `${backendUrl}/users/${currentUser.id}/avatar` : (currentUser.avatar || defaultAvatar)}
+                                    alt={currentUser.username || '用户头像'}
+                                    style={{ width: 25, height: 25, borderRadius: '50%', objectFit: 'cover', border: `1px solid ${customThemeColor}` }}
+                                />
+                            ) : (
+                                <span className="material-symbols-outlined" style={{ fontSize: 24 }}>{isAuthenticated ? 'person' : 'login'}</span>
+                            )}
+                            <span style={{ maxWidth: '64px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {isAuthenticated ? (currentUser?.username || '账号') : '登录'}
+                            </span>
                         </Button>
                     </nav>
                 </>
