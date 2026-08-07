@@ -521,6 +521,7 @@ export default function App() {
                                     }
                                     goPath('/settings');
                                 }}
+                                onLogout={handleLogout}
                             />
                         </div>
 

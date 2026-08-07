@@ -45,6 +45,7 @@ export default function MapView({
     onRequireAuth,
     onOpenDinners,
     onOpenMine,
+    onLogout,
     onOpenAdmin,
     onOpenPosterExport,
     pickerMode = false,
@@ -1632,6 +1633,7 @@ export default function MapView({
                 onRequireAuth={onRequireAuth}
                 onOpenDinners={onOpenDinners}
                 onOpenMine={onOpenMine}
+                onLogout={onLogout}
                 onOpenAdmin={onOpenAdmin}
                 onOpenPosterExport={onOpenPosterExport}
                 pickerMode={pickerMode}

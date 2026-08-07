@@ -212,6 +212,7 @@ export default function MapUI(props) {
         onRequireAuth,
         onOpenDinners,
         onOpenMine,
+        onLogout,
         onOpenAdmin,
         onOpenPosterExport,
         pickerMode,
@@ -254,6 +255,7 @@ export default function MapUI(props) {
     };
 
     const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+    const [mobileAccountOpen, setMobileAccountOpen] = useState(false);
     const [searchResultsVisible, setSearchResultsVisible] = useState(true);
     const [detailOpen, setDetailOpen] = useState(false);
     const [favPageOpen, setFavPageOpen] = useState(false);
@@ -318,10 +320,12 @@ export default function MapUI(props) {
         setFavPageOpen((open) => !open);
         setPickedPageOpen(false);
         setMobileMoreOpen(false);
+        setMobileAccountOpen(false);
     };
 
     const toggleMobileMore = () => {
         setMobileMoreOpen((open) => !open);
+        setMobileAccountOpen(false);
         setFavPageOpen(false);
     };
 
@@ -329,6 +333,25 @@ export default function MapUI(props) {
         setMobileMoreOpen(false);
         action?.();
     };
+
+    const toggleMobileAccount = () => {
+        if (!isAuthenticated) {
+            onOpenMine?.();
+            return;
+        }
+        setMobileAccountOpen((open) => !open);
+        setMobileMoreOpen(false);
+        setFavPageOpen(false);
+    };
+
+    const runMobileAccountAction = (action) => {
+        setMobileAccountOpen(false);
+        action?.();
+    };
+
+    useEffect(() => {
+        if (!isAuthenticated) setMobileAccountOpen(false);
+    }, [isAuthenticated]);
 
     const stabilizeMobileSearchViewport = () => {
         if (!isNarrow) return;
@@ -1108,10 +1131,6 @@ export default function MapUI(props) {
                                 <strong>更多功能</strong>
                                 <Button onClick={() => setMobileMoreOpen(false)} aria-label="关闭更多功能" style={{ width: 36, height: 36, padding: 0, borderRadius: '50%', background: 'var(--color-bg-overlay)', color: 'var(--color-text-primary)' }}>×</Button>
                             </div>
-                            <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenMine)}>
-                                <span className="material-symbols-outlined" style={{ fontSize: 19, verticalAlign: 'middle', marginRight: 7 }}>person</span>
-                                {isAuthenticated ? '账号与地图设置' : '登录账号'}
-                            </Button>
                             <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenDinners)}>
                                 <span className="material-symbols-outlined" style={{ fontSize: 19, verticalAlign: 'middle', marginRight: 7 }}>groups</span>
                                 聚餐活动
@@ -1131,6 +1150,40 @@ export default function MapUI(props) {
                             <div style={{ marginTop: 4, padding: '10px', borderTop: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', fontSize: 12 }}>
                                 东方饭联地图 · v1.8.1
                             </div>
+                        </div>
+                    )}
+
+                    {isAuthenticated && mobileAccountOpen && (
+                        <div
+                            role="menu"
+                            aria-label="用户菜单"
+                            style={{
+                                position: 'absolute',
+                                right: 12,
+                                bottom: 76,
+                                zIndex: 2200,
+                                width: 'min(260px, calc(100vw - 24px))',
+                                padding: 8,
+                                boxSizing: 'border-box',
+                                borderRadius: 14,
+                                border: '1px solid var(--color-border)',
+                                background: 'var(--color-bg-surface)',
+                                color: 'var(--color-text-primary)',
+                                boxShadow: 'var(--shadow-surface)'
+                            }}
+                        >
+                            <div style={{ padding: '7px 10px 10px' }}>
+                                <div style={{ fontWeight: 750, overflowWrap: 'anywhere' }}>{currentUser?.username || '账号'}</div>
+                                <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)' }}>已登录</div>
+                            </div>
+                            <div style={{ height: 1, background: 'var(--color-border)' }} />
+                            <Button themeAware variant="menu" full onClick={() => runMobileAccountAction(onOpenMine)}>
+                                账号与地图设置
+                            </Button>
+                            <div style={{ height: 1, background: 'var(--color-border)' }} />
+                            <Button themeAware variant="menu" full onClick={() => runMobileAccountAction(onLogout)} style={{ color: 'var(--color-danger)' }}>
+                                退出登录
+                            </Button>
                         </div>
                     )}
 
@@ -1179,7 +1232,13 @@ export default function MapUI(props) {
                             <span className="material-symbols-outlined" style={{ fontSize: 24 }}>{locating ? 'my_location' : 'location_searching'}</span>
                             <span>{locating ? '定位中' : '定位'}</span>
                         </Button>
-                        <Button onClick={onOpenMine} aria-label={isAuthenticated ? `打开用户 ${currentUser?.username || ''} 的设置` : '登录'} style={mobileNavButtonStyle}>
+                        <Button
+                            onClick={toggleMobileAccount}
+                            aria-label={isAuthenticated ? `打开用户 ${currentUser?.username || ''} 的菜单` : '登录'}
+                            aria-haspopup={isAuthenticated ? 'menu' : undefined}
+                            aria-expanded={isAuthenticated ? mobileAccountOpen : undefined}
+                            style={{ ...mobileNavButtonStyle, color: mobileAccountOpen ? customThemeColor : mobileNavButtonStyle.color }}
+                        >
                             {isAuthenticated && currentUser ? (
                                 <img
                                     src={currentUser.has_avatar ? `${backendUrl}/users/${currentUser.id}/avatar` : (currentUser.avatar || defaultAvatar)}

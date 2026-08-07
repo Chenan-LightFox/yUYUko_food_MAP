@@ -157,10 +157,6 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
             </div>
 
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Button themeAware onClick={() => isOnDinners ? onGoHome?.() : onOpenDinners?.()} style={{ minHeight: 42, padding: '8px 12px' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 19, marginRight: 5, verticalAlign: 'middle' }}>groups</span>
-                    {isOnDinners ? '返回地图' : '聚餐'}
-                </Button>
                 <Button
                     onClick={() => { if (!interactionDisabled) { setMoreOpen((value) => !value); setUserOpen(false); } }}
                     aria-haspopup="menu"
@@ -170,7 +166,12 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                     <span className="material-symbols-outlined">more_horiz</span>
                 </Button>
                 {moreOpen && (
-                    <div role="menu" aria-label="更多功能" style={{ ...menuStyle, right: 50 }}>
+                    <div role="menu" aria-label="更多功能" style={{ ...menuStyle, right: 0 }}>
+                        <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); isOnDinners ? onGoHome?.() : onOpenDinners?.(); }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 19, marginRight: 7, verticalAlign: 'middle' }}>groups</span>
+                            {isOnDinners ? '返回地图' : '聚餐活动'}
+                        </Button>
+                        {divider}
                         {isAuth && (isAdmin || isOnAdmin) && (
                             <>
                                 <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); isOnAdmin ? onGoHome?.() : onOpenAdmin?.(); }}>{isOnAdmin ? '返回地图' : '管理后台'}</Button>
