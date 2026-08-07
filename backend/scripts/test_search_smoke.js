@@ -62,6 +62,32 @@ async function main() {
         });
         assert.equal(rankedInsideView[0]?.place?.id, 5, 'distance inside the viewport must not override semantic relevance');
         assert.ok(rankedInsideView[0]?.score < rankedInsideView[0]?.semantic_score, 'sparse details should reduce recommendation weight');
+        const widenedForRemoteMatch = rankSemanticRows([
+            {
+                id: 11,
+                name: 'Weak local placeholder',
+                category: '其他',
+                description: '求探',
+                latitude: 23.1291,
+                longitude: 113.2644,
+                vector_distance: 0.18
+            },
+            {
+                id: 12,
+                name: 'Strong remote match',
+                category: 'Indian cuisine',
+                description: 'Detailed evidence about Indian dishes, spices, dining experience, suitable guests, service, and other facts that directly support the requested cuisine.',
+                per_person_cost: 68,
+                latitude: 23.25,
+                longitude: 113.34,
+                vector_distance: 0.16
+            }
+        ], {
+            center: { lat: 23.1291, lng: 113.2644 },
+            bounds: { minLat: 23.1, minLng: 113.23, maxLat: 23.16, maxLng: 113.3 },
+            limit: 5
+        });
+        assert.equal(widenedForRemoteMatch[0]?.place?.id, 12, 'a weak in-view result must not block a stronger remote match');
         assert.equal(placeDetailCompleteness({ name: '森焱食馆', category: '其他', description: '', per_person_cost: null }), 0);
         assert.equal(placeDetailCompleteness({
             name: '资料完整地点',

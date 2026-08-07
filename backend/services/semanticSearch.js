@@ -30,6 +30,22 @@ const configuredFallbackRelevanceScore = Number.parseFloat(process.env.AI_FALLBA
 const FALLBACK_RELEVANCE_MIN_SCORE = Number.isFinite(configuredFallbackRelevanceScore)
     ? Math.max(0, Math.min(1, configuredFallbackRelevanceScore))
     : 0.58;
+const configuredLocalPreferenceScore = Number.parseFloat(process.env.AI_LOCAL_PREFERENCE_MIN_SCORE);
+const LOCAL_PREFERENCE_MIN_SCORE = Number.isFinite(configuredLocalPreferenceScore)
+    ? Math.max(0, Math.min(1, configuredLocalPreferenceScore))
+    : 0.60;
+const configuredLocalMinimumDetail = Number.parseFloat(process.env.AI_LOCAL_MIN_DETAIL_COMPLETENESS);
+const LOCAL_MIN_DETAIL_COMPLETENESS = Number.isFinite(configuredLocalMinimumDetail)
+    ? Math.max(0, Math.min(1, configuredLocalMinimumDetail))
+    : 0.25;
+const configuredRemoteSearchRadiusKm = Number.parseFloat(process.env.AI_REMOTE_SEARCH_RADIUS_KM);
+const REMOTE_SEARCH_RADIUS_KM = Number.isFinite(configuredRemoteSearchRadiusKm)
+    ? Math.max(5, Math.min(300, configuredRemoteSearchRadiusKm))
+    : 50;
+const configuredRemoteProximityWeight = Number.parseFloat(process.env.AI_REMOTE_PROXIMITY_WEIGHT);
+const REMOTE_PROXIMITY_WEIGHT = Number.isFinite(configuredRemoteProximityWeight)
+    ? Math.max(0, Math.min(0.2, configuredRemoteProximityWeight))
+    : 0.06;
 
 function buildEmbeddingQuery(query, intentExpansion = null) {
     const original = String(query || '').trim();
@@ -153,8 +169,8 @@ function rankSemanticRows(rows, { center, bounds, limit = 5, minimumSemanticScor
         ? Math.max(0, Math.min(1, Number(minimumSemanticScore)))
         : MIN_SEMANTIC_SCORE;
     const viewRadius = viewportRadiusKm(safeCenter, safeBounds);
-    const nearbyRadiusKm = safeCenter
-        ? (viewRadius === null ? 25 : Math.max(5, Math.min(60, viewRadius * 2)))
+    const remoteRadiusKm = safeCenter
+        ? Math.max(REMOTE_SEARCH_RADIUS_KM, viewRadius === null ? 0 : viewRadius * 2)
         : null;
 
     const candidates = rows.filter((row) => !String(row.category || '').includes('避雷')).map((row) => {
@@ -180,23 +196,29 @@ function rankSemanticRows(rows, { center, bounds, limit = 5, minimumSemanticScor
     }).filter((candidate) => candidate.semantic_score >= safeMinimumSemanticScore);
 
     const inViewCandidates = candidates.filter((candidate) => candidate.in_view);
+    const hasConfidentInViewCandidate = inViewCandidates.some(
+        (candidate) => candidate.detail_adjusted_score >= LOCAL_PREFERENCE_MIN_SCORE
+            && candidate.detail_completeness >= LOCAL_MIN_DETAIL_COMPLETENESS
+    );
     let eligible = candidates;
-    if (safeCenter && inViewCandidates.length) {
-        // Once a relevant place is visible, screen position must not compete with
-        // meaning: every in-view candidate is ranked by semantic score alone.
+    if (safeCenter && hasConfidentInViewCandidate) {
+        // Keep results local only when the current viewport contains at least one
+        // sufficiently strong match. Distance inside the viewport still does not
+        // compete with semantic relevance.
         eligible = inViewCandidates.map((candidate) => ({
             ...candidate,
             score: candidate.detail_adjusted_score
         }));
     } else if (safeCenter) {
-        // Only when the viewport contains no suitable result do we look just
-        // outside it, with a deliberately light proximity influence.
+        // Weak/generic in-view matches must not block a better result elsewhere.
+        // Widen the radius and keep proximity as only a light tie-breaker.
         eligible = candidates
-            .filter((candidate) => candidate.distance_km !== null && candidate.distance_km <= nearbyRadiusKm)
+            .filter((candidate) => candidate.distance_km !== null && candidate.distance_km <= remoteRadiusKm)
             .map((candidate) => ({
                 ...candidate,
                 score: Math.max(0, Math.min(1,
-                    candidate.detail_adjusted_score * 0.88 + candidate.proximity_score * 0.12
+                    candidate.detail_adjusted_score * (1 - REMOTE_PROXIMITY_WEIGHT)
+                    + candidate.proximity_score * REMOTE_PROXIMITY_WEIGHT
                 ))
             }));
     }
@@ -364,6 +386,10 @@ module.exports = {
     PLACE_DETAIL_WEIGHT,
     RELEVANCE_MIN_CONFIDENCE,
     FALLBACK_RELEVANCE_MIN_SCORE,
+    LOCAL_PREFERENCE_MIN_SCORE,
+    LOCAL_MIN_DETAIL_COMPLETENESS,
+    REMOTE_SEARCH_RADIUS_KM,
+    REMOTE_PROXIMITY_WEIGHT,
     placeDetailCompleteness,
     reasonMatchesPlace,
     isConfidentRecommendationReview,
