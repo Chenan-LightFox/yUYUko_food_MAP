@@ -71,7 +71,7 @@ export default function PlaceImageInputs({ backendUrl, token, images, setImages,
 
             {images.map((url, i) => (
                 <div key={i} style={{ display: "flex", gap: "8px", marginBottom: "8px", alignItems: 'center' }}>
-                    <img src={url} alt={`Preview ${i}`} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }} />
+                    <img src={url} alt={`Preview ${i}`} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 'var(--radius-sm)' }} />
                     <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>
                         {url}
                     </div>

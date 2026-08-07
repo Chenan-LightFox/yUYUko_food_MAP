@@ -56,7 +56,7 @@ function pageStyle(dark) {
 
 function cardStyle(dark) {
     return {
-        borderRadius: 10,
+        borderRadius: 'var(--radius-md)',
         border: '1px solid var(--color-border)',
         background: 'var(--color-bg-surface)',
         boxShadow: '0 8px 24px var(--color-glow)',
@@ -426,7 +426,7 @@ export function DinnerDetailPage({ backendUrl, dinnerId, token, currentUserId, i
                                 创建时间：{formatDateTime(item.created_time)} · 更新时间：{formatDateTime(item.updated_time)}
                             </p>
 
-                            <div style={{ marginTop: 12, padding: 12, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-bg-overlay)' }}>
+                            <div style={{ marginTop: 12, padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-bg-overlay)' }}>
                                 <div style={{ fontWeight: 700, marginBottom: 6 }}>可分享链接（含 OG 卡片）</div>
                                 <div style={{ wordBreak: 'break-all', color: 'var(--color-text-primary)' }}>{shareUrl}</div>
                                 <div style={{ marginTop: 6, fontSize: 13, color: 'var(--color-text-secondary)' }}>可在支持预览的平台展示聚餐活动卡片，而非普通地点页。</div>

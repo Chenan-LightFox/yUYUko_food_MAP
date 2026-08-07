@@ -355,7 +355,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
         >
             <h2 id="auth-modal-title" style={{ margin: "0 0 10px 0", fontSize: 20, color: uiColors.textStrong }}>账号登录</h2>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-                <div style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 10, border: `1px solid ${uiColors.border}`, background: uiColors.tabGroupBackground }}>
+                <div style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 'var(--radius-md)', border: `1px solid ${uiColors.border}`, background: uiColors.tabGroupBackground }}>
                     <Button
                         type="button"
                         aria-pressed={tab === "login"}

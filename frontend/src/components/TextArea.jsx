@@ -23,7 +23,7 @@ const TextArea = forwardRef(({ style = {}, className, rows, ...rest }, ref) => {
     const base = {
         padding: '6px 12px',
         boxSizing: 'border-box',
-        borderRadius: 22,
+        borderRadius: 'var(--radius-md)',
         border: `2px solid ${dark ? 'var(--color-border)' : themeColor}`,
         background: 'var(--color-bg-overlay)',
         color: 'var(--color-text-primary)',

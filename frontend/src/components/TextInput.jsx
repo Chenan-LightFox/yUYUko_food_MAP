@@ -24,7 +24,7 @@ const TextInput = forwardRef(({ style = {}, className, ...rest }, ref) => {
         padding: '6px 12px',
         height: 44,
         boxSizing: 'border-box',
-        borderRadius: 22,
+        borderRadius: 'var(--radius-md)',
         border: `2px solid ${dark ? 'var(--color-border)' : themeColor}`,
         background: 'var(--color-bg-overlay)',
         color: 'var(--color-text-primary)',

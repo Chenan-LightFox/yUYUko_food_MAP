@@ -73,7 +73,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
         right: 0,
         minWidth: 210,
         padding: 8,
-        borderRadius: 10,
+        borderRadius: 'var(--radius-md)',
         border: '1px solid var(--color-border)',
         background: 'var(--color-bg-surface)',
         color: 'var(--color-text-primary)',
@@ -107,7 +107,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                     <Button
                         onClick={onOpenAuth}
                         disabled={interactionDisabled}
-                        style={{ minHeight: 38, padding: '7px 13px', borderRadius: 999, background: themeColor, color: pickContrastTextColor(themeColor), fontWeight: 750 }}
+                        style={{ minHeight: 38, padding: '7px 13px', borderRadius: 999, background: themeColor, color: pickContrastTextColor(themeColor), fontWeight: 700 }}
                     >
                         登录
                     </Button>
@@ -142,7 +142,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                         {userOpen && (
                             <div role="menu" aria-label="用户菜单" style={{ ...menuStyle, left: 0, right: 'auto' }}>
                                 <div style={{ padding: '6px 10px 10px' }}>
-                                    <div style={{ fontWeight: 750, overflowWrap: 'anywhere' }}>{user.username}</div>
+                                    <div style={{ fontWeight: 700, overflowWrap: 'anywhere' }}>{user.username}</div>
                                     <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)' }}>已登录</div>
                                 </div>
                                 {divider}
@@ -157,7 +157,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                     onClick={onGoHome}
                     style={{ border: 0, background: 'transparent', color: 'var(--color-text-primary)', padding: '8px', textAlign: 'left' }}
                 >
-                    <span style={{ display: 'block', fontSize: 17, fontWeight: 800, lineHeight: 1.1 }}>东方饭联地图</span>
+                    <span style={{ display: 'block', fontSize: 17, fontWeight: 700, lineHeight: 1.1 }}>东方饭联地图</span>
                 </Button>
             </div>
 
