@@ -7,9 +7,13 @@ import useMediaQuery from '../utils/useMediaQuery';
 const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onOpenDinners, onOpenPosterExport, onGoHome, onMenuOpenChange, pathname, backendUrl, interactionDisabled = false }, forwardedRef) {
     const [userOpen, setUserOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
+    const [showUsername, setShowUsername] = useState(true);
+    const [showTitle, setShowTitle] = useState(true);
     const [themeColor, setThemeColor] = useState(() => isDarkMode() ? DEFAULT_DARK_PRIMARY : DEFAULT_PRIMARY);
     const isMobile = useMediaQuery('(max-width: 640px)');
     const rootRef = useRef(null);
+    const userAnchorRef = useRef(null);
+    const expandedUserProbeRef = useRef(null);
 
     useLayoutEffect(() => {
         const openMenu = isMobile ? null : (moreOpen ? 'more' : (isAuth && userOpen ? 'user' : null));
@@ -44,6 +48,68 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
             setMoreOpen(false);
         }
     }, [interactionDisabled]);
+
+    useLayoutEffect(() => {
+        if (isMobile || pathname !== '/') {
+            setShowUsername(true);
+            setShowTitle(true);
+            return undefined;
+        }
+
+        let active = true;
+
+        const getVisibleSearchBar = () => Array.from(document.querySelectorAll('[data-map-search-bar]')).find((element) => {
+            const rect = element.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+        });
+
+        const updateCollisions = () => {
+            if (!active) return;
+            const searchBar = getVisibleSearchBar();
+            if (!searchBar) {
+                setShowUsername(true);
+                setShowTitle(true);
+                return;
+            }
+
+            const searchRect = searchBar.getBoundingClientRect();
+            const userAnchorRect = userAnchorRef.current?.getBoundingClientRect();
+            const expandedUserRect = expandedUserProbeRef.current?.getBoundingClientRect();
+
+            const usernameWouldCollide = !!(
+                isAuth &&
+                userAnchorRect &&
+                expandedUserRect &&
+                userAnchorRect.left + expandedUserRect.width >= searchRect.left
+            );
+            setShowUsername(!usernameWouldCollide);
+
+            const userControlRight = userAnchorRect && expandedUserRect
+                ? userAnchorRect.left + (usernameWouldCollide ? 44 : expandedUserRect.width)
+                : null;
+            const userControlGap = userControlRight == null
+                ? Number.POSITIVE_INFINITY
+                : searchRect.left - userControlRight;
+            setShowTitle(!(isAuth && userControlGap < 120));
+        };
+
+        updateCollisions();
+        window.addEventListener('resize', updateCollisions);
+
+        const searchBar = getVisibleSearchBar();
+        const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(updateCollisions) : null;
+        [rootRef.current, searchBar, expandedUserProbeRef.current].forEach((element) => {
+            if (element) resizeObserver?.observe(element);
+        });
+
+        document.fonts?.ready?.then(updateCollisions).catch(() => {});
+
+        return () => {
+            active = false;
+            window.removeEventListener('resize', updateCollisions);
+            resizeObserver?.disconnect();
+        };
+    }, [isMobile, isAuth, pathname, user?.username]);
 
     useEffect(() => {
         const resolveColor = () => {
@@ -113,7 +179,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                     </Button>
                 )}
                 {isAuth && user && (
-                    <div style={{ position: 'relative' }}>
+                    <div ref={userAnchorRef} style={{ position: 'relative' }}>
                         <Button
                             onClick={() => {
                                 if (interactionDisabled) return;
@@ -124,20 +190,29 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                             aria-expanded={userOpen}
                             style={{
                                 maxWidth: 180,
+                                width: showUsername ? 'auto' : 44,
                                 height: 44,
-                                padding: '3px 11px 3px 3px',
+                                padding: showUsername ? '3px 11px 3px 3px' : 3,
                                 borderRadius: 999,
                                 border: `2px solid ${themeColor}`,
                                 background: 'var(--color-bg-surface)',
                                 color: 'var(--color-text-primary)',
                                 display: 'inline-flex',
                                 alignItems: 'center',
+                                justifyContent: showUsername ? 'flex-start' : 'center',
                                 gap: 7
                             }}
                         >
                             <img src={user.has_avatar ? `${backendUrl}/users/${user.id}/avatar?t=${Date.now()}` : (user.avatar || defaultAvatar)} alt={user.username || '头像'} style={{ width: 32, height: 32, flexShrink: 0, borderRadius: '50%', objectFit: 'cover' }} />
-                            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 700 }}>{user.username}</span>
+                            {showUsername && <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 700 }}>{user.username}</span>}
                         </Button>
+
+                        <div ref={expandedUserProbeRef} aria-hidden="true" style={{ position: 'fixed', left: -10000, top: 0, visibility: 'hidden', pointerEvents: 'none' }}>
+                            <Button tabIndex={-1} style={{ maxWidth: 180, height: 44, padding: '3px 11px 3px 3px', borderRadius: 999, border: `2px solid ${themeColor}`, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                                <span style={{ width: 32, height: 32, flexShrink: 0 }} />
+                                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 700 }}>{user.username}</span>
+                            </Button>
+                        </div>
 
                         {userOpen && (
                             <div role="menu" aria-label="用户菜单" style={{ ...menuStyle, left: 0, right: 'auto' }}>
@@ -174,7 +249,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                     <div role="menu" aria-label="更多功能" style={{ ...menuStyle, right: 0 }}>
                         {isAuth && (
                             <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); isOnDinners ? onGoHome?.() : onOpenDinners?.(); }}>
-                                {isOnDinners ? '返回地图' : '聚餐活动'}
+                                {isOnDinners ? '返回地图' : '聚餐活动 (beta)'}
                             </Button>
                         )}
                         {divider}

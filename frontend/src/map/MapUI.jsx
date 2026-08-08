@@ -415,14 +415,15 @@ export default function MapUI(props) {
         popupOpenedAtRef.current = window.performance.now();
     }, [selectedPlace, Boolean(popupPoint)]);
 
-    const handlePopupFavoriteClick = (event) => {
-        event.stopPropagation();
+    const handlePopupButtonClickCapture = (event) => {
+        const button = event.target.closest?.('button');
+        if (!button || !event.currentTarget.contains(button)) return;
         const elapsed = window.performance.now() - popupOpenedAtRef.current;
         if (popupOpenedAtRef.current && elapsed < POPUP_GHOST_CLICK_GUARD_MS) {
             event.preventDefault();
+            event.stopPropagation();
             return;
         }
-        onToggleFavorite?.(selectedPlace);
     };
 
     const { results: spResults, loading: spLoading } = useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, places);
@@ -754,7 +755,7 @@ export default function MapUI(props) {
                 <Notice title={isPosterPicker ? `正在选择海报地点 · 已选 ${normalizedPickedPlaces.length} 个` : '正在选择聚餐地点'} tone="warning" />
             )}
 
-            <div ref={searchBarRef} style={(() => {
+            <div ref={searchBarRef} data-map-search-bar style={(() => {
                 const base = { position: "absolute", zIndex: 2000 };
                 if (isNarrow) {
                     return {
@@ -1165,12 +1166,12 @@ export default function MapUI(props) {
                             </div>
                             {isAuthenticated && (
                                 <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenDinners)}>
-                                    聚餐活动
+                                    聚餐活动 (beta)
                                 </Button>
                             )}
                             {isAuthenticated && (
                                 <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenPosterExport)}>
-                                    导出海报
+                                    导出海报 (beta)
                                 </Button>
                             )}
                             {isAdmin && (
@@ -1385,7 +1386,7 @@ export default function MapUI(props) {
                                     {selectedPlace.isMarked !== false && (
                                         <Tooltip text={favoriteIds && favoriteIds.has(selectedPlace.id) ? '已收藏，点击取消收藏' : (isAuthenticated ? '点击收藏此地点' : '登录后可收藏')}>
                                             <Button
-                                                onClick={handlePopupFavoriteClick}
+                                                onClick={() => onToggleFavorite && onToggleFavorite(selectedPlace)}
                                                 disabled={favoriteLoading}
                                                 aria-label={favoriteIds && favoriteIds.has(selectedPlace.id) ? '取消收藏此地点' : '收藏此地点'}
                                                 aria-pressed={favoriteIds && favoriteIds.has(selectedPlace.id)}
