@@ -24,7 +24,7 @@ const SelectInput = forwardRef(({ style = {}, className, children, ...rest }, re
         padding: '6px 12px',
         height: 44,
         boxSizing: 'border-box',
-        borderRadius: 'var(--radius-md)',
+        borderRadius: 22,
         border: `2px solid ${dark ? 'var(--color-border)' : themeColor}`,
         background: 'var(--color-bg-overlay)',
         color: 'var(--color-text-primary)',

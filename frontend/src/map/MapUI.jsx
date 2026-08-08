@@ -805,7 +805,7 @@ export default function MapUI(props) {
                             right: 56,
                             boxSizing: 'border-box',
                             padding: '6px 34px 6px 12px',
-                            borderRadius: 'var(--radius-md)',
+                            borderRadius: 22,
                             border: `2px solid ${dark ? 'var(--color-border)' : customThemeColor}`,
                             background: 'var(--color-bg-overlay)',
                             color: 'var(--color-text-primary)',
@@ -1180,7 +1180,7 @@ export default function MapUI(props) {
                                 </Button>
                             )}
                             <div style={{ marginTop: 4, padding: '10px', borderTop: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', fontSize: 12 }}>
-                                东方饭联地图 · v2.0.0
+                                东方饭联地图 · v2.0.1
                             </div>
                         </div>
                     )}
