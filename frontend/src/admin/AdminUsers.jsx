@@ -353,7 +353,7 @@ export default function AdminUsers({ backendUrl = null }) {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                     {renderAvatar(target)}
                                     <div style={{ minWidth: 0, flex: 1 }}>
-                                        <div style={{ fontWeight: 750, overflowWrap: 'anywhere' }}>{target.username}</div>
+                                        <div style={{ fontWeight: 700, overflowWrap: 'anywhere' }}>{target.username}</div>
                                         <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)', overflowWrap: 'anywhere' }}>ID：{target.id}</div>
                                     </div>
                                     {renderUserActions(target)}

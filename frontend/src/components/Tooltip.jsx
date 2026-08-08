@@ -16,7 +16,7 @@ export default function Tooltip({ text, children, placement = 'bottom' }) {
         color: 'var(--color-text-primary)',
         border: '1px solid var(--color-border)',
         padding: '6px 8px',
-        borderRadius: 4,
+        borderRadius: 'var(--radius-sm)',
         fontSize: 12,
         whiteSpace: 'nowrap',
         zIndex: 4000,

@@ -9,7 +9,7 @@ export default function Button({ children, onClick, disabled, style, title, vari
     const [hover, setHover] = useState(false);
     const base = {
         padding: '6px 10px',
-        borderRadius: 4,
+        borderRadius: 'var(--radius-sm)',
         border: '1px solid var(--color-border)',
         background: 'var(--color-bg-surface)',
         color: 'var(--color-text-primary)',

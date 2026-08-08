@@ -21,7 +21,7 @@ function pageStyle(dark) {
 
 function cardStyle(dark) {
     return {
-        borderRadius: 10,
+        borderRadius: 'var(--radius-md)',
         border: '1px solid var(--color-border)',
         background: 'var(--color-bg-surface)',
         boxShadow: '0 8px 24px var(--color-glow)',

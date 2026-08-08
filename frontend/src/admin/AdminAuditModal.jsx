@@ -42,7 +42,7 @@ export default function AdminAuditModal({ open, onClose, backendUrl, token }) {
                 background: 'var(--color-bg-surface)',
                 padding: 12,
                 boxSizing: 'border-box',
-                borderRadius: 10,
+                borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--color-border)',
                 width: 'min(640px, calc(100vw - 24px))',
                 minWidth: 0,

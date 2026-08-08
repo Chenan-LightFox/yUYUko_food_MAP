@@ -155,7 +155,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                         placeholder="搜索用户名称、id、qq号"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        style={{ padding: '6px 12px', width: '100%', boxSizing: 'border-box', border: '1px solid var(--color-border)', background: 'var(--color-bg-overlay)', color: 'var(--color-text-primary)', borderRadius: 6 }}
+                        style={{ padding: '6px 12px', width: '100%', boxSizing: 'border-box', border: '1px solid var(--color-border)', background: 'var(--color-bg-overlay)', color: 'var(--color-text-primary)', borderRadius: 'var(--radius-sm)' }}
                     />
                 </div>
                 <Button themeAware onClick={fetchUsers} disabled={loading}>刷新</Button>
@@ -175,7 +175,7 @@ export default function AdminGeneralUsers({ backendUrl = null }) {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                         <img src={target.has_avatar ? `${backendUrl}/users/${target.id}/avatar?t=${Date.now()}` : defaultAvatar} alt="头像" style={{ width: 42, height: 42, borderRadius: '50%', objectFit: 'cover' }} />
                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ fontWeight: 750 }}>{target.username}</div>
+                                            <div style={{ fontWeight: 700 }}>{target.username}</div>
                                             <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)', overflowWrap: 'anywhere' }}>ID：{target.id}</div>
                                             <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)' }}>QQ：{target.qq || '-'}</div>
                                         </div>

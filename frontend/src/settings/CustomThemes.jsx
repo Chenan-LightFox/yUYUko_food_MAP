@@ -282,7 +282,7 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                         style={{
                             width: 56,
                             height: 36,
-                            borderRadius: 6,
+                            borderRadius: 'var(--radius-sm)',
                             border: '1px solid var(--color-border)',
                             background: 'var(--color-bg-overlay)',
                             cursor: loading ? 'not-allowed' : 'pointer',
@@ -306,7 +306,7 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                             color: '#2B2533',
                             border: 'none',
                             padding: '8px 12px',
-                            borderRadius: 6,
+                            borderRadius: 'var(--radius-sm)',
                             boxShadow: '0 4px 12px var(--color-glow)',
                             cursor: loading ? 'not-allowed' : 'pointer',
                             opacity: loading ? 0.6 : 1
@@ -327,7 +327,7 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                             style={{
                                 width: 56,
                                 height: 36,
-                                borderRadius: 6,
+                                borderRadius: 'var(--radius-sm)',
                                 border: '1px solid var(--color-border)',
                                 background: 'var(--color-bg-overlay)',
                                 cursor: loading ? 'not-allowed' : 'pointer',
@@ -354,7 +354,7 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                         const options = STYLE_OPTIONS.filter(s => darkMode ? DARK_STYLE_IDS.includes(s.id) : LIGHT_STYLE_IDS.includes(s.id));
                         const value = darkMode ? darkMapStyle : lightMapStyle;
                         return (
-                            <SelectInput value={value} onChange={(e) => persistMapStyle(darkMode ? 'map_style_dark' : 'map_style_light', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: 6 }}>
+                            <SelectInput value={value} onChange={(e) => persistMapStyle(darkMode ? 'map_style_dark' : 'map_style_light', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: 'var(--radius-sm)' }}>
                                 {options.map(s => (
                                     <option key={s.id || s.name} value={s.id}>{s.name}</option>
                                 ))}

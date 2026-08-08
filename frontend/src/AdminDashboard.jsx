@@ -33,8 +33,8 @@ export default function AdminDashboard({ user, token, backendUrl, onBackHome, on
     const rootStyle = { height: "100%", minHeight: 0, background: 'var(--color-bg-base)', padding: 20, boxSizing: "border-box", color: 'var(--color-text-primary)' };
     const containerStyle = { maxWidth: 960, margin: "0 auto" };
     const headerRow = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 };
-    const cardStyle = { background: 'var(--color-bg-surface)', borderRadius: 10, padding: 16, border: '1px solid var(--color-border)', boxShadow: '0 8px 24px var(--color-glow)' };
-    const panelStyle = { marginTop: 18, background: 'var(--color-bg-surface)', padding: 12, borderRadius: 10, border: '1px solid var(--color-border)' };
+    const cardStyle = { background: 'var(--color-bg-surface)', borderRadius: 'var(--radius-md)', padding: 16, border: '1px solid var(--color-border)', boxShadow: '0 8px 24px var(--color-glow)' };
+    const panelStyle = { marginTop: 18, background: 'var(--color-bg-surface)', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' };
 
     return (
         <ScrollableView as="main" style={rootStyle}>

@@ -129,7 +129,7 @@ export default function PersonalizeMap({ user, onBack, backendUrl, token, onUpda
             <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
                 <label style={{ display: 'block', marginBottom: 8 }}>
                     <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>地图样式</div>
-                    <SelectInput value={style} onChange={(e) => setStyle(e.target.value)} style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 4 }}>
+                    <SelectInput value={style} onChange={(e) => setStyle(e.target.value)} style={{ width: '100%', padding: '8px 10px', boxSizing: 'border-box', borderRadius: 'var(--radius-sm)' }}>
                         <option value="standard">标准</option>
                         <option value="satellite" disabled>卫星</option>
                         <option value="terrain" disabled>街景</option>

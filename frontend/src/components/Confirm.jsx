@@ -33,7 +33,7 @@ export function ConfirmProvider({ children }) {
                 }}>
                     <div style={{
                         background: 'var(--color-bg-surface)',
-                        padding: 24, borderRadius: 10, maxWidth: 400, width: '90%',
+                        padding: 24, borderRadius: 'var(--radius-md)', maxWidth: 400, width: '90%',
                         border: '1px solid var(--color-border)',
                         color: 'var(--color-text-primary)',
                         boxShadow: 'var(--shadow-surface)'

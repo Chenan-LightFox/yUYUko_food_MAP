@@ -230,7 +230,7 @@ export default function AdminPlaces({ backendUrl = null }) {
                                             <article key={request.id} style={{ padding: 12, border: '1px solid var(--color-border)', borderRadius: 12, background: 'var(--color-bg-surface)' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                                                     <div style={{ minWidth: 0 }}>
-                                                        <div style={{ fontWeight: 750 }}>地点申请 #{request.id}</div>
+                                                        <div style={{ fontWeight: 700 }}>地点申请 #{request.id}</div>
                                                         <div style={{ marginTop: 4, fontSize: 12, color: 'var(--color-text-secondary)', overflowWrap: 'anywhere' }}>地点：{request.place_id || '-'} · 申请人：{request.requester_id || '-'}</div>
                                                     </div>
                                                     {renderReviewActions(request)}

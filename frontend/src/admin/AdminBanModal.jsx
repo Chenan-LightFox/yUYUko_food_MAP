@@ -25,7 +25,7 @@ export default function AdminBanModal({ open, onClose, onConfirm, targetUser }) 
 
     return (
         <div style={{ position: 'fixed', inset: 0, zIndex: 7000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, background: 'var(--color-backdrop)', boxSizing: 'border-box' }}>
-            <div style={{ background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)', padding: 12, borderRadius: 10, border: '1px solid var(--color-border)', width: 'min(420px, calc(100vw - 24px))', maxWidth: 'calc(100vw - 24px)', boxSizing: 'border-box', boxShadow: 'var(--shadow-surface)' }}>
+            <div style={{ background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', width: 'min(420px, calc(100vw - 24px))', maxWidth: 'calc(100vw - 24px)', boxSizing: 'border-box', boxShadow: 'var(--shadow-surface)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 style={{ margin: 0 }}>封禁用户 {targetUser ? targetUser.username : ''}</h3>
                     <div>
@@ -39,7 +39,7 @@ export default function AdminBanModal({ open, onClose, onConfirm, targetUser }) 
                     </div>
                     <div style={{ marginBottom: 8 }}>
                         <label style={{ display: 'block', marginBottom: 6, color: 'var(--color-text-secondary)' }}>封禁时长</label>
-                        <SelectInput value={duration} onChange={e => setDuration(e.target.value)} style={{ width: '100%', padding: 8, borderRadius: 6 }}>
+                        <SelectInput value={duration} onChange={e => setDuration(e.target.value)} style={{ width: '100%', padding: 8, borderRadius: 'var(--radius-sm)' }}>
                             <option value="1">1 天</option>
                             <option value="7">7 天</option>
                             <option value="30">30 天</option>

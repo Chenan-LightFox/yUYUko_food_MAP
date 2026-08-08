@@ -14,7 +14,7 @@ export default function Settings({ user, onBack, onOpenEditAvatar, onOpenEditUse
     const container = { maxWidth: 960, margin: '0 auto' };
     const titleRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 };
     const captionStyle = { marginBottom: 14, color: 'var(--color-text-secondary)', fontSize: 16 };
-    const cardStyle = { background: 'var(--color-bg-surface)', borderRadius: 10, padding: 16, border: '1px solid var(--color-border)', boxShadow: '0 8px 24px var(--color-glow)' };
+    const cardStyle = { background: 'var(--color-bg-surface)', borderRadius: 'var(--radius-md)', padding: 16, border: '1px solid var(--color-border)', boxShadow: '0 8px 24px var(--color-glow)' };
     const sepBg = 'var(--color-border)';
 
     const handleDeleteAccount = async () => {

@@ -48,8 +48,8 @@ export function buildLabelHtml(name, category) {
     const safeName = name ? escapeHtml(name) : '';
     if (!safeName) return '';
     const isThunder = category && String(category).includes('避雷');
-    const thunderStyle = isThunder ? 'border-left-color:var(--color-danger);' : '';
-    return `<div style="display:inline-block;background:var(--color-bg-surface);color:var(--color-text-primary);font-size:12px;line-height:16px;padding:2px 8px 2px 6px;border-radius:2px;border:1px solid var(--theme-primary);border-left:5px solid var(--theme-primary);${thunderStyle}white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.15);pointer-events:none;">${safeName}</div>`;
+    const thunderStyle = isThunder ? 'border-color:var(--color-danger);color:var(--color-danger);background:var(--color-bg-overlay);' : '';
+    return `<div style="display:inline-block;background:var(--color-bg-surface);color:var(--color-text-primary);font-size:12px;line-height:16px;padding:2px 8px 2px 6px;border-radius:var(--radius-sm);border:1px solid var(--theme-primary);${thunderStyle}white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.15);pointer-events:none;">${safeName}</div>`;
 }
 
 function buildClusterContent(count) {

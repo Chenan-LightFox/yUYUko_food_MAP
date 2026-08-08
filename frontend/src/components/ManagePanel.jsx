@@ -25,7 +25,7 @@ export default function ManagePanel({
     return (
         <div style={{
             position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
-            background: 'var(--color-bg-surface)', padding: 12, zIndex: 5000, borderRadius: 10, boxShadow: 'var(--shadow-surface)', border: '1px solid var(--color-border)',
+            background: 'var(--color-bg-surface)', padding: 12, zIndex: 5000, borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-surface)', border: '1px solid var(--color-border)',
             width: "min(520px, calc(100vw - 24px))", maxWidth: "calc(100vw - 24px)",
             maxHeight: "calc(var(--app-height, 100vh) - 48px)", overflowY: 'auto', boxSizing: 'border-box'
         }}>

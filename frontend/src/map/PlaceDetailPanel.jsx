@@ -46,7 +46,7 @@ export default function PlaceDetailPanel({ place, onClose, onNavigate }) {
     const panelStyle = isMobile ? {
         position: 'absolute', left: 0, right: 0, bottom: 0,
         height: 'min(72vh, 620px)', maxHeight: 'calc(var(--app-height, 100vh) - 72px)',
-        borderRadius: '18px 18px 0 0',
+        borderRadius: 'var(--radius-md) var(--radius-md) 0 0',
         transform: `translateY(${sheetOffset}px)`,
         transition: dragging ? 'none' : 'transform 180ms ease-out'
     } : {
