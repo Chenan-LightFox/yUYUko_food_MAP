@@ -12,6 +12,8 @@ import { fetchFavorites } from './api';
 import { pickContrastTextColor } from '../utils/theme';
 import defaultAvatar from '../img/default.png';
 
+const POPUP_GHOST_CLICK_GUARD_MS = 400;
+
 function getPlaceKey(place) {
     if (place?.id !== undefined && place?.id !== null && String(place.id) !== '') {
         return `id:${place.id}`;
@@ -135,7 +137,7 @@ function ShareOptionButton({ icon, label, description, onClick, dark }) {
                 border: '1px solid var(--color-border)',
                 color: 'var(--color-text-primary)',
                 padding: '10px 12px',
-                borderRadius: 6,
+                borderRadius: 'var(--radius-sm)',
                 textAlign: 'left',
                 display: 'flex',
                 alignItems: 'flex-start',
@@ -215,6 +217,7 @@ export default function MapUI(props) {
         onLogout,
         onOpenAdmin,
         onOpenPosterExport,
+        desktopHeaderMenu,
         pickerMode,
         pickerContext,
         pickedPlaces,
@@ -268,6 +271,7 @@ export default function MapUI(props) {
     const [isNarrow, setIsNarrow] = useState(() => window.innerWidth <= 640);
     const inputRef = useRef(null);
     const popupRef = useRef(null);
+    const popupOpenedAtRef = useRef(0);
     const searchBarRef = useRef(null);
     const dinnerBtnRef = useRef(null);
     const [popupLayout, setPopupLayout] = useState(null);
@@ -283,7 +287,7 @@ export default function MapUI(props) {
         padding: '9px 10px',
         minWidth: 44,
         minHeight: 44,
-        borderRadius: 8,
+        borderRadius: 'var(--radius-sm)',
         lineHeight: 1,
         display: 'inline-flex',
         alignItems: 'center',
@@ -299,7 +303,7 @@ export default function MapUI(props) {
         minHeight: 58,
         padding: '6px 2px',
         border: 0,
-        borderRadius: 10,
+        borderRadius: 'var(--radius-sm)',
         background: 'transparent',
         color: 'var(--color-text-primary)',
         display: 'inline-flex',
@@ -402,6 +406,25 @@ export default function MapUI(props) {
             setShareOpen(false);
         }
     }, [selectedPlace]);
+
+    useLayoutEffect(() => {
+        if (!selectedPlace || !popupPoint) {
+            popupOpenedAtRef.current = 0;
+            return;
+        }
+        popupOpenedAtRef.current = window.performance.now();
+    }, [selectedPlace, Boolean(popupPoint)]);
+
+    const handlePopupButtonClickCapture = (event) => {
+        const button = event.target.closest?.('button');
+        if (!button || !event.currentTarget.contains(button)) return;
+        const elapsed = window.performance.now() - popupOpenedAtRef.current;
+        if (popupOpenedAtRef.current && elapsed < POPUP_GHOST_CLICK_GUARD_MS) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
+    };
 
     const { results: spResults, loading: spLoading } = useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, places);
 
@@ -568,46 +591,46 @@ export default function MapUI(props) {
                 {items.map(item => {
                     const isAmapResult = item.isMarked === false;
                     return (
-                    <div
-                        key={item.id}
-                        onClick={() => handleSelectSpItem(item)}
-                        style={{
-                            padding: '8px 12px',
-                            cursor: 'pointer',
-                            borderBottom: '1px solid var(--color-border)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            background: isAmapResult ? 'var(--theme-secondary-0-12)' : 'transparent'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-overlay)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isAmapResult ? 'var(--theme-secondary-0-12)' : 'transparent'}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-                            <span style={{ fontSize: 14, color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{item.name}</span>
-                            {isAmapResult && (
-                                <span style={{
-                                    flexShrink: 0,
-                                    padding: '1px 6px',
-                                    borderRadius: 999,
-                                    border: '1px solid var(--theme-secondary)',
-                                    background: 'var(--color-bg-surface)',
-                                    color: 'var(--theme-secondary)',
-                                    fontSize: 10,
-                                    fontWeight: 700
-                                }}>高德地图</span>
-                            )}
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                            <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1, paddingRight: 8 }}>
-                                {item.address || item.category || item.description || ''}
-                            </span>
-                            {Number.isFinite(item.dist) && (
-                                <span style={{ fontSize: 11, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                    距离: {item.dist < 1000 ? `${Math.round(item.dist)}米` : `${(item.dist / 1000).toFixed(1)}公里`}
+                        <div
+                            key={item.id}
+                            onClick={() => handleSelectSpItem(item)}
+                            style={{
+                                padding: '8px 12px',
+                                cursor: 'pointer',
+                                borderBottom: '1px solid var(--color-border)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                background: isAmapResult ? 'var(--theme-secondary-0-12)' : 'transparent'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-overlay)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isAmapResult ? 'var(--theme-secondary-0-12)' : 'transparent'}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                                <span style={{ fontSize: 14, color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{item.name}</span>
+                                {isAmapResult && (
+                                    <span style={{
+                                        flexShrink: 0,
+                                        padding: '1px 6px',
+                                        borderRadius: 999,
+                                        border: '1px solid var(--theme-secondary)',
+                                        background: 'var(--color-bg-surface)',
+                                        color: 'var(--theme-secondary)',
+                                        fontSize: 10,
+                                        fontWeight: 700
+                                    }}>高德地图</span>
+                                )}
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1, paddingRight: 8 }}>
+                                    {item.address || item.category || item.description || ''}
                                 </span>
-                            )}
+                                {Number.isFinite(item.dist) && (
+                                    <span style={{ fontSize: 11, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                        距离: {item.dist < 1000 ? `${Math.round(item.dist)}米` : `${(item.dist / 1000).toFixed(1)}公里`}
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                    </div>
                     );
                 })}
             </div>
@@ -628,48 +651,47 @@ export default function MapUI(props) {
                 ? (distanceKm < 1 ? `距地图中心 ${Math.round(distanceKm * 1000)} 米` : `距地图中心 ${distanceKm.toFixed(1)} 公里`)
                 : '';
             return (
-            <div
-                key={`ai-recommendation-${place.id ?? index}`}
-                onClick={() => handleSelectSpItem(place)}
-                style={{
-                    margin: `${index === 0 ? 10 : 0}px 10px 12px`,
-                    padding: 12,
-                    cursor: 'pointer',
-                    borderRadius: 12,
-                    border: '1px solid var(--theme-primary)',
-                    borderLeft: '4px solid var(--theme-primary)',
-                    background: 'linear-gradient(135deg, var(--theme-primary-0-2), var(--theme-secondary-0-12)), var(--color-bg-surface)',
-                    boxShadow: '0 0 8px var(--theme-primary-0-25), 0 0 22px var(--theme-secondary-0-2)',
-                    animation: 'yuyuko-card-in 320ms ease-out both',
-                    animationDelay: `${index * 60}ms`
-                }}
-            >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-primary)', fontWeight: 800, fontSize: 13 }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 20, color: 'var(--theme-icon)' }}>auto_awesome</span>
-                        幽幽子特别推荐{recommendations.length > 1 ? ` ${index + 1}/${recommendations.length}` : ''}
+                <div
+                    key={`ai-recommendation-${place.id ?? index}`}
+                    onClick={() => handleSelectSpItem(place)}
+                    style={{
+                        margin: `${index === 0 ? 10 : 0}px 10px 12px`,
+                        padding: 12,
+                        cursor: 'pointer',
+                        borderRadius: 12,
+                        border: '1px solid var(--theme-primary)',
+                        background: 'var(--color-bg-surface)',
+                        boxShadow: '0 0 8px var(--theme-primary-0-25)',
+                        animation: 'yuyuko-card-in 200ms ease-out both',
+                        animationDelay: `${index * 60}ms`
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-primary)', fontWeight: 700, fontSize: 13 }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 20, color: 'var(--theme-icon)' }}>restaurant_menu</span>
+                            幽幽子特别推荐{recommendations.length > 1 ? ` ${index + 1}/${recommendations.length}` : ''}
+                        </div>
+                        <span style={{
+                            color: 'var(--color-text-primary)',
+                            background: 'var(--theme-secondary-0-12)',
+                            border: '1px solid var(--theme-secondary)',
+                            borderRadius: 999,
+                            padding: '2px 7px',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap'
+                        }}>匹配度 {matchPercent}%</span>
                     </div>
-                    <span style={{
-                        color: 'var(--color-text-primary)',
-                        background: 'var(--theme-secondary-0-12)',
-                        border: '1px solid var(--theme-secondary)',
-                        borderRadius: 999,
-                        padding: '2px 7px',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        whiteSpace: 'nowrap'
-                    }}>匹配度 {matchPercent}%</span>
-                </div>
-                <div style={{ marginTop: 8, fontSize: 16, fontWeight: 800, color: 'var(--color-text-primary)' }}>{place.name}</div>
-                {(place.category || place.per_person_cost || distanceText) && (
-                    <div style={{ marginTop: 3, color: 'var(--color-text-secondary)', fontSize: 12 }}>
-                        {[place.category, place.per_person_cost ? `人均约 ${place.per_person_cost} 元` : '', distanceText].filter(Boolean).join(' · ')}
+                    <div style={{ marginTop: 8, fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)' }}>{place.name}</div>
+                    {(place.category || place.per_person_cost || distanceText) && (
+                        <div style={{ marginTop: 3, color: 'var(--color-text-secondary)', fontSize: 12 }}>
+                            {[place.category, place.per_person_cost ? `人均约 ${place.per_person_cost} 元` : '', distanceText].filter(Boolean).join(' · ')}
+                        </div>
+                    )}
+                    <div style={{ marginTop: 8, color: 'var(--color-text-primary)', fontSize: 13, lineHeight: 1.55 }}>
+                        {recommendation.reason}
                     </div>
-                )}
-                <div style={{ marginTop: 8, color: 'var(--color-text-primary)', fontSize: 13, lineHeight: 1.55 }}>
-                    {recommendation.reason}
                 </div>
-            </div>
             );
         });
     };
@@ -713,14 +735,13 @@ export default function MapUI(props) {
                             transform: 'translateX(-50%)',
                             zIndex: 1500,
                             pointerEvents: 'none',
-                            background: 'var(--color-bg-surface)',
-                            color: 'var(--color-text-primary)',
+                            background: isThunder ? 'var(--color-bg-overlay)' : 'var(--color-bg-surface)',
+                            color: isThunder ? 'var(--color-danger)' : 'var(--color-text-primary)',
                             fontSize: 12,
                             lineHeight: '16px',
                             padding: '2px 8px 2px 6px',
-                            borderRadius: 2,
-                            border: '1px solid var(--theme-primary)',
-                            borderLeft: isThunder ? '5px solid var(--color-danger)' : '5px solid var(--theme-primary)',
+                            borderRadius: 'var(--radius-sm)',
+                            border: isThunder ? '1px solid var(--color-danger)' : '1px solid var(--theme-primary)',
                             whiteSpace: 'nowrap',
                             boxShadow: '0 1px 4px rgba(0,0,0,0.15)'
                         }}
@@ -734,7 +755,7 @@ export default function MapUI(props) {
                 <Notice title={isPosterPicker ? `正在选择海报地点 · 已选 ${normalizedPickedPlaces.length} 个` : '正在选择聚餐地点'} tone="warning" />
             )}
 
-            <div ref={searchBarRef} style={(() => {
+            <div ref={searchBarRef} data-map-search-bar style={(() => {
                 const base = { position: "absolute", zIndex: 2000 };
                 if (isNarrow) {
                     return {
@@ -833,7 +854,7 @@ export default function MapUI(props) {
                             width: '100%',
                             maxHeight: '60vh',
                             background: 'var(--color-bg-surface)',
-                            borderRadius: 8,
+                            borderRadius: 'var(--radius-md)',
                             boxShadow: `0 4px 12px ${hexToRgba(customThemeColor, 0.2)}`,
                             border: `1px solid ${dark ? 'var(--color-border)' : hexToRgba(customThemeColor, 0.5)}`,
                             zIndex: 2002,
@@ -856,7 +877,7 @@ export default function MapUI(props) {
                                         fontSize: 18,
                                         animation: 'yuyuko-thinking-spin 1s linear infinite'
                                     }}>progress_activity</span>
-                                    thinking · 幽幽子正在为你寻觅美食…
+                                    少女觅食中
                                 </div>
                             )}
                             {renderAiRecommendations()}
@@ -877,6 +898,11 @@ export default function MapUI(props) {
                                         {renderSpSection('高德地图结果 · 选择后在地图显示', amapResults, false, null)}
                                         {!visibleResults.length && !aiThinking && aiRecommendations.length === 0 && !spLoading && (
                                             <div style={{ padding: 12, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>未找到匹配的结果</div>
+                                        )}
+                                        {!aiThinking && aiRecommendations.length === 0 && !Array.isArray(searchResults) && Array.isArray(spResults) && !spLoading && (
+                                            <div style={{ padding: '10px 12px 12px', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 12 }}>
+                                                按回车，幽幽子帮你挑几家
+                                            </div>
                                         )}
                                     </>
                                 );
@@ -955,7 +981,12 @@ export default function MapUI(props) {
             )}
 
             {!hideNonSearchButtons && (!isNarrow || pickerMode) && (
-                <div style={{ position: "absolute", right: 8, top: 72, zIndex: 2000 }}>
+                <div style={{
+                    position: "absolute",
+                    ...(desktopHeaderMenu === 'more' ? { left: 8 } : { right: 8 }),
+                    top: 72,
+                    zIndex: 2000
+                }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
                         {!pickerMode && (
                             <div style={{ display: "inline-block" }}>
@@ -1051,7 +1082,7 @@ export default function MapUI(props) {
                                             minWidth: 18,
                                             height: 18,
                                             padding: '0 4px',
-                                            borderRadius: 9,
+                                            borderRadius: 'var(--radius-full)',
                                             boxSizing: 'border-box',
                                             display: 'inline-flex',
                                             alignItems: 'center',
@@ -1108,47 +1139,48 @@ export default function MapUI(props) {
             {!hideNonSearchButtons && isNarrow && !pickerMode && (
                 <>
                     {mobileMoreOpen && (
-                        <div
-                            role="menu"
-                            aria-label="更多地图功能"
-                            style={{
-                                position: 'absolute',
-                                left: 12,
-                                right: 12,
-                                bottom: 76,
-                                zIndex: 2200,
-                                maxHeight: 'min(52vh, 420px)',
-                                overflowY: 'auto',
-                                padding: 8,
-                                borderRadius: 14,
-                                border: '1px solid var(--color-border)',
-                                background: 'var(--color-bg-surface)',
-                                color: 'var(--color-text-primary)',
-                                boxShadow: 'var(--shadow-surface)'
-                            }}
-                        >
-                            <div style={{ padding: '7px 10px 9px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                                <strong>更多功能</strong>
-                                <Button onClick={() => setMobileMoreOpen(false)} aria-label="关闭更多功能" style={{ width: 36, height: 36, padding: 0, borderRadius: '50%', background: 'var(--color-bg-overlay)', color: 'var(--color-text-primary)' }}>×</Button>
+                        <div style={{
+                            position: 'absolute',
+                            ...(isNarrow ? { left: 12, right: 12, bottom: 76 } : { right: 60, top: 72 }),
+                            width: isNarrow ? 'auto' : 300,
+                            maxHeight: isNarrow ? 'min(56vh, 440px)' : '60vh',
+                            background: 'var(--color-bg-surface)',
+                            color: 'var(--color-text-primary)',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--color-border)',
+                            boxShadow: 'var(--shadow-surface)',
+                            display: 'flex', flexDirection: 'column',
+                            zIndex: 5000
+                        }}>
+                            <div style={{
+                                padding: '12px 16px',
+                                borderBottom: '1px solid var(--color-border)',
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                flexShrink: 0
+                            }}>
+                                <h3 style={{ margin: 0, fontSize: 16, color: 'var(--color-text-primary)' }}>更多功能</h3>
+                                <Button
+                                    onClick={() => setMobileMoreOpen(false)}
+                                    style={{ padding: '2px 8px', background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}
+                                >×</Button>
                             </div>
-                            <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenDinners)}>
-                                <span className="material-symbols-outlined" style={{ fontSize: 19, verticalAlign: 'middle', marginRight: 7 }}>groups</span>
-                                聚餐活动
-                            </Button>
+                            {isAuthenticated && (
+                                <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenDinners)}>
+                                    聚餐活动 (beta)
+                                </Button>
+                            )}
                             {isAuthenticated && (
                                 <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenPosterExport)}>
-                                    <span className="material-symbols-outlined" style={{ fontSize: 19, verticalAlign: 'middle', marginRight: 7 }}>image</span>
-                                    导出海报
+                                    导出海报 (beta)
                                 </Button>
                             )}
                             {isAdmin && (
                                 <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenAdmin)}>
-                                    <span className="material-symbols-outlined" style={{ fontSize: 19, verticalAlign: 'middle', marginRight: 7 }}>admin_panel_settings</span>
                                     管理后台
                                 </Button>
                             )}
                             <div style={{ marginTop: 4, padding: '10px', borderTop: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', fontSize: 12 }}>
-                                东方饭联地图 · v1.8.1
+                                东方饭联地图 · v2.0.1
                             </div>
                         </div>
                     )}
@@ -1165,7 +1197,7 @@ export default function MapUI(props) {
                                 width: 'min(260px, calc(100vw - 24px))',
                                 padding: 8,
                                 boxSizing: 'border-box',
-                                borderRadius: 14,
+                                borderRadius: 'var(--radius-md)',
                                 border: '1px solid var(--color-border)',
                                 background: 'var(--color-bg-surface)',
                                 color: 'var(--color-text-primary)',
@@ -1173,7 +1205,7 @@ export default function MapUI(props) {
                             }}
                         >
                             <div style={{ padding: '7px 10px 10px' }}>
-                                <div style={{ fontWeight: 750, overflowWrap: 'anywhere' }}>{currentUser?.username || '账号'}</div>
+                                <div style={{ fontWeight: 700, overflowWrap: 'anywhere' }}>{currentUser?.username || '账号'}</div>
                                 <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)' }}>已登录</div>
                             </div>
                             <div style={{ height: 1, background: 'var(--color-border)' }} />
@@ -1267,11 +1299,11 @@ export default function MapUI(props) {
                         pointerEvents: "auto"
                     }}
                 >
-                    <div ref={popupRef} style={{ background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-surface)', minWidth: 200, width: 'min(92vw, 320px)', maxWidth: 'min(92vw, 320px)' }}>
+                    <div ref={popupRef} style={{ background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)', padding: 10, borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-surface)', minWidth: 200, width: 'min(92vw, 320px)', maxWidth: 'min(92vw, 320px)' }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <strong style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{selectedPlace.name}</strong>
                             {!hideNonSearchButtons && (
-                                <Button onClick={closePopup} style={{ padding: "2px 8px", borderRadius: 4, border: "none", background: "transparent", cursor: "pointer", fontSize: 18, lineHeight: 1, color: 'var(--color-text-secondary)' }} title="关闭">×</Button>
+                                <Button onClick={closePopup} style={{ padding: "2px 8px", borderRadius: 'var(--radius-sm)', border: "none", background: "transparent", cursor: "pointer", fontSize: 18, lineHeight: 1, color: 'var(--color-text-secondary)' }} title="关闭">×</Button>
                             )}
                         </div>
                         <div style={{ marginTop: 6, fontSize: 13, color: 'var(--color-text-primary)', lineHeight: 1.5, wordBreak: 'break-word' }}>
@@ -1343,11 +1375,12 @@ export default function MapUI(props) {
                                             <span className="material-symbols-outlined" style={popupActionIconStyle}>
                                                 share
                                             </span>
+                                            <span style={popupActionLabelStyle}>分享</span>
                                         </Button>
                                     </Tooltip>
                                     {/* 评论功能暂不开放，待敏感词机制完善后再开放 */}
                                     { /*<Tooltip text="在这里留下你的评论">
-                                    <Button onClick={openCommentPanel} style={{ background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', padding: '6px 10px', borderRadius: 4 }}>评论</Button>
+                                    <Button onClick={openCommentPanel} style={{ background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}>评论</Button>
                                 </Tooltip>
                                 <span style={{ padding: 4 }}></span> */ }
                                     {selectedPlace.isMarked !== false && (
@@ -1362,7 +1395,6 @@ export default function MapUI(props) {
                                                 <span className="material-symbols-outlined" style={popupActionIconStyle}>
                                                     {favoriteIds && favoriteIds.has(selectedPlace.id) ? 'heart_minus' : 'heart_plus'}
                                                 </span>
-                                                <span style={popupActionLabelStyle}>收藏</span>
                                             </Button>
                                         </Tooltip>
                                     )}
@@ -1423,7 +1455,7 @@ export default function MapUI(props) {
                     <div style={{
                         width: 'min(420px, 92vw)',
                         background: 'var(--color-bg-surface)',
-                        borderRadius: 10,
+                        borderRadius: 'var(--radius-md)',
                         boxShadow: 'var(--shadow-surface)',
                         border: '1px solid var(--color-border)',
                         color: 'var(--color-text-primary)',
@@ -1431,7 +1463,7 @@ export default function MapUI(props) {
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                             <strong style={{ fontSize: 15 }}>选择导航应用</strong>
-                            <Button onClick={() => setNavPickerOpen(false)} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: 'transparent', fontSize: 18, lineHeight: 1, color: 'var(--color-text-secondary)' }}>×</Button>
+                            <Button onClick={() => setNavPickerOpen(false)} style={{ padding: '2px 8px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'transparent', fontSize: 18, lineHeight: 1, color: 'var(--color-text-secondary)' }}>×</Button>
                         </div>
 
                         <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 10 }}>
@@ -1446,7 +1478,7 @@ export default function MapUI(props) {
                                         setNavPickerOpen(false);
                                         openNavigationTarget(target);
                                     }}
-                                    style={{ background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', padding: '8px 10px', borderRadius: 6, textAlign: 'left' }}
+                                    style={{ background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', textAlign: 'left' }}
                                     full
                                 >
                                     {target.name}
@@ -1476,7 +1508,7 @@ export default function MapUI(props) {
                     <div style={{
                         width: 'min(420px, 92vw)',
                         background: 'var(--color-bg-surface)',
-                        borderRadius: 10,
+                        borderRadius: 'var(--radius-md)',
                         boxShadow: 'var(--shadow-surface)',
                         border: '1px solid var(--color-border)',
                         color: 'var(--color-text-primary)',
@@ -1484,7 +1516,7 @@ export default function MapUI(props) {
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                             <strong style={{ fontSize: 15 }}>分享地点</strong>
-                            <Button onClick={() => setShareOpen(false)} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: 'transparent', fontSize: 18, lineHeight: 1, color: 'var(--color-text-secondary)' }}>×</Button>
+                            <Button onClick={() => setShareOpen(false)} style={{ padding: '2px 8px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'transparent', fontSize: 18, lineHeight: 1, color: 'var(--color-text-secondary)' }}>×</Button>
                         </div>
 
                         <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 10 }}>
@@ -1558,7 +1590,7 @@ export default function MapUI(props) {
                 <div style={{
                     position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
                     width: 'min(520px, calc(100vw - 24px))', maxHeight: 'calc(var(--app-height, 100vh) - 48px)', overflowY: 'auto', boxSizing: 'border-box',
-                    background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)', padding: 12, zIndex: 5000, borderRadius: 10, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-surface)'
+                    background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)', padding: 12, zIndex: 5000, borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-surface)'
                 }}>
                     <h4 style={{ margin: '0 0 12px 0', color: 'var(--color-text-primary)' }}>添加地点</h4>
                     <AddForm backendUrl={backendUrl} token={token} defaultPos={addingPos} onCancel={onAddCancel} onSubmit={onAddSubmit} defaultName={addingPrefill?.name} defaultCategory={addingPrefill?.category} defaultDescription={addingPrefill?.description} />
@@ -1577,7 +1609,7 @@ export default function MapUI(props) {
                     maxHeight: isNarrow ? 'min(56vh, 440px)' : '60vh',
                     background: 'var(--color-bg-surface)',
                     color: 'var(--color-text-primary)',
-                    borderRadius: 10,
+                    borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--color-border)',
                     boxShadow: 'var(--shadow-surface)',
                     display: 'flex', flexDirection: 'column',
@@ -1656,7 +1688,7 @@ export default function MapUI(props) {
                     maxHeight: '60vh',
                     background: 'var(--color-bg-surface)',
                     color: 'var(--color-text-primary)',
-                    borderRadius: 10,
+                    borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--color-border)',
                     boxShadow: 'var(--shadow-surface)',
                     display: 'flex',

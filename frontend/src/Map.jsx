@@ -48,6 +48,7 @@ export default function MapView({
     onLogout,
     onOpenAdmin,
     onOpenPosterExport,
+    desktopHeaderMenu = null,
     pickerMode = false,
     pickerContext = 'dinner',
     pickedPlaces = [],
@@ -1636,6 +1637,7 @@ export default function MapView({
                 onLogout={onLogout}
                 onOpenAdmin={onOpenAdmin}
                 onOpenPosterExport={onOpenPosterExport}
+                desktopHeaderMenu={desktopHeaderMenu}
                 pickerMode={pickerMode}
                 pickerContext={pickerContext}
                 pickedPlaces={pickedPlaces}

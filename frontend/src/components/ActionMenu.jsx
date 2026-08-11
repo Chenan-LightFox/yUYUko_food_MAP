@@ -64,7 +64,7 @@ export default function ActionMenu({ items = [], label = '更多', disabled = fa
                         maxHeight: 'min(360px, calc(100vh - 16px))',
                         overflowY: 'auto',
                         padding: 7,
-                        borderRadius: 10,
+                        borderRadius: 'var(--radius-md)',
                         border: '1px solid var(--color-border)',
                         background: 'var(--color-bg-surface)',
                         boxShadow: 'var(--shadow-surface)'

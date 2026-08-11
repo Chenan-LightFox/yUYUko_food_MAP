@@ -1,15 +1,24 @@
-import React, { forwardRef, useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Button from './Button';
 import defaultAvatar from '../img/default.png';
 import { DEFAULT_DARK_PRIMARY, DEFAULT_PRIMARY, isDarkMode, pickContrastTextColor } from '../utils/theme';
 import useMediaQuery from '../utils/useMediaQuery';
 
-const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onOpenDinners, onOpenPosterExport, onGoHome, pathname, backendUrl, interactionDisabled = false }, forwardedRef) {
+const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogout, onOpenAuth, onOpenAdmin, onOpenSettings, onOpenDinners, onOpenPosterExport, onGoHome, onMenuOpenChange, pathname, backendUrl, interactionDisabled = false }, forwardedRef) {
     const [userOpen, setUserOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
+    const [showUsername, setShowUsername] = useState(true);
+    const [showTitle, setShowTitle] = useState(true);
     const [themeColor, setThemeColor] = useState(() => isDarkMode() ? DEFAULT_DARK_PRIMARY : DEFAULT_PRIMARY);
     const isMobile = useMediaQuery('(max-width: 640px)');
     const rootRef = useRef(null);
+    const userAnchorRef = useRef(null);
+    const expandedUserProbeRef = useRef(null);
+
+    useLayoutEffect(() => {
+        const openMenu = isMobile ? null : (moreOpen ? 'more' : (isAuth && userOpen ? 'user' : null));
+        onMenuOpenChange?.(openMenu);
+    }, [isMobile, isAuth, userOpen, moreOpen, onMenuOpenChange]);
 
     const assignRef = (node) => {
         rootRef.current = node;
@@ -40,6 +49,68 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
         }
     }, [interactionDisabled]);
 
+    useLayoutEffect(() => {
+        if (isMobile || pathname !== '/') {
+            setShowUsername(true);
+            setShowTitle(true);
+            return undefined;
+        }
+
+        let active = true;
+
+        const getVisibleSearchBar = () => Array.from(document.querySelectorAll('[data-map-search-bar]')).find((element) => {
+            const rect = element.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+        });
+
+        const updateCollisions = () => {
+            if (!active) return;
+            const searchBar = getVisibleSearchBar();
+            if (!searchBar) {
+                setShowUsername(true);
+                setShowTitle(true);
+                return;
+            }
+
+            const searchRect = searchBar.getBoundingClientRect();
+            const userAnchorRect = userAnchorRef.current?.getBoundingClientRect();
+            const expandedUserRect = expandedUserProbeRef.current?.getBoundingClientRect();
+
+            const usernameWouldCollide = !!(
+                isAuth &&
+                userAnchorRect &&
+                expandedUserRect &&
+                userAnchorRect.left + expandedUserRect.width >= searchRect.left
+            );
+            setShowUsername(!usernameWouldCollide);
+
+            const userControlRight = userAnchorRect && expandedUserRect
+                ? userAnchorRect.left + (usernameWouldCollide ? 44 : expandedUserRect.width)
+                : null;
+            const userControlGap = userControlRight == null
+                ? Number.POSITIVE_INFINITY
+                : searchRect.left - userControlRight;
+            setShowTitle(!(isAuth && userControlGap < 120));
+        };
+
+        updateCollisions();
+        window.addEventListener('resize', updateCollisions);
+
+        const searchBar = getVisibleSearchBar();
+        const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(updateCollisions) : null;
+        [rootRef.current, searchBar, expandedUserProbeRef.current].forEach((element) => {
+            if (element) resizeObserver?.observe(element);
+        });
+
+        document.fonts?.ready?.then(updateCollisions).catch(() => {});
+
+        return () => {
+            active = false;
+            window.removeEventListener('resize', updateCollisions);
+            resizeObserver?.disconnect();
+        };
+    }, [isMobile, isAuth, pathname, user?.username]);
+
     useEffect(() => {
         const resolveColor = () => {
             let color = user?.map_settings?.theme_color || '';
@@ -68,7 +139,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
         right: 0,
         minWidth: 210,
         padding: 8,
-        borderRadius: 10,
+        borderRadius: 'var(--radius-md)',
         border: '1px solid var(--color-border)',
         background: 'var(--color-bg-surface)',
         color: 'var(--color-text-primary)',
@@ -85,7 +156,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                 top: 0,
                 height: 64,
                 zIndex: 1800,
-                padding: '0 14px',
+                padding: '0 8px',
                 boxSizing: 'border-box',
                 display: 'flex',
                 alignItems: 'center',
@@ -102,13 +173,13 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                     <Button
                         onClick={onOpenAuth}
                         disabled={interactionDisabled}
-                        style={{ minHeight: 38, padding: '7px 13px', borderRadius: 999, background: themeColor, color: pickContrastTextColor(themeColor), fontWeight: 750 }}
+                        style={{ minHeight: 38, padding: '7px 13px', borderRadius: 999, background: themeColor, color: pickContrastTextColor(themeColor), fontWeight: 700 }}
                     >
                         登录
                     </Button>
                 )}
                 {isAuth && user && (
-                    <div style={{ position: 'relative' }}>
+                    <div ref={userAnchorRef} style={{ position: 'relative' }}>
                         <Button
                             onClick={() => {
                                 if (interactionDisabled) return;
@@ -119,25 +190,34 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                             aria-expanded={userOpen}
                             style={{
                                 maxWidth: 180,
-                                height: 42,
-                                padding: '3px 11px 3px 3px',
+                                width: showUsername ? 'auto' : 44,
+                                height: 44,
+                                padding: showUsername ? '3px 11px 3px 3px' : 3,
                                 borderRadius: 999,
                                 border: `2px solid ${themeColor}`,
                                 background: 'var(--color-bg-surface)',
                                 color: 'var(--color-text-primary)',
                                 display: 'inline-flex',
                                 alignItems: 'center',
+                                justifyContent: showUsername ? 'flex-start' : 'center',
                                 gap: 7
                             }}
                         >
                             <img src={user.has_avatar ? `${backendUrl}/users/${user.id}/avatar?t=${Date.now()}` : (user.avatar || defaultAvatar)} alt={user.username || '头像'} style={{ width: 32, height: 32, flexShrink: 0, borderRadius: '50%', objectFit: 'cover' }} />
-                            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 700 }}>{user.username}</span>
+                            {showUsername && <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 700 }}>{user.username}</span>}
                         </Button>
+
+                        <div ref={expandedUserProbeRef} aria-hidden="true" style={{ position: 'fixed', left: -10000, top: 0, visibility: 'hidden', pointerEvents: 'none' }}>
+                            <Button tabIndex={-1} style={{ maxWidth: 180, height: 44, padding: '3px 11px 3px 3px', borderRadius: 999, border: `2px solid ${themeColor}`, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                                <span style={{ width: 32, height: 32, flexShrink: 0 }} />
+                                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 700 }}>{user.username}</span>
+                            </Button>
+                        </div>
 
                         {userOpen && (
                             <div role="menu" aria-label="用户菜单" style={{ ...menuStyle, left: 0, right: 'auto' }}>
                                 <div style={{ padding: '6px 10px 10px' }}>
-                                    <div style={{ fontWeight: 750, overflowWrap: 'anywhere' }}>{user.username}</div>
+                                    <div style={{ fontWeight: 700, overflowWrap: 'anywhere' }}>{user.username}</div>
                                     <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)' }}>已登录</div>
                                 </div>
                                 {divider}
@@ -152,7 +232,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                     onClick={onGoHome}
                     style={{ border: 0, background: 'transparent', color: 'var(--color-text-primary)', padding: '8px', textAlign: 'left' }}
                 >
-                    <span style={{ display: 'block', fontSize: 17, fontWeight: 800, lineHeight: 1.1 }}>东方饭联地图</span>
+                    <span style={{ display: 'block', fontSize: 17, fontWeight: 700, lineHeight: 1.1 }}>东方饭联地图</span>
                 </Button>
             </div>
 
@@ -161,16 +241,17 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                     onClick={() => { if (!interactionDisabled) { setMoreOpen((value) => !value); setUserOpen(false); } }}
                     aria-haspopup="menu"
                     aria-expanded={moreOpen}
-                    style={{ width: 42, height: 42, padding: 0, borderRadius: 12, border: '1px solid var(--color-border)', background: 'var(--color-bg-overlay)', color: 'var(--color-text-primary)' }}
+                    style={{ width: 44, height: 44, fontSize: 14, padding: 0, borderRadius: '50%', border: '1px solid var(--color-border)', background: 'var(--color-bg-overlay)', color: 'var(--color-text-primary)' }}
                 >
                     <span className="material-symbols-outlined">more_horiz</span>
                 </Button>
                 {moreOpen && (
                     <div role="menu" aria-label="更多功能" style={{ ...menuStyle, right: 0 }}>
-                        <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); isOnDinners ? onGoHome?.() : onOpenDinners?.(); }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 19, marginRight: 7, verticalAlign: 'middle' }}>groups</span>
-                            {isOnDinners ? '返回地图' : '聚餐活动'}
-                        </Button>
+                        {isAuth && (
+                            <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); isOnDinners ? onGoHome?.() : onOpenDinners?.(); }}>
+                                {isOnDinners ? '返回地图' : '聚餐活动 (beta)'}
+                            </Button>
+                        )}
                         {divider}
                         {isAuth && (isAdmin || isOnAdmin) && (
                             <>
@@ -186,7 +267,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                         )}
                         <div style={{ padding: '9px 12px', fontSize: 13 }}>
                             <div style={{ fontWeight: 700 }}>关于东方饭联地图</div>
-                            <div style={{ marginTop: 4, color: 'var(--color-text-secondary)' }}>版本 v2.0.0</div>
+                            <div style={{ marginTop: 4, color: 'var(--color-text-secondary)' }}>v2.0.1</div>
                         </div>
                     </div>
                 )}

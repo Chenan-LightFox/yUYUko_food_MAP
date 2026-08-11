@@ -48,15 +48,15 @@ export function buildLabelHtml(name, category) {
     const safeName = name ? escapeHtml(name) : '';
     if (!safeName) return '';
     const isThunder = category && String(category).includes('避雷');
-    const thunderStyle = isThunder ? 'border-left-color:var(--color-danger);' : '';
-    return `<div style="display:inline-block;background:var(--color-bg-surface);color:var(--color-text-primary);font-size:12px;line-height:16px;padding:2px 8px 2px 6px;border-radius:2px;border:1px solid var(--theme-primary);border-left:5px solid var(--theme-primary);${thunderStyle}white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.15);pointer-events:none;">${safeName}</div>`;
+    const thunderStyle = isThunder ? 'border-color:var(--color-danger);color:var(--color-danger);background:var(--color-bg-overlay);' : '';
+    return `<div style="display:inline-block;background:var(--color-bg-surface);color:var(--color-text-primary);font-size:12px;line-height:16px;padding:2px 8px 2px 6px;border-radius:var(--radius-sm);border:1px solid var(--theme-primary);${thunderStyle}white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.15);pointer-events:none;">${safeName}</div>`;
 }
 
 function buildClusterContent(count) {
     return `
         <div style="position:relative;width:36px;height:52px;overflow:visible;">
             <img src="${unionIcon}" style="display:block;width:36px;height:52px;position:relative;z-index:1;" draggable="false" />
-            <div style="position:absolute;left:54%;top:30%;transform:translate(-50%, -50%);z-index:2;font-weight:600;font-size:20px;color:var(--color-text-primary);text-shadow:0 0 3px var(--color-bg-surface),0 0 3px var(--color-bg-surface),0 0 3px var(--color-bg-surface);pointer-events:none;line-height:1;">${count}</div>
+            <div style="position:absolute;left:54%;top:30%;transform:translate(-50%, -50%);z-index:2;font-weight:600;font-size:20px;color:#000000;pointer-events:none;line-height:1;">${count}</div>
         </div>
     `;
 }

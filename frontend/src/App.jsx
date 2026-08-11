@@ -83,6 +83,7 @@ export default function App() {
     // 游客应先看到地图价值；只有主动登录或执行受保护操作时才打开登录框。
     const [showAuth, setShowAuth] = useState(false);
     const [authPanelDisabled, setAuthPanelDisabled] = useState(false);
+    const [desktopHeaderMenu, setDesktopHeaderMenu] = useState(null);
     const [siteNotice, setSiteNotice] = useState(null);
     const [dismissedNoticeId, setDismissedNoticeId] = useState(() => {
         try {
@@ -522,6 +523,7 @@ export default function App() {
                                     goPath('/settings');
                                 }}
                                 onLogout={handleLogout}
+                                desktopHeaderMenu={desktopHeaderMenu}
                             />
                         </div>
 
@@ -711,6 +713,7 @@ export default function App() {
                             onOpenDinners={() => goPath('/dinners')}
                             onOpenPosterExport={() => goPath('/posters/new')}
                             onGoHome={() => goPath("/")}
+                            onMenuOpenChange={setDesktopHeaderMenu}
                             pathname={pathname}
                             backendUrl={BACKEND_URL}
                             interactionDisabled={authPanelDisabled}

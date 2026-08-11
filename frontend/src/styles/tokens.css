@@ -1,0 +1,50 @@
+/* 设计令牌与基础规范化 —— 增量文件，仅新增系统级变量与基础规则 */
+
+:root {
+    /* 圆角体系：按钮/输入框用 sm，卡片/面板用 md，药丸只留给 tag */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-full: 999px;
+
+    /* 阴影体系：sm 用于普通控件，md 用于浮层/面板 */
+    --shadow-sm: 0 2px 8px rgba(43, 37, 51, 0.10);
+    --shadow-md: 0 4px 14px rgba(43, 37, 51, 0.14);
+
+    /* 字体粗细体系：只使用 500 / 600 / 700 三档 */
+    --weight-regular: 500;
+    --weight-semibold: 600;
+    --weight-bold: 700;
+
+    /* 层级体系：与现有浮层 z-index 对齐（搜索下拉 2000 / 弹窗卡片 4000 / 面板 5000 / 模态 5600） */
+    --z-dropdown: 2000;
+    --z-popup: 4000;
+    --z-panel: 5000;
+    --z-modal: 5600;
+    --z-toast: 6000;
+
+    /* 间距体系 */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+}
+
+/* 键盘焦点环：所有可聚焦元素的统一可见焦点样式 */
+:focus-visible {
+    outline: 2px solid var(--theme-primary);
+    outline-offset: 2px;
+}
+
+/* 减少动态效果偏好：所有动画/过渡降级为瞬态 */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
