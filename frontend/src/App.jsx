@@ -136,6 +136,10 @@ export default function App() {
         setShowAuth(true);
     }, []);
 
+    const handleAuthClose = useCallback(() => {
+        setShowAuth(false);
+    }, []);
+
     const handleLogout = useCallback(async () => {
         if (token) {
             try {
@@ -734,7 +738,7 @@ export default function App() {
                             <AuthModal
                                 backendUrl={BACKEND_URL}
                                 onLoginSuccess={handleLoginSuccess}
-                                onClose={() => setShowAuth(false)}
+                                onClose={handleAuthClose}
                             />
                         )}
                     </div>

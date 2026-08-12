@@ -149,6 +149,13 @@ function xhrResponseWithTimeout(url, options, request, timeoutMs) {
         };
         const resolveCompletedResponse = () => {
             if (settled || xhr.readyState !== 4) return;
+            // Status 0 means the request was aborted or the response was not
+            // exposed to JavaScript. Treating it as a completed HTTP response
+            // can strand the loading state after an iOS lifecycle interruption.
+            if (xhr.status === 0) {
+                rejectOnce(new TypeError('登录响应被浏览器中断（状态 0）'));
+                return;
+            }
             settled = true;
             cleanup();
             try {
@@ -261,6 +268,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
     const activeRequestRef = useRef(null);
     const slowTimerRef = useRef(null);
     const closingRef = useRef(false);
+    const handleCloseRef = useRef(null);
 
     const clearSlowTimer = useCallback(() => {
         if (slowTimerRef.current) {
@@ -323,10 +331,14 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
     }, [cancelRequest, onClose, resetForm]);
 
     useEffect(() => {
+        handleCloseRef.current = handleClose;
+    }, [handleClose]);
+
+    useEffect(() => {
         const onKeyDown = (event) => {
             if (event.key === "Escape") {
                 event.preventDefault();
-                handleClose();
+                if (handleCloseRef.current) handleCloseRef.current();
             }
         };
         window.addEventListener("keydown", onKeyDown);
@@ -342,7 +354,9 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
             }
             clearSlowTimer();
         };
-    }, [clearSlowTimer, handleClose]);
+        // Request cleanup belongs to the component lifetime. In particular, it
+        // must not run merely because a parent render supplied a new callback.
+    }, [clearSlowTimer]);
 
     const switchTab = (nextTab) => {
         if (loading) return;
