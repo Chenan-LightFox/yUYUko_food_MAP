@@ -49,6 +49,8 @@ function formatEntry(entry) {
         entry.status !== undefined ? `status=${entry.status}` : '',
         entry.durationMs !== undefined ? `${entry.durationMs}ms` : '',
         entry.event ? `event=${entry.event}` : '',
+        entry.stage ? `stage=${entry.stage}` : '',
+        entry.detail ? `detail=${JSON.stringify(entry.detail)}` : '',
         entry.message || ''
     ].filter(Boolean);
     if (entry.responseError) parts.push(`responseError=${JSON.stringify(entry.responseError)}`);
