@@ -81,9 +81,33 @@ function getFriendlyErrorMessage(status, fallback, action) {
     return `${action}失败：${status}`;
 }
 
+function appendRequestId(message, requestId) {
+    const safeRequestId = typeof requestId === 'string' && /^[A-Za-z0-9._:-]{8,128}$/.test(requestId)
+        ? requestId
+        : '';
+    return safeRequestId ? `${message}（请求编号：${safeRequestId}）` : message;
+}
+
+function createClientRequestId() {
+    try {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID();
+        }
+    } catch (error) { }
+    const random = Math.random().toString(36).slice(2, 12);
+    return `web-${Date.now().toString(36)}-${random}`;
+}
+
+function withRequestId(url, requestId) {
+    const separator = String(url).includes('?') ? '&' : '?';
+    return `${url}${separator}request_id=${encodeURIComponent(requestId)}`;
+}
+
 function createRequestState() {
     return {
         controller: typeof AbortController !== "undefined" ? new AbortController() : null,
+        xhr: null,
+        requestId: createClientRequestId(),
         cancelled: false,
         timedOut: false
     };
@@ -95,7 +119,66 @@ function formBody(fields) {
         .join("&");
 }
 
+function isIOSChrome() {
+    if (typeof navigator === 'undefined') return false;
+    return /CriOS\//i.test(navigator.userAgent || '');
+}
+
+function parseResponseText(text) {
+    if (!text) return {};
+    try {
+        return JSON.parse(text);
+    } catch {
+        return { error: String(text).slice(0, 160) };
+    }
+}
+
+function xhrResponseWithTimeout(url, options, request, timeoutMs) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        request.xhr = xhr;
+        xhr.open(options.method || 'GET', url, true);
+        xhr.timeout = timeoutMs;
+        for (const [key, value] of Object.entries(options.headers || {})) {
+            xhr.setRequestHeader(key, value);
+        }
+        xhr.onload = () => {
+            request.xhr = null;
+            request.requestId = xhr.getResponseHeader('X-Request-ID') || '';
+            resolve({
+                response: { ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status },
+                data: parseResponseText(xhr.responseText)
+            });
+        };
+        xhr.ontimeout = () => {
+            request.xhr = null;
+            request.timedOut = true;
+            const error = new Error('Request timed out');
+            error.name = 'RequestTimeoutError';
+            reject(error);
+        };
+        xhr.onerror = () => {
+            request.xhr = null;
+            reject(new TypeError('网络连接失败'));
+        };
+        xhr.onabort = () => {
+            request.xhr = null;
+            const error = new Error('Request aborted');
+            error.name = 'AbortError';
+            reject(error);
+        };
+        xhr.send(options.body || null);
+    });
+}
+
 async function fetchResponseWithTimeout(url, options, request, timeoutMs = REQUEST_TIMEOUT_MS) {
+    // Chrome on iOS uses WebKit but has its own networking/storage integration.
+    // Its fetch() can occasionally leave a completed login response pending;
+    // XMLHttpRequest has a native whole-response timeout and is more reliable here.
+    if (isIOSChrome() && typeof XMLHttpRequest !== 'undefined') {
+        return xhrResponseWithTimeout(url, options, request, timeoutMs);
+    }
+
     let timerId;
     const timeoutPromise = new Promise((resolve, reject) => {
         timerId = window.setTimeout(() => {
@@ -115,6 +198,7 @@ async function fetchResponseWithTimeout(url, options, request, timeoutMs = REQUE
         return await Promise.race([
             (async () => {
                 const response = await fetch(url, requestOptions);
+                request.requestId = response.headers.get('X-Request-ID') || request.requestId;
                 const data = await parseResponseBody(response);
                 return { response, data };
             })(),
@@ -172,6 +256,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
         activeRequestRef.current = null;
         if (request) {
             request.cancelled = true;
+            if (request.xhr) request.xhr.abort();
             if (request.controller) request.controller.abort();
         }
         clearSlowTimer();
@@ -215,6 +300,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
             activeRequestRef.current = null;
             if (request) {
                 request.cancelled = true;
+                if (request.xhr) request.xhr.abort();
                 if (request.controller) request.controller.abort();
             }
             clearSlowTimer();
@@ -267,7 +353,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
         if (password.length > MAX_PASSWORD_LENGTH) return setMessage(`密码不能超过 ${MAX_PASSWORD_LENGTH} 个字符`);
         const request = startRequest();
         try {
-            const { response: res, data } = await fetchResponseWithTimeout(`${backendUrl}/users/login`, {
+            const { response: res, data } = await fetchResponseWithTimeout(withRequestId(`${backendUrl}/users/login`, request.requestId), {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
                 body: formBody({ username: normalizedUsername, password })
@@ -275,23 +361,26 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
             if (request.cancelled || activeRequestRef.current !== request) return;
             if (res.ok) {
                 if (data.user && data.token) {
+                    finishRequest(request);
+                    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                        document.activeElement.blur();
+                    }
                     onLoginSuccess && onLoginSuccess(data.user, data.token);
-                    setMessage("登录成功");
                 } else {
                     setMessage("登录成功，但未收到用户信息");
                 }
             } else {
-                setMessage(getFriendlyErrorMessage(res.status, data.error, "登录"));
+                setMessage(appendRequestId(getFriendlyErrorMessage(res.status, data.error, "登录"), data.requestId));
             }
         } catch (err) {
             if (closingRef.current) return;
             if (request.cancelled) return;
             if (request.timedOut || (err && err.name === "RequestTimeoutError")) {
-                setMessage("请求超时，请检查网络后重试");
+                setMessage(appendRequestId("请求超时，请检查网络后重试", request.requestId));
             } else if (err && err.name === "AbortError") {
                 setMessage("请求已取消，可以重新提交");
             } else {
-                setMessage(`网络错误：${err && err.message ? err.message : "请稍后重试"}`);
+                setMessage(appendRequestId(`网络错误：${err && err.message ? err.message : "请稍后重试"}`, request.requestId));
             }
         } finally {
             finishRequest(request);
@@ -313,7 +402,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
         if (normalizedInviteCode.length > MAX_INVITE_CODE_LENGTH) return setMessage(`邀请码不能超过 ${MAX_INVITE_CODE_LENGTH} 个字符`);
         const request = startRequest();
         try {
-            const { response: res, data } = await fetchResponseWithTimeout(`${backendUrl}/users/register`, {
+            const { response: res, data } = await fetchResponseWithTimeout(withRequestId(`${backendUrl}/users/register`, request.requestId), {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
                 body: formBody({ username: normalizedUsername, password, qq: normalizedQq, inviteCode: normalizedInviteCode })
@@ -329,7 +418,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                     setTab("login");
                 }
             } else {
-                setMessage(getFriendlyErrorMessage(res.status, data.error, "注册"));
+                setMessage(appendRequestId(getFriendlyErrorMessage(res.status, data.error, "注册"), data.requestId));
             }
         } catch (err) {
             if (closingRef.current) return;
@@ -339,7 +428,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
             } else if (err && err.name === "AbortError") {
                 setMessage("请求已取消，可以重新提交");
             } else {
-                setMessage(`网络错误：${err && err.message ? err.message : "请稍后重试"}`);
+                setMessage(appendRequestId(`网络错误：${err && err.message ? err.message : "请稍后重试"}`, request.requestId));
             }
         } finally {
             finishRequest(request);

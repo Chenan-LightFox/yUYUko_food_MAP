@@ -1,9 +1,31 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const logger = require('./utils/logger');
 
 const dbFile = path.join(__dirname, 'data.sqlite');
 const SQLITE_UUID_EXPR = "lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6)))";
+const DB_SLOW_QUERY_MS = Math.max(1, Math.min(600000, Number.parseInt(process.env.DB_SLOW_QUERY_MS || '100', 10) || 100));
+
+function queryFinished(operation, sql, startedAt) {
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+    if (durationMs < DB_SLOW_QUERY_MS) return;
+    logger.warn('Slow SQLite query', {
+        event: 'database.query.slow',
+        operation,
+        sql: String(sql || '').slice(0, 2000),
+        durationMs: Number(durationMs.toFixed(1))
+    });
+}
+
+function queryFailed(operation, sql, error) {
+    logger.error('SQLite query failed', {
+        event: 'database.query.failed',
+        operation,
+        sql: String(sql || '').slice(0, 2000),
+        error
+    });
+}
 
 function loadInitialCategories() {
     const seedPath = path.join(__dirname, 'seeds', 'categories.json');
@@ -49,15 +71,18 @@ const db = {
         }
         if (params == null) params = [];
         const args = Array.isArray(params) ? params : [params];
+        const startedAt = process.hrtime.bigint();
         try {
             const stmt = rawDb.prepare(sql);
             const info = stmt.run(...args);
+            queryFinished('run', sql, startedAt);
             if (cb) {
                 const thisObj = { lastID: info.lastInsertRowid, changes: info.changes };
                 process.nextTick(() => cb.call(thisObj, null));
             }
             return info;
         } catch (err) {
+            queryFailed('run', sql, err);
             if (cb) process.nextTick(() => cb(err));
             else throw err;
         }
@@ -69,12 +94,15 @@ const db = {
         }
         if (params == null) params = [];
         const args = Array.isArray(params) ? params : [params];
+        const startedAt = process.hrtime.bigint();
         try {
             const stmt = rawDb.prepare(sql);
             const row = stmt.get(...args);
+            queryFinished('get', sql, startedAt);
             if (cb) process.nextTick(() => cb(null, row));
             return row;
         } catch (err) {
+            queryFailed('get', sql, err);
             if (cb) process.nextTick(() => cb(err));
             else throw err;
         }
@@ -86,12 +114,15 @@ const db = {
         }
         if (params == null) params = [];
         const args = Array.isArray(params) ? params : [params];
+        const startedAt = process.hrtime.bigint();
         try {
             const stmt = rawDb.prepare(sql);
             const rows = stmt.all(...args);
+            queryFinished('all', sql, startedAt);
             if (cb) process.nextTick(() => cb(null, rows));
             return rows;
         } catch (err) {
+            queryFailed('all', sql, err);
             if (cb) process.nextTick(() => cb(err));
             else throw err;
         }

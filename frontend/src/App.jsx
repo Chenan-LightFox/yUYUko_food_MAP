@@ -113,12 +113,22 @@ export default function App() {
         setShowAuth(false);
     }, []);
 
-    const handleLoginSuccess = (u, t) => {
-        setUser(u);
-        setToken(t);
-        try { localStorage.setItem("token", t); } catch (e) { }
+    const handleLoginSuccess = useCallback((u, t) => {
+        // First remove the password form and let iOS Chrome finish the current
+        // browser event. Activate authenticated map state in the next task, then
+        // persist storage in a separate task so a storage stall cannot keep the
+        // login modal frozen on screen.
         setShowAuth(false);
-    };
+        window.setTimeout(() => {
+            setUser(u);
+            setToken(t);
+            window.setTimeout(() => {
+                try { localStorage.setItem("token", t); } catch (e) {
+                    console.warn('登录成功，但浏览器未能持久保存登录状态', e);
+                }
+            }, 0);
+        }, 0);
+    }, []);
 
     const handleRequireAuth = useCallback(() => {
         // Open login modal but do not navigate away from current path so user can login in-place
@@ -722,7 +732,7 @@ export default function App() {
                         {showAuth && (
                             <AuthModal
                                 backendUrl={BACKEND_URL}
-                                onLoginSuccess={(u, t) => { handleLoginSuccess(u, t); }}
+                                onLoginSuccess={handleLoginSuccess}
                                 onClose={() => setShowAuth(false)}
                             />
                         )}
