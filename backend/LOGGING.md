@@ -33,6 +33,7 @@ npm run logs -- --level error --limit 200 --json
 - 所有既有 `console.log/warn/error`、未捕获异常和未处理 Promise 拒绝。
 - 提前断开的连接以及超过 `LOG_SLOW_REQUEST_MS` 的慢请求。
 - SQLite 查询错误、超过 `DB_SLOW_QUERY_MS` 的慢查询，以及高德代理故障。
+- 登录前端阶段事件 `auth.client.stage`，可判断浏览器卡在响应接收、载荷解析还是 React 状态提交。
 
 密码、JWT、Authorization、Cookie、邀请码、API Key 和头像二进制字段会被自动脱敏。请求正文不会写入访问日志。
 

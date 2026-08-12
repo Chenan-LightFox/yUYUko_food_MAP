@@ -186,6 +186,41 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+const CLIENT_AUTH_STAGES = new Set([
+    'submitted',
+    'response_received',
+    'success_payload_valid',
+    'success_callback_started',
+    'success_callback_returned',
+    'state_commit_started',
+    'state_commit_finished',
+    'request_timed_out',
+    'request_failed'
+]);
+const clientAuthDiagnosticRate = new Map();
+
+app.post('/diagnostics/client-auth', (req, res) => {
+    const now = Date.now();
+    const rateKey = req.ip || 'unknown';
+    const current = clientAuthDiagnosticRate.get(rateKey);
+    const rate = !current || now - current.startedAt >= 60000
+        ? { startedAt: now, count: 1 }
+        : { ...current, count: current.count + 1 };
+    clientAuthDiagnosticRate.set(rateKey, rate);
+    if (rate.count > 60) return res.status(204).end();
+
+    const stage = String((req.body && req.body.stage) || req.query.stage || '').trim();
+    if (CLIENT_AUTH_STAGES.has(stage)) {
+        logger.info('Client authentication stage', {
+            event: 'auth.client.stage',
+            stage,
+            detail: String((req.body && req.body.detail) || req.query.detail || '').slice(0, 160),
+            userAgent: String(req.get('User-Agent') || '').slice(0, 500)
+        });
+    }
+    return res.status(204).end();
+});
+
 // Serve static files for uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/upload', requireAuth, require('./routes/upload'));

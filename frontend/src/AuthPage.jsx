@@ -5,6 +5,7 @@ import Button from './components/Button';
 import qrcodeImg from './img/qrcode.png';
 import useDarkMode from './utils/useDarkMode';
 import { getThemeColor, getThemeSecondary, colorToRgba, darkenColor } from './utils/theme';
+import { reportAuthStage } from './utils/authDiagnostics';
 
 const REQUEST_TIMEOUT_MS = 12000;
 const MAX_USERNAME_LENGTH = 64;
@@ -136,37 +137,73 @@ function parseResponseText(text) {
 function xhrResponseWithTimeout(url, options, request, timeoutMs) {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
+        let settled = false;
+        let deadlineTimerId;
+        let readyStatePollId;
         request.xhr = xhr;
+
+        const cleanup = () => {
+            window.clearTimeout(deadlineTimerId);
+            window.clearInterval(readyStatePollId);
+            request.xhr = null;
+        };
+        const resolveCompletedResponse = () => {
+            if (settled || xhr.readyState !== 4) return;
+            settled = true;
+            cleanup();
+            try {
+                request.requestId = xhr.getResponseHeader('X-Request-ID') || request.requestId;
+                resolve({
+                    response: { ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status },
+                    data: parseResponseText(xhr.responseText)
+                });
+            } catch (error) {
+                reject(error);
+            }
+        };
+        const rejectOnce = (error) => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            reject(error);
+        };
+
         xhr.open(options.method || 'GET', url, true);
         xhr.timeout = timeoutMs;
         for (const [key, value] of Object.entries(options.headers || {})) {
             xhr.setRequestHeader(key, value);
         }
-        xhr.onload = () => {
-            request.xhr = null;
-            request.requestId = xhr.getResponseHeader('X-Request-ID') || '';
-            resolve({
-                response: { ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status },
-                data: parseResponseText(xhr.responseText)
-            });
-        };
+        xhr.onreadystatechange = resolveCompletedResponse;
+        xhr.onload = resolveCompletedResponse;
+        xhr.onloadend = resolveCompletedResponse;
         xhr.ontimeout = () => {
-            request.xhr = null;
             request.timedOut = true;
             const error = new Error('Request timed out');
             error.name = 'RequestTimeoutError';
-            reject(error);
+            rejectOnce(error);
         };
         xhr.onerror = () => {
-            request.xhr = null;
-            reject(new TypeError('网络连接失败'));
+            rejectOnce(new TypeError('网络连接失败'));
         };
         xhr.onabort = () => {
-            request.xhr = null;
             const error = new Error('Request aborted');
             error.name = 'AbortError';
-            reject(error);
+            rejectOnce(error);
         };
+
+        // On iOS Chrome the networking layer can mark a request complete and
+        // cancel xhr.timeout without delivering the final load event. Polling
+        // readyState catches that state; the independent deadline guarantees
+        // the UI can never remain in "登录中" indefinitely.
+        readyStatePollId = window.setInterval(resolveCompletedResponse, 100);
+        deadlineTimerId = window.setTimeout(() => {
+            if (settled) return;
+            request.timedOut = true;
+            try { xhr.abort(); } catch (error) { }
+            const timeoutError = new Error('Request timed out');
+            timeoutError.name = 'RequestTimeoutError';
+            rejectOnce(timeoutError);
+        }, timeoutMs);
         xhr.send(options.body || null);
     });
 }
@@ -352,20 +389,22 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
         if (normalizedUsername.length > MAX_USERNAME_LENGTH) return setMessage(`用户名不能超过 ${MAX_USERNAME_LENGTH} 个字符`);
         if (password.length > MAX_PASSWORD_LENGTH) return setMessage(`密码不能超过 ${MAX_PASSWORD_LENGTH} 个字符`);
         const request = startRequest();
+        reportAuthStage(backendUrl, request.requestId, 'submitted', isIOSChrome() ? 'crios' : 'other');
         try {
             const { response: res, data } = await fetchResponseWithTimeout(withRequestId(`${backendUrl}/users/login`, request.requestId), {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
                 body: formBody({ username: normalizedUsername, password })
             }, request);
+            reportAuthStage(backendUrl, request.requestId, 'response_received', String(res.status));
             if (request.cancelled || activeRequestRef.current !== request) return;
             if (res.ok) {
                 if (data.user && data.token) {
+                    reportAuthStage(backendUrl, request.requestId, 'success_payload_valid');
                     finishRequest(request);
-                    if (document.activeElement && typeof document.activeElement.blur === 'function') {
-                        document.activeElement.blur();
-                    }
-                    onLoginSuccess && onLoginSuccess(data.user, data.token);
+                    reportAuthStage(backendUrl, request.requestId, 'success_callback_started');
+                    onLoginSuccess && onLoginSuccess(data.user, data.token, request.requestId);
+                    reportAuthStage(backendUrl, request.requestId, 'success_callback_returned');
                 } else {
                     setMessage("登录成功，但未收到用户信息");
                 }
@@ -376,10 +415,12 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
             if (closingRef.current) return;
             if (request.cancelled) return;
             if (request.timedOut || (err && err.name === "RequestTimeoutError")) {
+                reportAuthStage(backendUrl, request.requestId, 'request_timed_out');
                 setMessage(appendRequestId("请求超时，请检查网络后重试", request.requestId));
             } else if (err && err.name === "AbortError") {
                 setMessage("请求已取消，可以重新提交");
             } else {
+                reportAuthStage(backendUrl, request.requestId, 'request_failed', err && err.name);
                 setMessage(appendRequestId(`网络错误：${err && err.message ? err.message : "请稍后重试"}`, request.requestId));
             }
         } finally {
