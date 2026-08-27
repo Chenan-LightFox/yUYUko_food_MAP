@@ -4,6 +4,7 @@ const { db } = require("../db");
 const { requireAuth } = require("../middleware/auth");
 const { hasPermission } = require("../utils/adminPermissions");
 const { queuePlaceVectorSync, deletePlaceVector } = require('../services/placeVectorService');
+const { normalizeImageUrls } = require('../utils/imageUrls');
 
 const PLACE_NAME_MAX_LENGTH = 120;
 const PLACE_CATEGORY_MAX_LENGTH = 240;
@@ -197,8 +198,8 @@ router.post("/", requireAuth, (req, res) => {
         normalizedLatitude.value,
         normalizedLongitude.value,
         normalizedCategoryList.value,
-        exterior_images ? JSON.stringify(exterior_images) : null,
-        menu_images ? JSON.stringify(menu_images) : null,
+        exterior_images ? JSON.stringify(normalizeImageUrls(exterior_images)) : null,
+        menu_images ? JSON.stringify(normalizeImageUrls(menu_images)) : null,
         normalizedPerPersonCost ? normalizedPerPersonCost.value : null,
         creatorId,
         creatorId
@@ -269,8 +270,8 @@ router.put("/:id", requireAuth, (req, res) => {
         }
         if (latitude != null) { fields.push("latitude = ?"); values.push(latitude); }
         if (longitude != null) { fields.push("longitude = ?"); values.push(longitude); }
-        if (exterior_images !== undefined) { fields.push("exterior_images = ?"); values.push(exterior_images ? JSON.stringify(exterior_images) : null); }
-        if (menu_images !== undefined) { fields.push("menu_images = ?"); values.push(menu_images ? JSON.stringify(menu_images) : null); }
+        if (exterior_images !== undefined) { fields.push("exterior_images = ?"); values.push(exterior_images ? JSON.stringify(normalizeImageUrls(exterior_images)) : null); }
+        if (menu_images !== undefined) { fields.push("menu_images = ?"); values.push(menu_images ? JSON.stringify(normalizeImageUrls(menu_images)) : null); }
         if (per_person_cost !== undefined) {
             if (per_person_cost === null || per_person_cost === '') {
                 fields.push("per_person_cost = ?"); values.push(null);

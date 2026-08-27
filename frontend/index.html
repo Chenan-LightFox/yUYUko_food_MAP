@@ -15,25 +15,9 @@
             : '';
 
         const currentOrigin = window.location.origin;
-        const currentHost = window.location.hostname;
-        const isDinnerpartyHost = (h) => {
-            const s = String(h || '').toLowerCase();
-            return s === 'dinnerparty.cc' || s.endsWith('.dinnerparty.cc');
-        };
-
         let backend = currentOrigin;
         if (envBackend && String(envBackend).trim()) {
-            const configured = String(envBackend).replace(/\/+$/g, '');
-            backend = configured;
-            try {
-                const envHost = new URL(configured).hostname;
-                if (isDinnerpartyHost(currentHost) && isDinnerpartyHost(envHost) && currentHost !== envHost) {
-                    backend = currentOrigin;
-                    console.warn(`AMap serviceHost fallback to current origin due to host mismatch: ${envHost} -> ${currentHost}`);
-                }
-            } catch (e) {
-                // Keep configured backend if URL parsing fails.
-            }
+            backend = String(envBackend).replace(/\/+$/g, '');
         }
 
         window._AMapSecurityConfig = {

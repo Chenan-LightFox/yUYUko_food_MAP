@@ -215,7 +215,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                         </div>
 
                         {userOpen && (
-                            <div role="menu" aria-label="用户菜单" style={{ ...menuStyle, left: 0, right: 'auto' }}>
+                            <div role="menu" aria-label="用户菜单" style={{ ...menuStyle, left: 0, right: 'auto', zIndex: 2001 }}>
                                 <div style={{ padding: '6px 10px 10px' }}>
                                     <div style={{ fontWeight: 700, overflowWrap: 'anywhere' }}>{user.username}</div>
                                     <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)' }}>已登录</div>

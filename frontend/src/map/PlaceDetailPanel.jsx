@@ -2,10 +2,15 @@ import React, { useRef, useState } from 'react';
 import Button from '../components/Button';
 import ScrollableView from '../components/ScrollableView';
 import useMediaQuery from '../utils/useMediaQuery';
+import { normalizeImageUrl } from './utils';
 
 function parseImages(value) {
-    if (Array.isArray(value)) return value;
-    try { return value ? JSON.parse(value) : []; } catch (e) { return []; }
+    try {
+        const images = Array.isArray(value) ? value : (value ? JSON.parse(value) : []);
+        return Array.isArray(images) ? images.map(normalizeImageUrl) : [];
+    } catch (e) {
+        return [];
+    }
 }
 
 export default function PlaceDetailPanel({ place, onClose, onNavigate }) {

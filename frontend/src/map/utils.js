@@ -6,6 +6,14 @@ export const MIN_CENTER_SAVE_DISTANCE_METERS = 30;
 export const MIN_ZOOM_SAVE_DELTA = 0.2;
 export const LOCATE_ME_MIN_ZOOM = 18;
 
+const LEGACY_IMAGE_ORIGIN_PATTERN = /^https?:\/\/dinnerparty\.cc:2053(?=\/|$)/i;
+const CANONICAL_IMAGE_ORIGIN = "https://cn.dinnerparty.cc:2053";
+
+export function normalizeImageUrl(value) {
+    if (typeof value !== "string") return value;
+    return value.replace(LEGACY_IMAGE_ORIGIN_PATTERN, CANONICAL_IMAGE_ORIGIN);
+}
+
 export function isLocalhost(hostname) {
     return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }

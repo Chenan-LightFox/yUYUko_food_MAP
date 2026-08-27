@@ -90,7 +90,7 @@ const Notice = forwardRef(function Notice({ title, children, tone = 'info', back
         maxWidth: '960px',
         minWidth: 0,
         boxSizing: 'border-box',
-        zIndex,
+        zIndex: 2000,
         padding: '12px 16px',
         borderRadius: 8,
         background: mergedBackground,

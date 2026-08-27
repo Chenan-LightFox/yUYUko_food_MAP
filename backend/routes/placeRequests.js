@@ -5,6 +5,7 @@ const { requireAuth } = require("../middleware/auth");
 const requireAdmin = require("../middleware/adminAuth");
 const { logAdminAction } = require("../utils/adminAudit");
 const { queuePlaceVectorSync } = require('../services/placeVectorService');
+const { normalizeImageUrls } = require('../utils/imageUrls');
 
 // 提交地点修改申请（需登录）
 router.post("/", requireAuth, (req, res) => {
@@ -12,7 +13,12 @@ router.post("/", requireAuth, (req, res) => {
     const requester_id = req.user && req.user.id;
     if (!place_id || !proposed || typeof proposed !== "object") return res.status(400).json({ error: "缺少参数或 proposed 格式错误" });
 
-    const proposedStr = JSON.stringify(proposed);
+    const normalizedProposed = {
+        ...proposed,
+        ...(proposed.exterior_images !== undefined ? { exterior_images: normalizeImageUrls(proposed.exterior_images) } : {}),
+        ...(proposed.menu_images !== undefined ? { menu_images: normalizeImageUrls(proposed.menu_images) } : {})
+    };
+    const proposedStr = JSON.stringify(normalizedProposed);
     db.run(`INSERT INTO PlaceRequest (place_id, requester_id, proposed, note) VALUES (?, ?, ?, ?)`, [place_id, requester_id, proposedStr, note || ""], function (err) {
         if (err) return res.status(500).json({ error: err.message });
         db.get("SELECT * FROM PlaceRequest WHERE id = ?", [this.lastID], (e, row) => {
@@ -80,7 +86,7 @@ router.post("/:id/review", requireAuth, requireAdmin("manage_places"), (req, res
         ].join(', ');
         const values = keys.map(k => {
             if (['exterior_images', 'menu_images'].includes(k)) {
-                return proposed[k] ? JSON.stringify(proposed[k]) : null;
+                return proposed[k] ? JSON.stringify(normalizeImageUrls(proposed[k])) : null;
             }
             return proposed[k];
         });

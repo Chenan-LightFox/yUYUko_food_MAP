@@ -249,6 +249,25 @@ function init() {
         addPlaceIfMissing('has_vector INTEGER NOT NULL DEFAULT 0');
         addPlaceIfMissing('vector_updated_at DATETIME');
 
+        // Repair image URLs saved by older frontend builds that replaced the
+        // configured cn.dinnerparty.cc backend with the apex domain.
+        const repairedImageUrls = rawDb.prepare(`
+            UPDATE Place
+            SET exterior_images = REPLACE(
+                    REPLACE(exterior_images, 'https://dinnerparty.cc:2053', 'https://cn.dinnerparty.cc:2053'),
+                    'http://dinnerparty.cc:2053', 'https://cn.dinnerparty.cc:2053'
+                ),
+                menu_images = REPLACE(
+                    REPLACE(menu_images, 'https://dinnerparty.cc:2053', 'https://cn.dinnerparty.cc:2053'),
+                    'http://dinnerparty.cc:2053', 'https://cn.dinnerparty.cc:2053'
+                )
+            WHERE exterior_images LIKE '%://dinnerparty.cc:2053/%'
+               OR menu_images LIKE '%://dinnerparty.cc:2053/%'
+        `).run();
+        if (repairedImageUrls.changes > 0) {
+            console.log(`Repaired legacy image URLs in ${repairedImageUrls.changes} place(s).`);
+        }
+
         if (vectorSearchAvailable) {
             rawDb.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS place_vectors USING vec0(
                 place_id INTEGER PRIMARY KEY,
