@@ -114,7 +114,7 @@ export default function PersonalizeMap({ user, onBack, backendUrl, token, onUpda
                 showTip('个性化地图已保存');
             } else {
                 localStorage.setItem('map_settings', JSON.stringify(mapSettings));
-                showTip('已保存到本地（未登录）');
+                showTip('已保存到本地（访客模式）');
                 if (typeof onBack === 'function') onBack();
             }
         } catch (e) {

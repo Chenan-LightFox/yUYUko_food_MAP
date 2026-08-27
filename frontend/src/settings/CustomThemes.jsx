@@ -100,7 +100,7 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
             } else {
                 localStorage.setItem('map_settings', JSON.stringify(payload));
                 setDarkMode(!!value);
-                showTip('已保存到本地（未登录）');
+                showTip('已保存到本地（访客模式）');
             }
         } catch (e) {
             showTip(e.message || '保存失败');
@@ -153,7 +153,7 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                 if (typeof primary !== 'undefined') setThemeColor(primary || resolveThemePrimary(null));
                 if (typeof secondary !== 'undefined') setThemeSecondary(secondary || resolveThemeSecondary(null));
                 try { applyThemeColors(primary || resolveThemePrimary(null), secondary || resolveThemeSecondary(null)); } catch (e) { }
-                showTip('已保存到本地（未登录）');
+                showTip('已保存到本地（访客模式）');
             }
         } catch (e) {
             showTip(e.message || '保存失败');
@@ -205,7 +205,7 @@ export default function CustomThemes({ user, onBack, backendUrl, token, onUpdate
                 localStorage.setItem('map_settings', JSON.stringify(payload));
                 if (which === 'map_style_dark') setDarkMapStyle(value || '');
                 if (which === 'map_style_light') setLightMapStyle(value || '');
-                showTip('已保存到本地（未登录）');
+                showTip('已保存到本地（访客模式）');
             }
             // dispatch event so map can pick up immediately
             try {

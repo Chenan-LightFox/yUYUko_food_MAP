@@ -15,7 +15,7 @@ export default function BanNotice({ canClose = true, style }) {
 
     return (
         <Notice
-            title="账号已被封禁"
+            title="通行凭证已受限"
             tone="danger"
             canClose={closable}
             onClose={() => setVisible(false)}
@@ -23,7 +23,7 @@ export default function BanNotice({ canClose = true, style }) {
             style={style}
         >
             <div style={{ fontSize: 13, marginTop: 6 }}>原因：{reason}；到期：{expires}</div>
-            <div style={{ fontSize: 13, marginTop: 6 }}>被封禁的账号只能查看内容，无法进行发帖/修改等操作。</div>
+            <div style={{ fontSize: 13, marginTop: 6 }}>通行受限的住民只能查看内容，无法进行发帖、修改等操作。</div>
         </Notice>
     );
 }

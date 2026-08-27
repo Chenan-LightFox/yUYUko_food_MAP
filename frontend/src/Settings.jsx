@@ -22,12 +22,12 @@ export default function Settings({ user, onBack, onOpenEditAvatar, onOpenEditUse
             if (onLogout) onLogout();
             return;
         }
-        if (!(await confirm('确认删除账户吗？此操作不可恢复，所有个人数据可能被删除或无法恢复。'))) return;
+        if (!(await confirm('确认从幻想乡名册中除名吗？此操作不可恢复，所有个人数据可能被删除或无法恢复。'))) return;
         setDeleting(true);
         try {
             const res = await fetch(`${backendUrl}/users/me`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
             if (res.ok) {
-                showTip('账户已删除，正在退出登录');
+                showTip('住民档案已删除，正在离开幻想乡');
                 if (onLogout) await onLogout();
             } else {
                 let data = null;
@@ -47,7 +47,7 @@ export default function Settings({ user, onBack, onOpenEditAvatar, onOpenEditUse
         <div style={rootStyle}>
             <div style={container}>
                 <div style={{ ...titleRow, marginTop: 50 }}>
-                    <h2 style={{ margin: 0 }}>用户设置</h2>
+                    <h2 style={{ margin: 0 }}>住民设置</h2>
                     <Button
                         themeAware
                         onClick={onBack}
@@ -84,9 +84,9 @@ export default function Settings({ user, onBack, onOpenEditAvatar, onOpenEditUse
                     <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: sepBg, margin: 0 }} />
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 12 }}>
-                        <div><strong>当前用户名：</strong>{user ? user.username : '-'}</div>
+                        <div><strong>当前住民名：</strong>{user ? user.username : '-'}</div>
                         <div>
-                            <Tooltip text="修改用户名" placement="top">
+                            <Tooltip text="修改住民名" placement="top">
                                 <Button themeAware onClick={onOpenEditUsername} style={{ padding: '8px 12px', border: 0, alignItems: 'center', display: 'inline-flex', gap: 4, background: 'var(--color-bg-overlay)', color: 'var(--color-text-primary)' }}>
                                     <span className="material-symbols-outlined">chevron_right</span>
                                 </Button>
@@ -97,9 +97,9 @@ export default function Settings({ user, onBack, onOpenEditAvatar, onOpenEditUse
                     <div style={{ paddingLeft: 10, paddingRight: 10, paddingBottom: 2, background: sepBg, margin: 0 }} />
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 12 }}>
-                        <div><strong>修改密码</strong></div>
+                        <div><strong>修改通行密码</strong></div>
                         <div>
-                            <Tooltip text="修改密码" placement="top">
+                            <Tooltip text="修改通行密码" placement="top">
                                 <Button themeAware onClick={onOpenEditPassword} style={{ padding: '8px 12px', border: 0, alignItems: 'center', display: 'inline-flex', gap: 4, background: 'var(--color-bg-overlay)', color: 'var(--color-text-primary)' }}>
                                     <span className="material-symbols-outlined">chevron_right</span>
                                 </Button>
@@ -136,13 +136,13 @@ export default function Settings({ user, onBack, onOpenEditAvatar, onOpenEditUse
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
                         <div>
-                            <div style={{ fontWeight: 600, color: 'var(--color-danger)' }}>删除账户</div>
-                            <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>此操作不可恢复，会删除部分个人信息并取消账户访问权限。</div>
+                            <div style={{ fontWeight: 600, color: 'var(--color-danger)' }}>从幻想乡名册除名</div>
+                            <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>此操作不可恢复，会删除部分个人信息并取消住民身份的访问权限。</div>
                         </div>
                         <div>
-                            <Tooltip text="删除账户（不可恢复）" placement="top">
+                            <Tooltip text="从名册除名（不可恢复）" placement="top">
                                 <Button themeAware onClick={handleDeleteAccount} style={{ padding: '8px 12px', border: 0, background: 'var(--color-danger)', color: 'var(--color-on-emphasis)' }} disabled={deleting}>
-                                    {deleting ? '删除中...' : '删除账户'}
+                                    {deleting ? '除名中...' : '确认除名'}
                                 </Button>
                             </Tooltip>
                         </div>

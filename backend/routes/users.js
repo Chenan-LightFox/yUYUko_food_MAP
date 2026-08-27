@@ -73,7 +73,7 @@ router.post("/register", (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         if (row) {
             logAuthRejected(req, 'register', 'username_exists', username);
-            return res.status(400).json({ error: "用户名已存在" });
+            return res.status(400).json({ error: "住民名已被使用" });
         }
 
         // 校验邀请码合法性
@@ -98,7 +98,7 @@ router.post("/register", (req, res) => {
                 if (errQQUsed) return res.status(500).json({ error: errQQUsed.message });
                 if (usedRow) {
                     logAuthRejected(req, 'register', 'qq_already_bound', username);
-                    return res.status(400).json({ error: "该QQ号已被其他账号绑定" });
+                    return res.status(400).json({ error: "该QQ号已被其他住民绑定" });
                 }
 
             // 校验QQ号是否在白名单中
@@ -175,7 +175,7 @@ router.post("/login", (req, res) => {
         }
         if (!row) {
             logAuthRejected(req, 'login', 'invalid_credentials', username);
-            return res.status(401).json({ error: "用户名或密码错误" });
+            return res.status(401).json({ error: "住民名或通行密码错误" });
         }
 
         row.has_avatar = !!row.has_avatar;
@@ -207,12 +207,12 @@ router.patch('/me', requireAuth, (req, res) => {
     const { username } = req.body || {};
     if (!username || typeof username !== 'string') return res.status(400).json({ error: '缺少或无效的 username 字段' });
     const newName = username.trim();
-    if (newName.length < 1 || newName.length > 64) return res.status(400).json({ error: '用户名长度应为 1-64 个字符' });
+    if (newName.length < 1 || newName.length > 64) return res.status(400).json({ error: '住民名长度应为 1-64 个字符' });
 
     // 检查是否被占用
     db.get('SELECT id FROM User WHERE username = ?', [newName], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
-        if (row && row.id !== req.user.id) return res.status(400).json({ error: '用户名已存在' });
+        if (row && row.id !== req.user.id) return res.status(400).json({ error: '住民名已被使用' });
 
         db.run('UPDATE User SET username = ? WHERE id = ?', [newName, req.user.id], function (e) {
             if (e) return res.status(500).json({ error: e.message });
@@ -236,15 +236,15 @@ router.patch('/me', requireAuth, (req, res) => {
 router.patch('/me/password', requireAuth, (req, res) => {
     const { currentPassword, newPassword } = req.body || {};
     if (!currentPassword || !newPassword) return res.status(400).json({ error: '缺少字段' });
-    if (typeof newPassword !== 'string' || newPassword.length < 6) return res.status(400).json({ error: '新密码长度至少 6 位' });
+    if (typeof newPassword !== 'string' || newPassword.length < 6) return res.status(400).json({ error: '新通行密码长度至少 6 位' });
 
     // 读取当前存储的密码（已加密）
     db.get('SELECT password FROM User WHERE id = ?', [req.user.id], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
-        if (!row) return res.status(404).json({ error: '用户不存在' });
+        if (!row) return res.status(404).json({ error: '住民不存在' });
 
         const currentHash = hashPassword(currentPassword);
-        if (row.password !== currentHash) return res.status(401).json({ error: '当前密码错误' });
+        if (row.password !== currentHash) return res.status(401).json({ error: '当前通行密码错误' });
 
         const newHash = hashPassword(newPassword);
         db.run('UPDATE User SET password = ? WHERE id = ?', [newHash, req.user.id], function (e) {
@@ -342,7 +342,7 @@ router.post('/logout', requireAuth, async (req, res) => {
             userId: req.user && req.user.id,
             error: e
         });
-        return res.status(500).json({ error: "退出登录失败", detail: e.message });
+        return res.status(500).json({ error: "暂离幻想乡失败", detail: e.message });
     }
 });
 
@@ -368,7 +368,7 @@ router.delete('/me', requireAuth, async (req, res) => {
             return res.json({ success: true });
         });
     } catch (e) {
-        return res.status(500).json({ error: '删除用户失败', detail: e.message });
+        return res.status(500).json({ error: '住民档案删除失败', detail: e.message });
     }
 });
 

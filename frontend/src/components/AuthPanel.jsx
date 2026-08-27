@@ -175,7 +175,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                         disabled={interactionDisabled}
                         style={{ minHeight: 38, padding: '7px 13px', borderRadius: 999, background: themeColor, color: pickContrastTextColor(themeColor), fontWeight: 700 }}
                     >
-                        登录
+                        入乡
                     </Button>
                 )}
                 {isAuth && user && (
@@ -186,7 +186,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                                 setUserOpen((value) => !value);
                                 setMoreOpen(false);
                             }}
-                            aria-label="打开用户菜单"
+                            aria-label="打开住民菜单"
                             aria-expanded={userOpen}
                             style={{
                                 maxWidth: 180,
@@ -215,15 +215,15 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                         </div>
 
                         {userOpen && (
-                            <div role="menu" aria-label="用户菜单" style={{ ...menuStyle, left: 0, right: 'auto', zIndex: 2001 }}>
+                            <div role="menu" aria-label="住民菜单" style={{ ...menuStyle, left: 0, right: 'auto', zIndex: 2001 }}>
                                 <div style={{ padding: '6px 10px 10px' }}>
                                     <div style={{ fontWeight: 700, overflowWrap: 'anywhere' }}>{user.username}</div>
-                                    <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)' }}>已登录</div>
+                                    <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)' }}>身份已验证</div>
                                 </div>
                                 {divider}
-                                <Button themeAware variant="menu" full onClick={() => { setUserOpen(false); isOnSettings ? onGoHome?.() : onOpenSettings?.(); }}>{isOnSettings ? '返回地图' : '账号与地图设置'}</Button>
+                                <Button themeAware variant="menu" full onClick={() => { setUserOpen(false); isOnSettings ? onGoHome?.() : onOpenSettings?.(); }}>{isOnSettings ? '返回地图' : '住民与地图设置'}</Button>
                                 {divider}
-                                <Button themeAware variant="menu" full onClick={() => { setUserOpen(false); onLogout?.(); }} style={{ color: 'var(--color-danger)' }}>退出登录</Button>
+                                <Button themeAware variant="menu" full onClick={() => { setUserOpen(false); onLogout?.(); }} style={{ color: 'var(--color-danger)' }}>暂离幻想乡</Button>
                             </div>
                         )}
                     </div>

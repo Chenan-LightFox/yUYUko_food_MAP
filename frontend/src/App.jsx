@@ -573,7 +573,7 @@ export default function App() {
                                 />
                             ) : (
                                 <div style={placeholderStyle}>
-                                    正在验证登录状态...
+                                    正在核验通行凭证...
                                 </div>
                             )
                         )}
@@ -590,7 +590,7 @@ export default function App() {
                                 />
                             ) : (
                                 <div style={placeholderStyle}>
-                                    正在验证登录状态...
+                                    正在核验通行凭证...
                                 </div>
                             )
                         )}
@@ -612,7 +612,7 @@ export default function App() {
                                 />
                             ) : (
                                 <div style={placeholderStyle}>
-                                    正在验证登录状态...
+                                    正在核验通行凭证...
                                 </div>
                             )
                         )}
@@ -628,7 +628,7 @@ export default function App() {
                                 />
                             ) : (
                                 <div style={placeholderStyle}>
-                                    正在验证登录状态...
+                                    正在核验通行凭证...
                                 </div>
                             )
                         )}
@@ -644,7 +644,7 @@ export default function App() {
                                 />
                             ) : (
                                 <div style={placeholderStyle}>
-                                    正在验证登录状态...
+                                    正在核验通行凭证...
                                 </div>
                             )
                         )}
@@ -660,7 +660,7 @@ export default function App() {
                                 />
                             ) : (
                                 <div style={placeholderStyle}>
-                                    正在验证登录状态...
+                                    正在核验通行凭证...
                                 </div>
                             )
                         )}
@@ -676,7 +676,7 @@ export default function App() {
                                 />
                             ) : (
                                 <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                    正在验证登录状态...
+                                    正在核验通行凭证...
                                 </div>
                             )
                         )}
@@ -692,7 +692,7 @@ export default function App() {
                                 />
                             ) : (
                                 <div style={{ minHeight: "var(--app-height, 100vh)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                    正在验证登录状态...
+                                    正在核验通行凭证...
                                 </div>
                             )
                         )}

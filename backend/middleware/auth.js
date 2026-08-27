@@ -97,7 +97,7 @@ async function requireAuth(req, res, next) {
                 method: req.method,
                 path: req.path
             });
-            return res.status(401).json({ error: "登录状态已失效，请重新登录" });
+            return res.status(401).json({ error: "通行凭证已失效，请重新核验" });
         }
 
         const user = await loadUserById(userId);
@@ -109,7 +109,7 @@ async function requireAuth(req, res, next) {
                 method: req.method,
                 path: req.path
             });
-            return res.status(404).json({ error: "用户不存在" });
+            return res.status(404).json({ error: "住民不存在" });
         }
 
         // handle banned users: auto-unban if expired, otherwise restrict non-read methods
@@ -145,7 +145,7 @@ async function requireAuth(req, res, next) {
                         method: req.method,
                         path: req.path
                     });
-                    return res.status(403).json({ error: "账号已被封禁，仅允许查看内容", reason: user.ban_reason || null });
+                    return res.status(403).json({ error: "通行凭证已受限，仅允许查看内容", reason: user.ban_reason || null });
                 }
                 // else continue but keep user info
             }

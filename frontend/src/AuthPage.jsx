@@ -73,10 +73,10 @@ function getFriendlyErrorMessage(status, fallback, action) {
     const serverMessage = typeof fallback === "string" ? fallback : "";
     if (serverMessage) return serverMessage;
     if (status === 400) return `${action}请求参数有误，请检查输入`;
-    if (status === 401) return "用户名或密码错误";
-    if (status === 403) return "当前账号无权限执行该操作";
+    if (status === 401) return "住民名或通行密码错误";
+    if (status === 403) return "当前住民身份无权限执行该操作";
     if (status === 404) return `${action}服务暂不可用，请稍后重试`;
-    if (status === 409) return "用户名已存在";
+    if (status === 409) return "住民名已被使用";
     if (status === 429) return "请求过于频繁，请稍后再试";
     if (status >= 500) return "服务器开小差了，请稍后重试";
     return `${action}失败：${status}`;
@@ -153,7 +153,7 @@ function xhrResponseWithTimeout(url, options, request, timeoutMs) {
             // exposed to JavaScript. Treating it as a completed HTTP response
             // can strand the loading state after an iOS lifecycle interruption.
             if (xhr.status === 0) {
-                rejectOnce(new TypeError('登录响应被浏览器中断（状态 0）'));
+                rejectOnce(new TypeError('通行凭证核验响应被浏览器中断（状态 0）'));
                 return;
             }
             settled = true;
@@ -399,9 +399,9 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
         if (loading) return;
         setMessage("");
         const normalizedUsername = username.trim();
-        if (!normalizedUsername || !password) return setMessage("请输入用户名和密码");
-        if (normalizedUsername.length > MAX_USERNAME_LENGTH) return setMessage(`用户名不能超过 ${MAX_USERNAME_LENGTH} 个字符`);
-        if (password.length > MAX_PASSWORD_LENGTH) return setMessage(`密码不能超过 ${MAX_PASSWORD_LENGTH} 个字符`);
+        if (!normalizedUsername || !password) return setMessage("请输入住民名和通行密码");
+        if (normalizedUsername.length > MAX_USERNAME_LENGTH) return setMessage(`住民名不能超过 ${MAX_USERNAME_LENGTH} 个字符`);
+        if (password.length > MAX_PASSWORD_LENGTH) return setMessage(`通行密码不能超过 ${MAX_PASSWORD_LENGTH} 个字符`);
         const request = startRequest();
         reportAuthStage(backendUrl, request.requestId, 'submitted', isIOSChrome() ? 'crios' : 'other');
         try {
@@ -420,10 +420,10 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                     onLoginSuccess && onLoginSuccess(data.user, data.token, request.requestId);
                     reportAuthStage(backendUrl, request.requestId, 'success_callback_returned');
                 } else {
-                    setMessage("登录成功，但未收到用户信息");
+                    setMessage("通行凭证核验成功，但未收到住民信息");
                 }
             } else {
-                setMessage(appendRequestId(getFriendlyErrorMessage(res.status, data.error, "登录"), data.requestId));
+                setMessage(appendRequestId(getFriendlyErrorMessage(res.status, data.error, "通行凭证核验"), data.requestId));
             }
         } catch (err) {
             if (closingRef.current) return;
@@ -449,10 +449,10 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
         const normalizedUsername = username.trim();
         const normalizedQq = qq.trim();
         const normalizedInviteCode = inviteCode.trim();
-        if (!normalizedUsername || !password || !confirmPassword || !normalizedInviteCode || !normalizedQq) return setMessage("请填写用户名、密码、QQ号和邀请码");
-        if (normalizedUsername.length > MAX_USERNAME_LENGTH) return setMessage(`用户名不能超过 ${MAX_USERNAME_LENGTH} 个字符`);
-        if (password.length > MAX_PASSWORD_LENGTH) return setMessage(`密码不能超过 ${MAX_PASSWORD_LENGTH} 个字符`);
-        if (password !== confirmPassword) return setMessage("两次输入的密码不一致");
+        if (!normalizedUsername || !password || !confirmPassword || !normalizedInviteCode || !normalizedQq) return setMessage("请填写住民名、通行密码、QQ号和邀请码");
+        if (normalizedUsername.length > MAX_USERNAME_LENGTH) return setMessage(`住民名不能超过 ${MAX_USERNAME_LENGTH} 个字符`);
+        if (password.length > MAX_PASSWORD_LENGTH) return setMessage(`通行密码不能超过 ${MAX_PASSWORD_LENGTH} 个字符`);
+        if (password !== confirmPassword) return setMessage("两次输入的通行密码不一致");
         if (normalizedQq.length > 20) return setMessage(`QQ号不能超过 20 个字符`);
         if (normalizedInviteCode.length > MAX_INVITE_CODE_LENGTH) return setMessage(`邀请码不能超过 ${MAX_INVITE_CODE_LENGTH} 个字符`);
         const request = startRequest();
@@ -467,13 +467,13 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                 // 注册接口会返回 { user, token }，若返回 token 则自动登录
                 if (data.user && data.token) {
                     onLoginSuccess && onLoginSuccess(data.user, data.token);
-                    setMessage("注册并已登录");
+                    setMessage("名册登记成功，通行凭证已核验");
                 } else {
-                    setMessage("注册成功，请返回登录页面登录");
+                    setMessage("名册登记成功，请返回幻想乡住民页面继续");
                     setTab("login");
                 }
             } else {
-                setMessage(appendRequestId(getFriendlyErrorMessage(res.status, data.error, "注册"), data.requestId));
+                setMessage(appendRequestId(getFriendlyErrorMessage(res.status, data.error, "幻想乡名册登记"), data.requestId));
             }
         } catch (err) {
             if (closingRef.current) return;
@@ -494,15 +494,15 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
     const uiColors = { ...getStaticColors(dark), ...getThemeUIColors(themeColor) };
 
     const isSuccessMessage = message.includes("成功");
-    const modeText = tab === "login" ? "登录已有账号" : "注册新账号";
+    const modeText = tab === "login" ? "住民通行" : "登记幻想乡名册";
     const modeHint = tab === "login"
-        ? "输入账号密码后登录"
+        ? "输入住民名和通行密码后继续"
         : registerStep === "qrcode"
             ? "请先扫描二维码加入QQ群获取邀请码"
-            : "填写邀请码后创建账号并自动登录";
+            : "填写邀请码后登记为幻想乡住民并自动进入";
     const submitButtonText = tab === "login"
-        ? (loading ? "登录中..." : "登录账号")
-        : (loading ? "注册中..." : "注册并登录");
+        ? (loading ? "核验中..." : "越过结界")
+        : (loading ? "登记中..." : "登记并进入");
     const inputStyle = {
         width: "100%",
         boxSizing: "border-box",
@@ -535,7 +535,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                 boxShadow: "0 6px 24px rgba(0,0,0,0.25)"
             }}
         >
-            <h2 id="auth-modal-title" style={{ margin: "0 0 10px 0", fontSize: 20, color: uiColors.textStrong }}>账号登录</h2>
+            <h2 id="auth-modal-title" style={{ margin: "0 0 10px 0", fontSize: 20, color: uiColors.textStrong }}>博丽大结界通行</h2>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
                 <div style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 'var(--radius-md)', border: `1px solid ${uiColors.border}`, background: uiColors.tabGroupBackground }}>
                     <Button
@@ -545,7 +545,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                         onClick={() => switchTab("login")}
                         style={getTabButtonStyle(tab === "login", loading, uiColors)}
                     >
-                        登录
+                        幻想乡住民
                     </Button>
                     <Button
                         type="button"
@@ -554,7 +554,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                         onClick={() => switchTab("register")}
                         style={getTabButtonStyle(tab === "register", loading, uiColors)}
                     >
-                        注册
+                        初入幻想乡
                     </Button>
                 </div>
                 <div style={{ marginLeft: "auto" }}>
@@ -575,10 +575,10 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
             {tab === "login" ? (
                 <form onSubmit={handleLogin}>
                     <div>
-                        <label htmlFor="auth-username" style={labelStyle}>用户名</label>
+                        <label htmlFor="auth-username" style={labelStyle}>住民名</label>
                         <TextInput
                             id="auth-username"
-                            placeholder="请输入用户名"
+                            placeholder="请输入住民名"
                             value={username}
                             autoComplete="username"
                             maxLength={MAX_USERNAME_LENGTH}
@@ -587,11 +587,11 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                         />
                     </div>
                     <div style={{ marginTop: 10 }}>
-                        <label htmlFor="auth-password-login" style={labelStyle}>密码</label>
+                        <label htmlFor="auth-password-login" style={labelStyle}>通行密码</label>
                         <TextInput
                             id="auth-password-login"
                             type="password"
-                            placeholder="请输入密码"
+                            placeholder="请输入通行密码"
                             value={password}
                             autoComplete="current-password"
                             maxLength={MAX_PASSWORD_LENGTH}
@@ -618,7 +618,7 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
             ) : registerStep === "qrcode" ? (
                 <div style={{ textAlign: 'center' }}>
                     <p style={{ margin: "0 0 12px 0", fontSize: 14, color: uiColors.textStrong, lineHeight: 1.6 }}>
-                        请使用 QQ 扫描下方二维码加入群聊，<br />在群内获取邀请码后再继续注册。
+                        请使用 QQ 扫描下方二维码加入群聊，<br />在群内获取邀请码后再登记名册。
                     </p>
                     <img
                         src={qrcodeImg}
@@ -647,16 +647,16 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                             letterSpacing: "0.02em"
                         }}
                     >
-                        已获取邀请码，继续注册
+                        已获取邀请码，登记名册
                     </Button>
                 </div>
             ) : (
                 <form onSubmit={handleRegister}>
                     <div>
-                        <label htmlFor="auth-username-register" style={labelStyle}>用户名</label>
+                        <label htmlFor="auth-username-register" style={labelStyle}>住民名</label>
                         <TextInput
                             id="auth-username-register"
-                            placeholder="请输入用户名"
+                            placeholder="请输入住民名"
                             value={username}
                             autoComplete="username"
                             maxLength={MAX_USERNAME_LENGTH}
@@ -665,12 +665,12 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                         />
                     </div>
                     <div style={{ marginTop: 10 }}>
-                        <label htmlFor="auth-password-register" style={labelStyle}>密码</label>
+                        <label htmlFor="auth-password-register" style={labelStyle}>通行密码</label>
                         <div style={{ position: 'relative' }}>
                             <TextInput
                                 id="auth-password-register"
                                 type={showPassword ? "text" : "password"}
-                                placeholder="设置一个登录密码"
+                                placeholder="设置通行密码"
                                 value={password}
                                 autoComplete="new-password"
                                 maxLength={MAX_PASSWORD_LENGTH}
@@ -703,12 +703,12 @@ export default function AuthPage({ backendUrl, onLoginSuccess, onClose }) {
                         </div>
                     </div>
                     <div style={{ marginTop: 10 }}>
-                        <label htmlFor="auth-confirm-password-register" style={labelStyle}>确认密码</label>
+                        <label htmlFor="auth-confirm-password-register" style={labelStyle}>确认通行密码</label>
                         <div style={{ position: 'relative' }}>
                             <TextInput
                                 id="auth-confirm-password-register"
                                 type={showPassword ? "text" : "password"}
-                                placeholder="请再次输入密码"
+                                placeholder="请再次输入通行密码"
                                 value={confirmPassword}
                                 autoComplete="new-password"
                                 maxLength={MAX_PASSWORD_LENGTH}

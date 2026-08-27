@@ -1020,7 +1020,7 @@ export default function MapUI(props) {
                             </div>
                         )}
 
-                        <Tooltip text={authPending ? '正在验证登录状态，请稍候再试' : (favPageOpen ? '关闭收藏夹' : '展开收藏夹')}>
+                        <Tooltip text={authPending ? '正在核验通行凭证，请稍候再试' : (favPageOpen ? '关闭收藏夹' : '展开收藏夹')}>
                             <div style={{ display: "inline-block" }}>
                                 <Button
                                     onClick={toggleFavorites}
@@ -1101,7 +1101,7 @@ export default function MapUI(props) {
                         )}
 
                         {!pickerMode && (
-                            <Tooltip text={authPending ? '正在验证登录状态，请稍候再试' : '定位/我的位置'}>
+                            <Tooltip text={authPending ? '正在核验通行凭证，请稍候再试' : '定位/我的位置'}>
                                 <div style={{ display: "inline-block" }}>
                                     <Button
                                         onClick={handleLocateMe}
@@ -1180,7 +1180,16 @@ export default function MapUI(props) {
                                 </Button>
                             )}
                             <div style={{ marginTop: 4, padding: '10px', borderTop: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', fontSize: 12 }}>
-                                东方饭联地图 · v2.0.1
+                                <div>东方饭联地图 · v2.0.1</div>
+                                <a
+                                    href="https://beian.miit.gov.cn/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() => setMobileMoreOpen(false)}
+                                    style={{ display: 'inline-block', marginTop: 6, color: 'inherit', textDecoration: 'none' }}
+                                >
+                                    闽ICP备2026031519号-2
+                                </a>
                             </div>
                         </div>
                     )}
@@ -1188,7 +1197,7 @@ export default function MapUI(props) {
                     {isAuthenticated && mobileAccountOpen && (
                         <div
                             role="menu"
-                            aria-label="用户菜单"
+                            aria-label="住民菜单"
                             style={{
                                 position: 'absolute',
                                 right: 12,
@@ -1205,16 +1214,16 @@ export default function MapUI(props) {
                             }}
                         >
                             <div style={{ padding: '7px 10px 10px' }}>
-                                <div style={{ fontWeight: 700, overflowWrap: 'anywhere' }}>{currentUser?.username || '账号'}</div>
-                                <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)' }}>已登录</div>
+                                <div style={{ fontWeight: 700, overflowWrap: 'anywhere' }}>{currentUser?.username || '幻想乡住民'}</div>
+                                <div style={{ marginTop: 3, fontSize: 12, color: 'var(--color-text-secondary)' }}>身份已验证</div>
                             </div>
                             <div style={{ height: 1, background: 'var(--color-border)' }} />
                             <Button themeAware variant="menu" full onClick={() => runMobileAccountAction(onOpenMine)}>
-                                账号与地图设置
+                                住民与地图设置
                             </Button>
                             <div style={{ height: 1, background: 'var(--color-border)' }} />
                             <Button themeAware variant="menu" full onClick={() => runMobileAccountAction(onLogout)} style={{ color: 'var(--color-danger)' }}>
-                                退出登录
+                                暂离幻想乡
                             </Button>
                         </div>
                     )}
@@ -1266,7 +1275,7 @@ export default function MapUI(props) {
                         </Button>
                         <Button
                             onClick={toggleMobileAccount}
-                            aria-label={isAuthenticated ? `打开用户 ${currentUser?.username || ''} 的菜单` : '登录'}
+                            aria-label={isAuthenticated ? `打开住民 ${currentUser?.username || ''} 的菜单` : '打开博丽大结界入口'}
                             aria-haspopup={isAuthenticated ? 'menu' : undefined}
                             aria-expanded={isAuthenticated ? mobileAccountOpen : undefined}
                             style={{ ...mobileNavButtonStyle, color: mobileAccountOpen ? customThemeColor : mobileNavButtonStyle.color }}
@@ -1274,18 +1283,46 @@ export default function MapUI(props) {
                             {isAuthenticated && currentUser ? (
                                 <img
                                     src={currentUser.has_avatar ? `${backendUrl}/users/${currentUser.id}/avatar` : (currentUser.avatar || defaultAvatar)}
-                                    alt={currentUser.username || '用户头像'}
+                                    alt={currentUser.username || '住民头像'}
                                     style={{ width: 25, height: 25, borderRadius: '50%', objectFit: 'cover', border: `1px solid ${customThemeColor}` }}
                                 />
                             ) : (
                                 <span className="material-symbols-outlined" style={{ fontSize: 24 }}>{isAuthenticated ? 'person' : 'login'}</span>
                             )}
                             <span style={{ maxWidth: '64px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {isAuthenticated ? (currentUser?.username || '账号') : '登录'}
+                                {isAuthenticated ? (currentUser?.username || '住民') : '入乡'}
                             </span>
                         </Button>
                     </nav>
                 </>
+            )}
+
+            {!isNarrow && !pickerMode && (
+                <a
+                    href="https://beian.miit.gov.cn/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                        position: 'absolute',
+                        left: '50%',
+                        bottom: 8,
+                        zIndex: 1800,
+                        transform: 'translateX(-50%)',
+                        padding: '4px 9px',
+                        border: '1px solid color-mix(in srgb, var(--color-border) 82%, transparent)',
+                        borderRadius: 'var(--radius-full)',
+                        background: 'color-mix(in srgb, var(--color-bg-surface) 82%, transparent)',
+                        boxShadow: 'var(--shadow-sm)',
+                        backdropFilter: 'blur(8px)',
+                        color: 'var(--color-text-secondary)',
+                        fontSize: 12,
+                        lineHeight: 1.4,
+                        textDecoration: 'none',
+                        whiteSpace: 'nowrap'
+                    }}
+                >
+                    闽ICP备2026031519号-2
+                </a>
             )}
 
             {selectedPlace && popupPoint && (
@@ -1384,7 +1421,7 @@ export default function MapUI(props) {
                                 </Tooltip>
                                 <span style={{ padding: 4 }}></span> */ }
                                     {selectedPlace.isMarked !== false && (
-                                        <Tooltip text={favoriteIds && favoriteIds.has(selectedPlace.id) ? '已收藏，点击取消收藏' : (isAuthenticated ? '点击收藏此地点' : '登录后可收藏')}>
+                                        <Tooltip text={favoriteIds && favoriteIds.has(selectedPlace.id) ? '已收藏，点击取消收藏' : (isAuthenticated ? '点击收藏此地点' : '核验通行凭证后可收藏')}>
                                             <Button
                                                 onClick={() => onToggleFavorite && onToggleFavorite(selectedPlace)}
                                                 disabled={favoriteLoading}
@@ -1631,7 +1668,7 @@ export default function MapUI(props) {
                     <ScrollableView style={{ flex: 1 }}>
                         {!isAuthenticated ? (
                             <div style={{ padding: 16, textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 13 }}>
-                                请登录后查看收藏
+                                请核验通行凭证后查看收藏
                             </div>
                         ) : favLoading ? (
                             <div style={{ padding: 16, textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 13 }}>

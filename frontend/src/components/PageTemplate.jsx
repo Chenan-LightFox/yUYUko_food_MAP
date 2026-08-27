@@ -33,7 +33,7 @@ export default function PageTemplate({ title, onBack, breadcrumb = [], children,
         <div style={rootStyle}>
             <div style={{ maxWidth: 960, margin: '0 auto' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, marginTop: 50 }}>
-                    <h2 style={{ margin: 0 }}>{title || '用户设置'}</h2>
+                    <h2 style={{ margin: 0 }}>{title || '住民设置'}</h2>
                 </div>
 
                 {breadcrumb && breadcrumb.length > 0 && (

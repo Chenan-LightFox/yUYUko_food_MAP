@@ -325,12 +325,12 @@ export default function MapView({
     const addPlaceTipText = !mapReady
         ? "地图尚未就绪，稍候再试"
         : authPending
-            ? "正在验证登录状态，请稍候再试"
+            ? "正在核验通行凭证，请稍候再试"
             : isBanned
-                ? "账号已被封禁，无法添加地点"
+                ? "通行凭证已受限，无法添加地点"
                 : canWrite
                     ? (addMode ? "点击取消添加模式" : "点击后在地图上选择位置以添加地点")
-                    : "登录后才能添加地点";
+                    : "核验通行凭证后才能添加地点";
 
     // 同步 ref，以便地图上的 click handler 总能读取到最新的 addMode
     useEffect(() => {
@@ -802,12 +802,12 @@ export default function MapView({
     const handleToggleFavorite = async (place) => {
         if (!place || place.isMarked === false) return;
         if (!token || !isAuthenticated) {
-            showTip('登录后可收藏');
+            showTip('核验通行凭证后可收藏');
             onRequireAuth && onRequireAuth();
             return;
         }
         if (isBanned) {
-            showTip('您的账号已被封禁，无法收藏');
+            showTip('您的通行凭证已受限，无法收藏');
             return;
         }
         const placeId = place.id;
@@ -960,7 +960,7 @@ export default function MapView({
             return;
         }
         if (isBanned) {
-            showTip('您的账号已被封禁，无法提交地点。');
+            showTip('您的通行凭证已受限，无法提交地点。');
             return;
         }
 
@@ -1252,7 +1252,7 @@ export default function MapView({
         if (!mapReady || authPending) return;
         if (!canWrite) {
             if (isBanned) {
-                showTip('您的账号已被封禁，无法添加地点');
+                showTip('您的通行凭证已受限，无法添加地点');
                 return;
             }
             onRequireAuth && onRequireAuth();
@@ -1368,7 +1368,7 @@ export default function MapView({
             return;
         }
         if (isBanned) {
-            showTip('您的账号已被封禁，无法提交地点。');
+            showTip('您的通行凭证已受限，无法提交地点。');
             return;
         }
         clearSearchState();
@@ -1389,7 +1389,7 @@ export default function MapView({
             return;
         }
         if (isBanned) {
-            showTip('您的账号已被封禁，无法进行管理操作');
+            showTip('您的通行凭证已受限，无法进行管理操作');
             return;
         }
         clearSearchState();
@@ -1428,7 +1428,7 @@ export default function MapView({
     const handleDirectDelete = async () => {
         if (!selectedPlace) return;
         if (!token) { onRequireAuth && onRequireAuth(); return; }
-        if (isBanned) { showTip('您的账号已被封禁，无法删除地点'); return; }
+        if (isBanned) { showTip('您的通行凭证已受限，无法删除地点'); return; }
         if (!(await confirm("确认删除此地点？此操作不可恢复。"))) return;
         setManageSubmitting(true);
         try {
@@ -1449,7 +1449,7 @@ export default function MapView({
     const handleDirectUpdate = async () => {
         if (!selectedPlace) return;
         if (!token) { onRequireAuth && onRequireAuth(); return; }
-        if (isBanned) { showTip('您的账号已被封禁，无法更新地点'); return; }
+        if (isBanned) { showTip('您的通行凭证已受限，无法更新地点'); return; }
         setManageSubmitting(true);
         try {
             const payload = {
@@ -1477,7 +1477,7 @@ export default function MapView({
     const handleSubmitModifyRequest = async () => {
         if (!selectedPlace) return;
         if (!token) { onRequireAuth && onRequireAuth(); return; }
-        if (isBanned) { showTip('您的账号已被封禁，无法提交修改申请'); return; }
+        if (isBanned) { showTip('您的通行凭证已受限，无法提交修改申请'); return; }
         setManageSubmitting(true);
         try {
             const payload = {
@@ -1513,7 +1513,7 @@ export default function MapView({
         clearSearchState();
         // 当用户被封禁时显示提示（仍允许查看评论，但不能发布）
         if (isBanned) {
-            showTip('您的账号已被封禁，无法发表评论');
+            showTip('您的通行凭证已受限，无法发表评论');
         }
         setCommentOpen(true);
         await fetchComments();
@@ -1546,7 +1546,7 @@ export default function MapView({
     const submitComment = async () => {
         if (!selectedPlace) return;
         if (!token) { onRequireAuth && onRequireAuth(); return; }
-        if (isBanned) { setCommentMessage('您的账号已被封禁，无法发表评论'); return; }
+        if (isBanned) { setCommentMessage('您的通行凭证已受限，无法发表评论'); return; }
         if (!newComment || !newComment.trim()) return;
         setCommentSubmitting(true);
         setCommentMessage("");

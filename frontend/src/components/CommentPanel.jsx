@@ -53,7 +53,7 @@ export default function CommentPanel({
 
             <div style={{ marginTop: 8 }}>
                 {message && <div style={{ color: 'var(--color-danger)', marginBottom: 8 }}>{message}</div>}
-                <TextArea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder={canPost ? '写下你的评论…' : '请登录后发表评论'} disabled={!canPost} style={{ width: '100%', minHeight: 80, padding: 8, boxSizing: 'border-box' }} />
+                <TextArea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder={canPost ? '写下你的评论…' : '请核验通行凭证后发表评论'} disabled={!canPost} style={{ width: '100%', minHeight: 80, padding: 8, boxSizing: 'border-box' }} />
                 <div style={{ marginTop: 8, textAlign: 'right' }}>
                     <Button themeAware onClick={onSubmit} disabled={!canPost || submitting || !newComment || !newComment.trim()} style={{ marginRight: 8 }}>发布</Button>
                 </div>

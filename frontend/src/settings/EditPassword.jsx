@@ -16,10 +16,10 @@ export default function EditPassword({ user, onBack, backendUrl, token, onUpdate
     const handleSubmit = async (e) => {
         e.preventDefault();
         const textCurrent = (currentPwd || '').trim();
-        if (!backendUrl || !token) { showTip('未提供后端地址或未登录'); return; }
-        if (!textCurrent) { showTip('请输入当前密码'); return; }
-        if (!newPwd || newPwd.length < 6) { showTip('新密码长度至少 6 位'); return; }
-        if (newPwd !== confirmPwd) { showTip('两次输入的新密码不一致'); return; }
+        if (!backendUrl || !token) { showTip('未提供后端地址或通行凭证无效'); return; }
+        if (!textCurrent) { showTip('请输入当前通行密码'); return; }
+        if (!newPwd || newPwd.length < 6) { showTip('新通行密码长度至少 6 位'); return; }
+        if (newPwd !== confirmPwd) { showTip('两次输入的新通行密码不一致'); return; }
 
         setLoading(true);
         try {
@@ -40,7 +40,7 @@ export default function EditPassword({ user, onBack, backendUrl, token, onUpdate
 
             if (!res.ok) {
                 // 如果返回的是 HTML（例如 dev server 的 index.html），不要直接显示完整 HTML，改成友好提示
-                let errMsg = (data && data.error) ? data.error : (text ? (text.trim().startsWith('<') ? `服务器返回错误（HTTP ${res.status}）` : text) : '修改密码失败');
+                let errMsg = (data && data.error) ? data.error : (text ? (text.trim().startsWith('<') ? `服务器返回错误（HTTP ${res.status}）` : text) : '修改通行密码失败');
                 showTip(typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg));
                 setLoading(false);
                 return;
@@ -57,7 +57,7 @@ export default function EditPassword({ user, onBack, backendUrl, token, onUpdate
             if (typeof onBack === 'function') onBack();
             try {
                 // 小延迟以确保路由切换完成后再显示提示（保证可见）
-                if (typeof showTip === 'function') setTimeout(() => showTip('密码修改成功'), 120);
+                if (typeof showTip === 'function') setTimeout(() => showTip('通行密码修改成功'), 120);
             } catch (e) {
                 // ignore
             }
@@ -69,20 +69,20 @@ export default function EditPassword({ user, onBack, backendUrl, token, onUpdate
     };
 
     return (
-        <PageTemplate breadcrumb={[{ label: '设置', onClick: onBack }, { label: '修改密码' }]}>
+        <PageTemplate breadcrumb={[{ label: '设置', onClick: onBack }, { label: '修改通行密码' }]}>
             <form onSubmit={handleSubmit}>
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>当前密码</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>当前通行密码</div>
                     <TextInput type="password" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)} style={{ width: '100%' }} />
                 </label>
 
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>新密码</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>新通行密码</div>
                     <TextInput type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} style={{ width: '100%' }} />
                 </label>
 
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>确认新密码</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>确认新通行密码</div>
                     <TextInput type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} style={{ width: '100%' }} />
                 </label>
 

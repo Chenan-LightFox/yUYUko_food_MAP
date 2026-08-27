@@ -18,8 +18,8 @@ export default function EditUsername({ user, onBack, backendUrl, token, onUpdate
     const handleSubmit = async (e) => {
         e.preventDefault();
         const newName = (username || '').trim();
-        if (!newName) { showTip('用户名不能为空'); return; }
-        if (!backendUrl || !token) { showTip('未提供后端地址或未登录'); return; }
+        if (!newName) { showTip('住民名不能为空'); return; }
+        if (!backendUrl || !token) { showTip('未提供后端地址或通行凭证无效'); return; }
         setLoading(true);
         try {
             const res = await fetch(`${backendUrl}/users/me`, {
@@ -43,7 +43,7 @@ export default function EditUsername({ user, onBack, backendUrl, token, onUpdate
             if (onUpdateUser && data && data.user && data.token) {
                 onUpdateUser(data.user, data.token);
             }
-            showTip('用户名已更新');
+            showTip('住民名已更新');
             if (onBack) onBack();
         } catch (ex) {
             showTip(ex.message || '请求失败');
@@ -54,11 +54,11 @@ export default function EditUsername({ user, onBack, backendUrl, token, onUpdate
 
     return (
         <PageTemplate
-            breadcrumb={[{ label: '设置', onClick: onBack }, { label: '修改用户名' }]}
+            breadcrumb={[{ label: '设置', onClick: onBack }, { label: '修改住民名' }]}
         >
             <form onSubmit={handleSubmit}>
                 <label style={{ display: 'block', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>用户名</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6 }}>住民名</div>
                     <TextInput
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}

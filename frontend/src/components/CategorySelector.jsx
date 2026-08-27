@@ -222,7 +222,7 @@ export default function CategorySelector({ backendUrl, token, value, onChange, p
             return;
         }
         if (!authToken) {
-            showTip && showTip('请先登录后创建分类');
+            showTip && showTip('请先核验通行凭证后创建分类');
             return;
         }
 

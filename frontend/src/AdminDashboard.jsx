@@ -56,7 +56,7 @@ export default function AdminDashboard({ user, token, backendUrl, onBackHome, on
                             </div>
                         </div>
                     ) : (
-                        <div style={{ color: 'var(--color-danger)' }}>当前账号不是管理员，无法访问后台功能。</div>
+                        <div style={{ color: 'var(--color-danger)' }}>当前住民身份不是管理员，无法访问后台功能。</div>
                     )}
                 </div>
 
