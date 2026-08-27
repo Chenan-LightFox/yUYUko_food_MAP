@@ -4,6 +4,8 @@
     "main": "index.js",
     "scripts": {
         "start": "node index.js",
+        "logs": "node scripts/read_logs.js",
+        "test:logging": "node scripts/test_logging.js",
         "test:search": "node scripts/test_search_smoke.js",
         "vectors:backfill": "node scripts/backfill_place_vectors.js"
     },

@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const { db } = require("../db");
 const redis = require("../redis");
 const { logAdminAction } = require('../utils/adminAudit');
+const logger = require('../utils/logger');
 
 const JWT_SECRET = process.env.JWT_SECRET || "yuyuko_secret_key";
 
@@ -9,12 +10,6 @@ function extractBearerToken(req) {
     const auth = req.get("Authorization") || req.get("authorization");
     if (!auth || !auth.startsWith("Bearer ")) return null;
     return auth.slice(7).trim();
-}
-
-function maskToken(t) {
-    if (!t) return '-';
-    if (t.length <= 20) return t;
-    return t.slice(0, 10) + '...' + t.slice(-6);
 }
 
 function loadUserById(userId) {
@@ -38,33 +33,84 @@ function loadUserById(userId) {
 
 async function requireAuth(req, res, next) {
     const token = extractBearerToken(req);
-    if (!token) return res.status(401).json({ error: "未提供授权 token" });
+    if (!token) {
+        logger.warn('Authentication rejected', {
+            event: 'security.auth.rejected',
+            reason: 'missing_token',
+            method: req.method,
+            path: req.path
+        });
+        return res.status(401).json({ error: "未提供授权 token" });
+    }
 
     let payload;
     try {
         payload = jwt.verify(token, JWT_SECRET);
     } catch (e) {
+        logger.warn('Authentication rejected', {
+            event: 'security.auth.rejected',
+            reason: e && e.name === 'TokenExpiredError' ? 'expired_token' : 'invalid_token',
+            method: req.method,
+            path: req.path
+        });
         return res.status(401).json({ error: "无效或已过期的 token" });
     }
 
     const userId = payload && payload.id;
-    if (!userId) return res.status(401).json({ error: "无效或已过期的 token" });
+    if (!userId) {
+        logger.warn('Authentication rejected', {
+            event: 'security.auth.rejected',
+            reason: 'token_missing_user_id',
+            method: req.method,
+            path: req.path
+        });
+        return res.status(401).json({ error: "无效或已过期的 token" });
+    }
 
     try {
         let sessionToken;
-        try {
-            sessionToken = await redis.get(`session:${userId}`);
-        } catch (redisErr) {
-            // Redis 暂时不可用时不要踢掉所有用户，容忍短暂故障
-            console.error(`Redis get session:${userId} 失败:`, redisErr && redisErr.message || redisErr);
-            // 继续往下走：仅验证 JWT 签名，不做 session 级注销检查
+        if (!redis.isReady()) {
+            // Do not wait for ioredis's offline queue on every authenticated
+            // request. During an outage, immediately use verified JWT claims.
+            logger.warn('Redis is not ready; using JWT-only authentication', {
+                event: 'auth.session.redis_unavailable',
+                userId
+            });
+        } else {
+            try {
+                sessionToken = await redis.get(`session:${userId}`);
+            } catch (redisErr) {
+                // Redis 暂时不可用时不要踢掉所有用户，容忍短暂故障
+                logger.error('Redis session lookup failed; falling back to JWT-only authentication', {
+                    event: 'auth.session.lookup_failed',
+                    userId,
+                    error: redisErr
+                });
+                // 继续往下走：仅验证 JWT 签名，不做 session 级注销检查
+            }
         }
         if (sessionToken !== undefined && (!sessionToken || sessionToken !== token)) {
+            logger.warn('Authentication rejected', {
+                event: 'security.auth.rejected',
+                reason: 'session_mismatch',
+                userId,
+                method: req.method,
+                path: req.path
+            });
             return res.status(401).json({ error: "登录状态已失效，请重新登录" });
         }
 
         const user = await loadUserById(userId);
-        if (!user) return res.status(404).json({ error: "用户不存在" });
+        if (!user) {
+            logger.warn('Authentication rejected', {
+                event: 'security.auth.rejected',
+                reason: 'user_not_found',
+                userId,
+                method: req.method,
+                path: req.path
+            });
+            return res.status(404).json({ error: "用户不存在" });
+        }
 
         // handle banned users: auto-unban if expired, otherwise restrict non-read methods
         if (user.is_banned) {
@@ -92,6 +138,13 @@ async function requireAuth(req, res, next) {
                 // allow read-only methods
                 const safeMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
                 if (!safeMethods.has(req.method)) {
+                    logger.warn('Banned user write request rejected', {
+                        event: 'security.auth.rejected',
+                        reason: 'user_banned',
+                        userId,
+                        method: req.method,
+                        path: req.path
+                    });
                     return res.status(403).json({ error: "账号已被封禁，仅允许查看内容", reason: user.ban_reason || null });
                 }
                 // else continue but keep user info
@@ -102,6 +155,13 @@ async function requireAuth(req, res, next) {
         req.token = token;
         return next();
     } catch (err) {
+        logger.error('Authentication middleware failed', {
+            event: 'security.auth.error',
+            userId,
+            method: req.method,
+            path: req.path,
+            error: err
+        });
         return res.status(500).json({ error: "鉴权失败", detail: err.message });
     }
 }

@@ -5,6 +5,14 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
+const logger = require('./utils/logger');
+const { requestLogger, notFoundHandler, errorHandler } = require('./middleware/requestLogger');
+
+// Capture legacy console.* calls from every subsequently loaded module and make
+// sure process-level crashes are persisted before Node exits.
+logger.installConsoleBridge();
+logger.installProcessHandlers();
+
 const { init } = require("./db");
 
 const placesRouter = require("./routes/places");
@@ -31,9 +39,14 @@ const app = express();
 // When running behind an HTTPS reverse proxy (e.g. nginx), enable trust proxy
 // so Express respects X-Forwarded-* headers and req.secure reflects the original protocol.
 app.set('trust proxy', true);
+app.disable('x-powered-by');
 
 const HOST = process.env.HOST || "127.0.0.1";
 const PORT = process.env.PORT || 7000;
+
+// Must run before CORS/body parsing so rejected preflights, malformed JSON and
+// aborted requests all receive the same request ID and access log coverage.
+app.use(requestLogger);
 
 const STATIC_ALLOWED_ORIGINS = [
     "http://localhost:2053",
@@ -63,8 +76,7 @@ function isAllowedOrigin(origin) {
     if (STATIC_ALLOWED_ORIGINS.includes(origin)) return true;
     if (EXTRA_ALLOWED_ORIGINS.includes(origin)) return true;
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
-    if (/^https?:\/\/cn\.dinnerparty\.cc(:\d+)?$/i.test(origin)) return true;
-    if (/^https?:\/\/dinnerparty\.cc(:\d+)?$/i.test(origin)) return true;
+    if (/^https?:\/\/([a-z0-9-]+\.)*dinnerparty\.cc(:\d+)?$/i.test(origin)) return true;
     return false;
 }
 
@@ -78,10 +90,19 @@ app.use(cors({
         if (allowed) {
             return callback(null, true);
         }
-        return callback(new Error('Not allowed by CORS'));
+        logger.warn('CORS origin rejected', {
+            event: 'security.cors.rejected',
+            origin
+        });
+        const error = new Error('请求来源不被允许');
+        error.status = 403;
+        error.code = 'CORS_NOT_ALLOWED';
+        error.publicMessage = '请求来源不被允许';
+        return callback(error);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+    exposedHeaders: ['X-Request-ID'],
     credentials: true,
     maxAge: 3600
 }));
@@ -121,6 +142,22 @@ function handleAmapProxyReq(proxyReq, req) {
     }
 }
 
+function handleAmapProxyError(error, req, res) {
+    logger.error('AMap proxy request failed', {
+        event: 'proxy.amap.failed',
+        method: req && req.method,
+        path: req && req.url,
+        error
+    });
+    if (!res || res.headersSent) return;
+    if (typeof res.status === 'function' && typeof res.json === 'function') {
+        return res.status(502).json({ error: '地图服务暂时不可用' });
+    }
+    res.statusCode = 502;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(JSON.stringify({ error: '地图服务暂时不可用', requestId: req && req.requestId }));
+}
+
 app.use(
     '/_AMapService',
     createProxyMiddleware({
@@ -137,15 +174,52 @@ app.use(
         },
         // v2 compatibility
         onProxyReq: handleAmapProxyReq,
+        onError: handleAmapProxyError,
         // v3 style
         on: {
-            proxyReq: handleAmapProxyReq
+            proxyReq: handleAmapProxyReq,
+            error: handleAmapProxyError
         }
     })
 );
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+const CLIENT_AUTH_STAGES = new Set([
+    'submitted',
+    'response_received',
+    'success_payload_valid',
+    'success_callback_started',
+    'success_callback_returned',
+    'state_commit_started',
+    'state_commit_finished',
+    'request_timed_out',
+    'request_failed'
+]);
+const clientAuthDiagnosticRate = new Map();
+
+app.post('/diagnostics/client-auth', (req, res) => {
+    const now = Date.now();
+    const rateKey = req.ip || 'unknown';
+    const current = clientAuthDiagnosticRate.get(rateKey);
+    const rate = !current || now - current.startedAt >= 60000
+        ? { startedAt: now, count: 1 }
+        : { ...current, count: current.count + 1 };
+    clientAuthDiagnosticRate.set(rateKey, rate);
+    if (rate.count > 60) return res.status(204).end();
+
+    const stage = String((req.body && req.body.stage) || req.query.stage || '').trim();
+    if (CLIENT_AUTH_STAGES.has(stage)) {
+        logger.info('Client authentication stage', {
+            event: 'auth.client.stage',
+            stage,
+            detail: String((req.body && req.body.detail) || req.query.detail || '').slice(0, 160),
+            userAgent: String(req.get('User-Agent') || '').slice(0, 500)
+        });
+    }
+    return res.status(204).end();
+});
 
 // Serve static files for uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -182,7 +256,44 @@ app.use("/api/favorites", favoritesRouter);
 
 app.get("/", (req, res) => res.json({ ok: true, msg: "yUYUko Food Map Backend" }));
 
+app.use(notFoundHandler);
+app.use(errorHandler);
+
 // HTTP only (reverse proxy handles HTTPS termination)
-app.listen(PORT, HOST, () => {
-    console.log(`Server running on http://${HOST}:${PORT}`);
+const server = app.listen(PORT, HOST, () => {
+    logger.info('Backend server started', {
+        event: 'server.started',
+        host: HOST,
+        port: Number(PORT),
+        nodeVersion: process.version,
+        logLevel: logger.config.level,
+        logDirectory: logger.config.directory
+    });
 });
+
+server.on('error', (error) => {
+    logger.fatal('Backend server error', { event: 'server.error', error });
+    const forceExit = setTimeout(() => process.exit(1), 1000);
+    logger.flush().finally(() => {
+        clearTimeout(forceExit);
+        process.exit(1);
+    });
+});
+
+let shutdownStarted = false;
+function gracefulShutdown(signal) {
+    if (shutdownStarted) return;
+    shutdownStarted = true;
+    logger.info('Backend shutdown started', { event: 'server.shutdown', signal });
+    const forceExit = setTimeout(() => process.exit(1), 5000);
+    server.close(async (error) => {
+        if (error) logger.error('Backend shutdown failed', { event: 'server.shutdown_failed', error });
+        else logger.info('Backend server stopped', { event: 'server.stopped', signal });
+        await logger.flush();
+        clearTimeout(forceExit);
+        process.exit(error ? 1 : 0);
+    });
+}
+
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.once('SIGINT', () => gracefulShutdown('SIGINT'));

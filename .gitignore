@@ -18,6 +18,7 @@
 /backend/data.sqlite
 yUYUko_food_MAP.code-workspace
 /backend/uploads
+/backend/logs
 CLAUDE.md
 AGENTS.md
 /.vscode

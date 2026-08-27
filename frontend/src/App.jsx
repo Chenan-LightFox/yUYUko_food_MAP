@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import MapView from "./Map";
 import AdminDashboard from "./AdminDashboard";
 import Settings from "./Settings";
@@ -19,6 +20,7 @@ import useDarkMode from './utils/useDarkMode';
 import { DinnerCreatePage, DinnerDetailPage, DinnerListPage, isDinnerPath, parseDinnerIdFromPath } from './DinnerPages';
 import PosterExportPage from './PosterExportPage';
 import { getNoticeColorOption } from './utils/noticeColors';
+import { reportAuthStage } from './utils/authDiagnostics';
 
 function normalizeUrl(url) {
     return String(url).replace(/\/+$/, "");
@@ -94,16 +96,29 @@ export default function App() {
         setShowAuth(false);
     }, []);
 
-    const handleLoginSuccess = (u, t) => {
-        setUser(u);
-        setToken(t);
-        try { localStorage.setItem("token", t); } catch (e) { }
-        setShowAuth(false);
-    };
+    const handleLoginSuccess = useCallback((u, t, requestId) => {
+        // Commit the whole authenticated state in one render. In particular,
+        // this prevents a protected-page effect from reopening the login modal
+        // between closing it and activating the token on iOS Chrome.
+        try { localStorage.setItem("token", t); } catch (e) {
+            console.warn('登录成功，但浏览器未能持久保存登录状态', e);
+        }
+        reportAuthStage(BACKEND_URL, requestId, 'state_commit_started');
+        flushSync(() => {
+            setUser(u);
+            setToken(t);
+            setShowAuth(false);
+        });
+        reportAuthStage(BACKEND_URL, requestId, 'state_commit_finished');
+    }, []);
 
     const handleRequireAuth = useCallback(() => {
         // Open login modal but do not navigate away from current path so user can login in-place
         setShowAuth(true);
+    }, []);
+
+    const handleAuthClose = useCallback(() => {
+        setShowAuth(false);
     }, []);
 
     const handleLogout = useCallback(async () => {
@@ -703,8 +718,8 @@ export default function App() {
                         {showAuth && (
                             <AuthModal
                                 backendUrl={BACKEND_URL}
-                                onLoginSuccess={(u, t) => { handleLoginSuccess(u, t); }}
-                                onClose={() => setShowAuth(false)}
+                                onLoginSuccess={handleLoginSuccess}
+                                onClose={handleAuthClose}
                             />
                         )}
                     </div>
