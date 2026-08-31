@@ -31,6 +31,7 @@ const dinnersRouter = require("./routes/dinners");
 const favoritesRouter = require("./routes/favorites");
 const noticesRouter = require("./routes/notices");
 const categoriesRouter = require("./routes/categories");
+const alongRouteRouter = require("./routes/alongRoute");
 const { requireAuth } = require("./middleware/auth");
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const { startVectorRetryWorker } = require('./services/placeVectorService');
@@ -240,6 +241,7 @@ init();
 startVectorRetryWorker();
 
 app.use('/api', searchRouter);
+app.use('/api/along-route', alongRouteRouter);
 app.use("/places", placesRouter);
 app.use("/p", require("./routes/placeShare"));
 app.use("/comments", commentsRouter);

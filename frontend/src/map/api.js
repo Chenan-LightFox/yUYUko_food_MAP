@@ -16,6 +16,30 @@ export async function fetchPlacesNearby(backendUrl, { minLng, minLat, maxLng, ma
     return res.json();
 }
 
+export async function resolveAmapShareRoute(backendUrl, url, { signal } = {}) {
+    const res = await fetch(`${backendUrl}/api/along-route/resolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+        signal
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `行程链接解析失败 ${res.status}`);
+    return data;
+}
+
+export async function searchPlacesAlongRoute(backendUrl, payload, { signal } = {}) {
+    const res = await fetch(`${backendUrl}/api/along-route/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `沿途地点查找失败 ${res.status}`);
+    return data;
+}
+
 export async function fetchCurrentUser(backendUrl, token) {
     if (!token) return null;
     const res = await fetch(`${backendUrl}/users/me`, { headers: { Authorization: `Bearer ${token}` } });

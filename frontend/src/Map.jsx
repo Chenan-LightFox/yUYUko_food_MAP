@@ -72,6 +72,7 @@ export default function MapView({
     const [addMode, setAddMode] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [searchResults, setSearchResults] = useState(null);
+    const [alongRouteResults, setAlongRouteResults] = useState(null);
     const [searching, setSearching] = useState(false);
     const [aiThinking, setAiThinking] = useState(false);
     const [aiRecommendations, setAiRecommendations] = useState([]);
@@ -113,6 +114,8 @@ export default function MapView({
 
     const searchResultsRef = useRef(null);
     useEffect(() => { searchResultsRef.current = searchResults; }, [searchResults]);
+    const alongRouteResultsRef = useRef(null);
+    useEffect(() => { alongRouteResultsRef.current = alongRouteResults; }, [alongRouteResults]);
     const searchTermRef = useRef(searchTerm);
     useEffect(() => { searchTermRef.current = searchTerm; }, [searchTerm]);
     const searchingRef = useRef(searching);
@@ -559,8 +562,10 @@ export default function MapView({
                 setPopupPoint(point);
             };
             handleUpdateLabels = () => {
-                const isSearch = searchResultsRef.current != null;
-                const currentPlaces = isSearch ? searchResultsRef.current : placesRef.current;
+                const isSearch = searchResultsRef.current != null || alongRouteResultsRef.current != null;
+                const currentPlaces = alongRouteResultsRef.current != null
+                    ? alongRouteResultsRef.current
+                    : (searchResultsRef.current != null ? searchResultsRef.current : placesRef.current);
                 const visibleIds = visibleIndividualIdsRef.current;
                 const container = containerRef.current;
                 if (!currentPlaces || currentPlaces.length === 0) {
@@ -747,7 +752,7 @@ export default function MapView({
 
     const loadPlaces = async (force = false) => {
         // 如果正在搜索，不请求附近地点，除非强制
-        if (!force && searchResultsRef.current !== null) return;
+        if (!force && (searchResultsRef.current !== null || alongRouteResultsRef.current !== null)) return;
         if (!mapRef.current) return;
         try {
             const bounds = mapRef.current.getBounds();
@@ -783,7 +788,7 @@ export default function MapView({
             });
             setPlaces(data);
             placesRef.current = data;
-            if (searchResultsRef.current === null) {
+            if (searchResultsRef.current === null && alongRouteResultsRef.current === null) {
                 renderMarkers(mapRef.current, markersRef, data, showPopup, {
                     onIndividualIds: (ids) => { visibleIndividualIdsRef.current = ids; }
                 });
@@ -945,14 +950,40 @@ export default function MapView({
     // 当 searchResults、places 或 darkMode 改变时确保 markers 与当前数据同步
     useEffect(() => {
         if (!mapRef.current) return;
-        const listToRender = searchResults == null ? places : searchResults;
+        const listToRender = alongRouteResults != null
+            ? alongRouteResults
+            : (searchResults == null ? places : searchResults);
         const visibleMapPlaces = (listToRender || []).filter((place) => place.isMarked !== false || place.showOnMap === true);
         renderMarkers(mapRef.current, markersRef, visibleMapPlaces, showPopup);
         // 同步更新标签，避免旧标签残留
         setTimeout(() => {
             if (handleUpdateLabelsRef.current) handleUpdateLabelsRef.current();
         }, 50);
-    }, [searchResults, places, dark]);
+    }, [alongRouteResults, searchResults, places, dark]);
+
+    const handleAlongRouteResults = (results) => {
+        if (Array.isArray(results)) {
+            clearSearchState({ resetTerm: true, closeSearchUi: true, reloadPlaces: false });
+            alongRouteResultsRef.current = results;
+            setAlongRouteResults(results);
+            return;
+        }
+        alongRouteResultsRef.current = null;
+        setAlongRouteResults(null);
+        window.setTimeout(() => loadPlacesRef.current?.(true), 0);
+    };
+
+    const handleSelectAlongRoutePlace = (place) => {
+        if (!place || !mapRef.current) return;
+        const lng = Number(place.longitude);
+        const lat = Number(place.latitude);
+        if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+        try {
+            mapRef.current.setCenter([lng, lat]);
+            if (Number(mapRef.current.getZoom?.()) < 16) mapRef.current.setZoom(16);
+        } catch (error) { /* best effort */ }
+        window.setTimeout(() => showPopup(place, { lng, lat }), 80);
+    };
 
     const submitPlace = async (payload) => {
         if (!token) {
@@ -1597,6 +1628,8 @@ export default function MapView({
                 tipText={tipText}
                 customThemeColor={customThemeColor}
                 customThemeSecondary={customThemeSecondary}
+                onAlongRouteResults={handleAlongRouteResults}
+                onSelectAlongRoutePlace={handleSelectAlongRoutePlace}
                 markerLabels={markerLabels}
                 authPending={authPending}
                 handleLocateMe={handleLocateMe}

@@ -11,6 +11,7 @@ import Notice from '../components/Notice';
 import { fetchFavorites } from './api';
 import { pickContrastTextColor } from '../utils/theme';
 import defaultAvatar from '../img/default.png';
+import AlongRoutePanel from './AlongRoutePanel';
 
 const POPUP_GHOST_CLICK_GUARD_MS = 400;
 const ICP_BEIAN_TEXT = import.meta.env.VITE_ICP_BEIAN_TEXT;
@@ -181,6 +182,8 @@ export default function MapUI(props) {
         tipText,
         customThemeColor,
         customThemeSecondary,
+        onAlongRouteResults,
+        onSelectAlongRoutePlace,
         markerLabels,
         authPending,
         handleLocateMe,
@@ -272,6 +275,7 @@ export default function MapUI(props) {
     const [favError, setFavError] = useState('');
     const [navPickerOpen, setNavPickerOpen] = useState(false);
     const [shareOpen, setShareOpen] = useState(false);
+    const [alongRouteOpen, setAlongRouteOpen] = useState(false);
     const [isNarrow, setIsNarrow] = useState(() => window.innerWidth <= 640);
     const inputRef = useRef(null);
     const popupRef = useRef(null);
@@ -329,7 +333,19 @@ export default function MapUI(props) {
         setPickedPageOpen(false);
         setMobileMoreOpen(false);
         setMobileAccountOpen(false);
+        setAlongRouteOpen(false);
     };
+
+    const openAlongRoute = () => {
+        setAlongRouteOpen(true);
+        setFavPageOpen(false);
+        setPickedPageOpen(false);
+        setMobileMoreOpen(false);
+        setMobileAccountOpen(false);
+        clearSearch?.({ resetTerm: true, closeSearchUi: true, reloadPlaces: false });
+    };
+
+    const closeAlongRoute = () => setAlongRouteOpen(false);
 
     const toggleMobileMore = () => {
         setMobileMoreOpen((open) => !open);
@@ -952,6 +968,20 @@ export default function MapUI(props) {
                 </div>
             </div>
 
+            <AlongRoutePanel
+                open={alongRouteOpen}
+                onClose={closeAlongRoute}
+                mapRef={mapRef}
+                backendUrl={backendUrl}
+                customThemeColor={customThemeColor}
+                customThemeSecondary={customThemeSecondary}
+                isNarrow={isNarrow}
+                placement={desktopHeaderMenu === 'more' ? 'right' : 'left'}
+                mapReady={mapReady}
+                onResults={onAlongRouteResults}
+                onSelectPlace={onSelectAlongRoutePlace}
+            />
+
             {!hideNonSearchButtons && pickerMode && (
                 <div ref={dinnerBtnRef} style={{ position: "absolute", left: 16, bottom: isNarrow ? 68 : 12, zIndex: 2000 }}>
                     <Tooltip text={isPosterPicker ? '返回海报生成' : '返回聚餐创建'} placement="top">
@@ -992,6 +1022,35 @@ export default function MapUI(props) {
                     zIndex: 2000
                 }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+                        {!pickerMode && (
+                            <Tooltip text={alongRouteOpen ? '关闭顺路吃' : '沿高德行程找吃的'}>
+                                <div style={{ display: 'inline-block' }}>
+                                    <Button
+                                        onClick={() => alongRouteOpen ? setAlongRouteOpen(false) : openAlongRoute()}
+                                        disabled={!mapReady}
+                                        aria-label={alongRouteOpen ? '关闭顺路吃' : '打开顺路吃'}
+                                        aria-pressed={alongRouteOpen}
+                                        style={{
+                                            width: 44,
+                                            height: 44,
+                                            padding: 0,
+                                            borderRadius: '50%',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            background: alongRouteOpen ? 'var(--color-primary-active)' : customThemeColor,
+                                            color: '#FFFFFF',
+                                            border: 'none',
+                                            boxShadow: '0 4px 12px var(--color-glow)',
+                                            opacity: mapReady ? 1 : 0.6
+                                        }}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: 28 }}>route</span>
+                                    </Button>
+                                </div>
+                            </Tooltip>
+                        )}
+
                         {!pickerMode && (
                             <div style={{ display: "inline-block" }}>
                                 <Tooltip text={addPlaceTipText}>
@@ -1168,6 +1227,9 @@ export default function MapUI(props) {
                                     style={{ padding: '2px 8px', background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}
                                 >×</Button>
                             </div>
+                            <Button themeAware variant="menu" full onClick={openAlongRoute}>
+                                顺路吃 · 沿行程找美食
+                            </Button>
                             {isAuthenticated && (
                                 <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenDinners)}>
                                     聚餐活动 (beta)
