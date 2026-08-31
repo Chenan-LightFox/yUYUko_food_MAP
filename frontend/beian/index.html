@@ -195,9 +195,26 @@
             text-align: right;
         }
 
+        .filing-links {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+        }
+
         footer a {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
             color: var(--text-secondary);
             text-decoration: none;
+        }
+
+        footer a img {
+            width: 16px;
+            height: 16px;
+            object-fit: contain;
         }
 
         footer a:hover {
@@ -235,6 +252,11 @@
             footer {
                 grid-template-columns: 1fr;
                 gap: 4px;
+            }
+
+            .filing-links {
+                justify-content: flex-start;
+                margin: 3px 0;
             }
 
             footer p:last-child {
@@ -287,7 +309,13 @@
 
         <footer>
             <p>© 2026 东方饭联地图</p>
-            <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">闽ICP备2026031519号-2</a>
+            <div class="filing-links">
+                <a href="%VITE_ICP_BEIAN_URL%" target="_blank" rel="noopener noreferrer">%VITE_ICP_BEIAN_TEXT%</a>
+                <a href="%VITE_GONGAN_BEIAN_URL%" target="_blank" rel="noopener noreferrer">
+                    <img src="../ghs.png" alt="" aria-hidden="true">
+                    %VITE_GONGAN_BEIAN_TEXT%
+                </a>
+            </div>
             <p>dinnerparty.cc</p>
         </footer>
     </div>

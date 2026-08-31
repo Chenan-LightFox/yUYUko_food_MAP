@@ -13,6 +13,10 @@ import { pickContrastTextColor } from '../utils/theme';
 import defaultAvatar from '../img/default.png';
 
 const POPUP_GHOST_CLICK_GUARD_MS = 400;
+const ICP_BEIAN_TEXT = import.meta.env.VITE_ICP_BEIAN_TEXT;
+const ICP_BEIAN_URL = import.meta.env.VITE_ICP_BEIAN_URL;
+const GONGAN_BEIAN_TEXT = import.meta.env.VITE_GONGAN_BEIAN_TEXT;
+const GONGAN_BEIAN_URL = import.meta.env.VITE_GONGAN_BEIAN_URL;
 
 function getPlaceKey(place) {
     if (place?.id !== undefined && place?.id !== null && String(place.id) !== '') {
@@ -1181,15 +1185,27 @@ export default function MapUI(props) {
                             )}
                             <div style={{ marginTop: 4, padding: '10px', borderTop: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', fontSize: 12 }}>
                                 <div>东方饭联地图 · v2.0.1</div>
-                                <a
-                                    href="https://beian.miit.gov.cn/"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={() => setMobileMoreOpen(false)}
-                                    style={{ display: 'inline-block', marginTop: 6, color: 'inherit', textDecoration: 'none' }}
-                                >
-                                    闽ICP备2026031519号-2
-                                </a>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 5, marginTop: 6 }}>
+                                    <a
+                                        href={ICP_BEIAN_URL}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => setMobileMoreOpen(false)}
+                                        style={{ color: 'inherit', textDecoration: 'none' }}
+                                    >
+                                        {ICP_BEIAN_TEXT}
+                                    </a>
+                                    <a
+                                        href={GONGAN_BEIAN_URL}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => setMobileMoreOpen(false)}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'inherit', textDecoration: 'none' }}
+                                    >
+                                        <img src="/ghs.png" alt="" aria-hidden="true" style={{ width: 14, height: 14, objectFit: 'contain' }} />
+                                        {GONGAN_BEIAN_TEXT}
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1298,10 +1314,7 @@ export default function MapUI(props) {
             )}
 
             {!isNarrow && !pickerMode && (
-                <a
-                    href="https://beian.miit.gov.cn/"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <div
                     style={{
                         position: 'absolute',
                         left: '50%',
@@ -1317,12 +1330,31 @@ export default function MapUI(props) {
                         color: 'var(--color-text-secondary)',
                         fontSize: 12,
                         lineHeight: 1.4,
-                        textDecoration: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
                         whiteSpace: 'nowrap'
                     }}
                 >
-                    闽ICP备2026031519号-2
-                </a>
+                    <a
+                        href={ICP_BEIAN_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: 'inherit', textDecoration: 'none' }}
+                    >
+                        {ICP_BEIAN_TEXT}
+                    </a>
+                    <span aria-hidden="true" style={{ opacity: 0.55 }}>·</span>
+                    <a
+                        href={GONGAN_BEIAN_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'inherit', textDecoration: 'none' }}
+                    >
+                        <img src="/ghs.png" alt="" aria-hidden="true" style={{ width: 14, height: 14, objectFit: 'contain' }} />
+                        {GONGAN_BEIAN_TEXT}
+                    </a>
+                </div>
             )}
 
             {selectedPlace && popupPoint && (
