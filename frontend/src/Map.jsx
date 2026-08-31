@@ -135,6 +135,11 @@ export default function MapView({
     const placesRef = useRef([]);
     const visibleIndividualIdsRef = useRef(new Set());
 
+    const handleVisibleIndividualIds = (ids) => {
+        visibleIndividualIdsRef.current = ids instanceof Set ? ids : new Set(ids || []);
+        window.setTimeout(() => handleUpdateLabelsRef.current?.(), 0);
+    };
+
     const clearSearchState = ({ resetTerm = true, closeSearchUi = true, reloadPlaces = true } = {}) => {
         searchRequestIdRef.current += 1;
         searchAbortControllersRef.current.forEach((controller) => controller.abort());
@@ -562,7 +567,7 @@ export default function MapView({
                 setPopupPoint(point);
             };
             handleUpdateLabels = () => {
-                const isSearch = searchResultsRef.current != null || alongRouteResultsRef.current != null;
+                const isSearch = searchResultsRef.current != null;
                 const currentPlaces = alongRouteResultsRef.current != null
                     ? alongRouteResultsRef.current
                     : (searchResultsRef.current != null ? searchResultsRef.current : placesRef.current);
@@ -584,7 +589,7 @@ export default function MapView({
                     // 才会显示对应 marker 和名称。
                     if (p.isMarked === false && p.showOnMap !== true) continue;
                     // 搜索模式下不依赖聚类 visibleIds，确保所有搜索结果标签都显示
-                    if (!isSearch && visibleIds.size > 0 && !visibleIds.has(p.id)) continue;
+                    if (!isSearch && !visibleIds.has(p.id)) continue;
                     const point = lngLatToContainerPoint({ longitude: p.longitude, latitude: p.latitude });
                     if (!point) continue;
                     const halfW = Math.min((p.name || '').length * 7 + 12, maxHalfW);
@@ -790,7 +795,7 @@ export default function MapView({
             placesRef.current = data;
             if (searchResultsRef.current === null && alongRouteResultsRef.current === null) {
                 renderMarkers(mapRef.current, markersRef, data, showPopup, {
-                    onIndividualIds: (ids) => { visibleIndividualIdsRef.current = ids; }
+                    onIndividualIds: handleVisibleIndividualIds
                 });
                 // Schedule label update after markers render
                 setTimeout(() => {
@@ -954,7 +959,9 @@ export default function MapView({
             ? alongRouteResults
             : (searchResults == null ? places : searchResults);
         const visibleMapPlaces = (listToRender || []).filter((place) => place.isMarked !== false || place.showOnMap === true);
-        renderMarkers(mapRef.current, markersRef, visibleMapPlaces, showPopup);
+        renderMarkers(mapRef.current, markersRef, visibleMapPlaces, showPopup, {
+            onIndividualIds: handleVisibleIndividualIds
+        });
         // 同步更新标签，避免旧标签残留
         setTimeout(() => {
             if (handleUpdateLabelsRef.current) handleUpdateLabelsRef.current();

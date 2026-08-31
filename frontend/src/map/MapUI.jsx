@@ -982,6 +982,38 @@ export default function MapUI(props) {
                 onSelectPlace={onSelectAlongRoutePlace}
             />
 
+            {!hideNonSearchButtons && isNarrow && !pickerMode && (
+                <div style={{ position: 'absolute', right: 12, bottom: 130, zIndex: 2000 }}>
+                    <Tooltip text={locating ? '正在定位' : '定位/我的位置'} placement="top">
+                        <div style={{ display: 'inline-block' }}>
+                            <Button
+                                onClick={handleLocateMe}
+                                disabled={!mapReady || locating}
+                                aria-label={locating ? '正在获取当前位置' : '获取当前位置'}
+                                style={{
+                                    width: 44,
+                                    height: 44,
+                                    padding: 0,
+                                    borderRadius: '50%',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: locating ? 'var(--color-success)' : customThemeColor,
+                                    color: locating ? 'var(--color-on-emphasis)' : '#FFFFFF',
+                                    border: 'none',
+                                    boxShadow: `0 4px 12px ${hexToRgba(customThemeColor, 0.2)}`,
+                                    opacity: (!mapReady || locating) ? 0.65 : 1
+                                }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: 26 }}>
+                                    {locating ? 'my_location' : 'location_searching'}
+                                </span>
+                            </Button>
+                        </div>
+                    </Tooltip>
+                </div>
+            )}
+
             {!hideNonSearchButtons && pickerMode && (
                 <div ref={dinnerBtnRef} style={{ position: "absolute", left: 16, bottom: isNarrow ? 68 : 12, zIndex: 2000 }}>
                     <Tooltip text={isPosterPicker ? '返回海报生成' : '返回聚餐创建'} placement="top">
@@ -1227,9 +1259,6 @@ export default function MapUI(props) {
                                     style={{ padding: '2px 8px', background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}
                                 >×</Button>
                             </div>
-                            <Button themeAware variant="menu" full onClick={openAlongRoute}>
-                                顺路吃 · 沿行程找美食
-                            </Button>
                             {isAuthenticated && (
                                 <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenDinners)}>
                                     聚餐活动 (beta)
@@ -1347,9 +1376,15 @@ export default function MapUI(props) {
                             <span className="material-symbols-outlined" style={{ fontSize: 27, transform: addMode ? 'rotate(-45deg)' : 'none', transition: 'transform 180ms ease' }}>add_circle</span>
                             <span>{addMode ? '取消添加' : '添加'}</span>
                         </Button>
-                        <Button onClick={handleLocateMe} disabled={!mapReady || locating} style={{ ...mobileNavButtonStyle, color: locating ? 'var(--color-success)' : mobileNavButtonStyle.color }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>{locating ? 'my_location' : 'location_searching'}</span>
-                            <span>{locating ? '定位中' : '定位'}</span>
+                        <Button
+                            onClick={() => alongRouteOpen ? setAlongRouteOpen(false) : openAlongRoute()}
+                            disabled={!mapReady}
+                            aria-pressed={alongRouteOpen}
+                            aria-label={alongRouteOpen ? '关闭顺路吃' : '打开顺路吃'}
+                            style={{ ...mobileNavButtonStyle, color: alongRouteOpen ? customThemeColor : mobileNavButtonStyle.color }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>route</span>
+                            <span>顺路吃</span>
                         </Button>
                         <Button
                             onClick={toggleMobileAccount}

@@ -50,11 +50,14 @@ export default function AlongRoutePanel({
     const [corridorMeters, setCorridorMeters] = useState(1000);
     const [results, setResults] = useState([]);
     const [routeSummary, setRouteSummary] = useState(null);
+    const [selectedRouteIndex, setSelectedRouteIndex] = useState(null);
+    const [hasSearched, setHasSearched] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const overlaysRef = useRef([]);
     const requestRef = useRef(null);
     const wasOpenRef = useRef(false);
+    const planCacheRef = useRef(null);
 
     const clearRoute = () => {
         clearAmapRoute(mapRef.current, overlaysRef.current);
@@ -83,6 +86,9 @@ export default function AlongRoutePanel({
         setBusy(false);
         setResults([]);
         setRouteSummary(null);
+        setSelectedRouteIndex(null);
+        setHasSearched(false);
+        planCacheRef.current = null;
         onResults?.(null);
     }, [open]);
 
@@ -114,6 +120,9 @@ export default function AlongRoutePanel({
         setBusy(false);
         setResults([]);
         setRouteSummary(null);
+        setSelectedRouteIndex(null);
+        setHasSearched(false);
+        planCacheRef.current = null;
         setError('');
         onResults?.(null);
         onClose?.();
@@ -123,6 +132,72 @@ export default function AlongRoutePanel({
         setSelectedCategories((current) => current.includes(name)
             ? current.filter((item) => item !== name)
             : [...current, name]);
+    };
+
+    const invalidatePlannedRoute = () => {
+        requestRef.current?.abort();
+        requestRef.current = null;
+        setBusy(false);
+        planCacheRef.current = null;
+        setSelectedRouteIndex(null);
+        setRouteSummary(null);
+        setHasSearched(false);
+        setResults([]);
+        setError('');
+        clearRoute();
+        onResults?.(null);
+    };
+
+    const filterAlongRoute = async (route, controller) => {
+        setResults([]);
+        setHasSearched(false);
+        onResults?.([]);
+        clearRoute();
+        overlaysRef.current = drawAmapRoutes(mapRef.current, [route], customThemeColor, customThemeSecondary);
+        const response = await searchPlacesAlongRoute(backendUrl, {
+            paths: [route.searchPath.map((point) => [point.lng, point.lat])],
+            query,
+            categories: selectedCategories,
+            corridor_meters: corridorMeters,
+            limit: 60
+        }, { signal: controller.signal });
+        if (controller.signal.aborted) return;
+
+        const nextResults = (Array.isArray(response.places) ? response.places : []).map((place) => ({
+            ...place,
+            route_matches: (place.route_matches || []).map((match) => ({
+                ...match,
+                route_index: route.index
+            }))
+        }));
+        setResults(nextResults);
+        setHasSearched(true);
+        onResults?.(nextResults);
+    };
+
+    const handleChooseRoute = async (route) => {
+        if (!route || busy || !mapRef.current) return;
+        requestRef.current?.abort();
+        const controller = new AbortController();
+        requestRef.current = controller;
+        setSelectedRouteIndex(route.index);
+        setBusy(true);
+        setError('');
+        setHasSearched(false);
+        try {
+            await filterAlongRoute(route, controller);
+        } catch (chooseError) {
+            if (chooseError?.name !== 'AbortError') {
+                setError(chooseError?.message || '沿所选路线查找地点失败');
+                setResults([]);
+                onResults?.([]);
+            }
+        } finally {
+            if (requestRef.current === controller) {
+                requestRef.current = null;
+                setBusy(false);
+            }
+        }
     };
 
     const handleSubmit = async (event) => {
@@ -153,29 +228,52 @@ export default function AlongRoutePanel({
                 setResolvedUrl(normalizedUrl);
             }
 
-            clearRoute();
-            const planned = await planAmapRoutes({
+            const planKey = JSON.stringify({
+                url: normalizedUrl,
+                mode: effectiveMode,
                 origin: effectiveTrip.origin,
                 destination: effectiveTrip.destination,
-                waypoints: effectiveTrip.waypoints,
-                mode: effectiveMode
+                waypoints: effectiveTrip.waypoints || []
             });
-            if (controller.signal.aborted) return;
-            overlaysRef.current = drawAmapRoutes(mapRef.current, planned.routes, customThemeColor, customThemeSecondary);
+            let routes = planCacheRef.current?.key === planKey
+                ? planCacheRef.current.routes
+                : null;
+            const isNewPlan = !routes;
 
-            const response = await searchPlacesAlongRoute(backendUrl, {
-                paths: planned.routes.map((route) => route.searchPath.map((point) => [point.lng, point.lat])),
-                query,
-                categories: selectedCategories,
-                corridor_meters: corridorMeters,
-                limit: 60
-            }, { signal: controller.signal });
-            if (controller.signal.aborted) return;
+            if (isNewPlan) {
+                clearRoute();
+                const planned = await planAmapRoutes({
+                    origin: effectiveTrip.origin,
+                    destination: effectiveTrip.destination,
+                    waypoints: effectiveTrip.waypoints,
+                    mode: effectiveMode
+                });
+                if (controller.signal.aborted) return;
+                routes = planned.routes;
+                planCacheRef.current = { key: planKey, routes };
+                setRouteSummary({ routes });
+                setResults([]);
+                setHasSearched(false);
+                onResults?.([]);
 
-            const nextResults = Array.isArray(response.places) ? response.places : [];
-            setResults(nextResults);
-            setRouteSummary({ routes: planned.routes });
-            onResults?.(nextResults);
+                if (routes.length > 1) {
+                    setSelectedRouteIndex(null);
+                    overlaysRef.current = drawAmapRoutes(mapRef.current, routes, customThemeColor, customThemeSecondary);
+                    return;
+                }
+                setSelectedRouteIndex(routes[0].index);
+                await filterAlongRoute(routes[0], controller);
+                return;
+            }
+
+            const selectedRoute = routes.find((route) => route.index === selectedRouteIndex);
+            if (!selectedRoute) {
+                setRouteSummary({ routes });
+                overlaysRef.current = drawAmapRoutes(mapRef.current, routes, customThemeColor, customThemeSecondary);
+                setError('请先从下方选择一条路线');
+                return;
+            }
+            await filterAlongRoute(selectedRoute, controller);
         } catch (submitError) {
             if (submitError?.name !== 'AbortError') {
                 setError(submitError?.message || '查找顺路地点失败');
@@ -241,8 +339,12 @@ export default function AlongRoutePanel({
                         type="text"
                         value={shareUrl}
                         onChange={(event) => {
-                            setShareUrl(event.target.value);
-                            if (event.target.value.trim() !== resolvedUrl) setTrip(null);
+                            const nextValue = event.target.value;
+                            setShareUrl(nextValue);
+                            if (nextValue.trim() !== resolvedUrl) {
+                                setTrip(null);
+                                if (routeSummary || busy || planCacheRef.current) invalidatePlannedRoute();
+                            }
                         }}
                         placeholder="粘贴 surl.amap.com/..."
                         autoComplete="off"
@@ -271,7 +373,11 @@ export default function AlongRoutePanel({
                                 <Button
                                     key={option.value}
                                     type="button"
-                                    onClick={() => setMode(option.value)}
+                                    onClick={() => {
+                                        if (option.value === mode) return;
+                                        setMode(option.value);
+                                        if (routeSummary || busy || planCacheRef.current) invalidatePlannedRoute();
+                                    }}
                                     aria-pressed={selected}
                                     style={{
                                         padding: '7px 3px',
@@ -344,36 +450,63 @@ export default function AlongRoutePanel({
 
                     <Button
                         type="submit"
-                        disabled={busy || !mapReady}
+                        disabled={busy || !mapReady || (routeSummary?.routes?.length > 1 && selectedRouteIndex == null)}
                         style={{
                             width: '100%', marginTop: 13, padding: '10px 12px', border: 0,
                             borderRadius: 'var(--radius-sm)', background: customThemeColor, color: '#fff',
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                            fontWeight: 700, opacity: busy || !mapReady ? 0.65 : 1
+                            fontWeight: 700,
+                            opacity: busy || !mapReady || (routeSummary?.routes?.length > 1 && selectedRouteIndex == null) ? 0.65 : 1
                         }}
                     >
                         <span className="material-symbols-outlined" style={{ fontSize: 20 }}>{busy ? 'progress_activity' : 'restaurant'}</span>
-                        {busy ? '正在沿途觅食…' : (results.length ? '按新条件再找一次' : '找顺路吃的')}
+                        {busy
+                            ? '正在规划或筛选…'
+                            : (hasSearched
+                                ? '按新条件再筛选'
+                                : (routeSummary?.routes?.length > 1 ? '请先选择下方路线' : '规划路线并找店'))}
                     </Button>
                 </form>
 
                 {routeSummary && (
                     <div style={{ padding: '11px 14px', borderTop: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-overlay)', fontSize: 12 }}>
-                        <strong>沿行程找到 {results.length} 个地点</strong>
-                        <span style={{ marginLeft: 7, color: 'var(--color-text-secondary)' }}>
-                            高德返回 {routeSummary.routes.length} 条方案，已全部纳入
-                        </span>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
-                            {routeSummary.routes.map((route) => (
-                                <span key={route.index} style={{ padding: '3px 7px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-full)', background: 'var(--color-bg-surface)', color: 'var(--color-text-secondary)', fontSize: 10 }}>
-                                    方案 {route.index + 1}{route.distance ? ` · ${formatDistance(route.distance)}` : ''}{route.duration ? ` · ${formatDuration(route.duration)}` : ''}
-                                </span>
-                            ))}
+                        <strong>
+                            {selectedRouteIndex == null
+                                ? `高德返回 ${routeSummary.routes.length} 条路线，请选择一条`
+                                : (hasSearched ? `方案 ${selectedRouteIndex + 1} 沿途找到 ${results.length} 个地点` : `正在筛选方案 ${selectedRouteIndex + 1}`)}
+                        </strong>
+                        <div style={{ display: 'grid', gap: 6, marginTop: 9 }}>
+                            {routeSummary.routes.map((route) => {
+                                const selected = route.index === selectedRouteIndex;
+                                return (
+                                    <Button
+                                        type="button"
+                                        key={route.index}
+                                        disabled={busy}
+                                        onClick={() => handleChooseRoute(route)}
+                                        aria-pressed={selected}
+                                        style={{
+                                            width: '100%', boxSizing: 'border-box', padding: '8px 10px',
+                                            border: `1px solid ${selected ? customThemeColor : 'var(--color-border)'}`,
+                                            borderRadius: 'var(--radius-sm)',
+                                            background: selected ? 'color-mix(in srgb, var(--theme-primary) 13%, var(--color-bg-surface))' : 'var(--color-bg-surface)',
+                                            color: selected ? customThemeColor : 'var(--color-text-primary)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                                            textAlign: 'left', fontSize: 11
+                                        }}
+                                    >
+                                        <span style={{ fontWeight: 700 }}>方案 {route.index + 1}</span>
+                                        <span style={{ color: selected ? customThemeColor : 'var(--color-text-secondary)' }}>
+                                            {[formatDistance(route.distance), formatDuration(route.duration)].filter(Boolean).join(' · ') || '查看路线'}
+                                        </span>
+                                    </Button>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
 
-                {routeSummary && results.length === 0 && !busy && (
+                {hasSearched && results.length === 0 && !busy && (
                     <div style={{ padding: 20, textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 13, lineHeight: 1.6 }}>
                         这条路线附近暂时没有匹配的饭联地点。可以放宽距离、清空标签，或换一种想吃的东西。
                     </div>
