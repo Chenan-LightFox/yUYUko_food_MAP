@@ -2,7 +2,42 @@ const express = require("express");
 const router = express.Router();
 const { db } = require("../../db");
 const requireAdmin = require("../../middleware/adminAuth");
-const { logAdminAction } = require("../../utils/adminAudit");
+const { insertAdminAction } = require("../../utils/adminAudit");
+
+const addWhitelistTransaction = db._raw.transaction(({ qqList, actingAdminId }) => {
+    const added = [];
+    const skipped = [];
+    const insert = db._raw.prepare('INSERT OR IGNORE INTO QQWhitelist (qq) VALUES (?)');
+    for (const qqNum of qqList) {
+        if (!/^\d{5,15}$/.test(qqNum)) {
+            skipped.push({ qq: qqNum, reason: '格式无效' });
+            continue;
+        }
+        const info = insert.run(qqNum);
+        if (info.changes === 1) added.push(qqNum);
+        else skipped.push({ qq: qqNum, reason: '已存在' });
+    }
+    insertAdminAction(
+        actingAdminId,
+        'manage-qq-whitelist',
+        null,
+        JSON.stringify({ added_count: added.length, skipped_count: skipped.length })
+    );
+    return { added, skipped };
+});
+
+const deleteWhitelistTransaction = db._raw.transaction(({ id, actingAdminId }) => {
+    const row = db._raw.prepare('SELECT id FROM QQWhitelist WHERE id = ?').get(id);
+    if (!row) return false;
+    db._raw.prepare('DELETE FROM QQWhitelist WHERE id = ?').run(id);
+    insertAdminAction(
+        actingAdminId,
+        'delete-qq-whitelist',
+        null,
+        JSON.stringify({ whitelist_id: row.id })
+    );
+    return true;
+});
 
 // 列出所有白名单QQ号
 router.get("/", requireAdmin("manage_invites"), (req, res) => {
@@ -19,44 +54,26 @@ router.post("/", requireAdmin("manage_invites"), (req, res) => {
     const qqList = String(qq || "").split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
     if (qqList.length === 0) return res.status(400).json({ error: "缺少 qq 字段" });
 
-    const added = [];
-    const skipped = [];
-    for (const qqNum of qqList) {
-        // 基本校验：仅允许纯数字，长度 5-15
-        if (!/^\d{5,15}$/.test(qqNum)) {
-            skipped.push({ qq: qqNum, reason: "格式无效" });
-            continue;
-        }
-        try {
-            db.run("INSERT INTO QQWhitelist (qq) VALUES (?)", [qqNum]);
-            added.push(qqNum);
-        } catch (e) {
-            if (e.message && e.message.includes("UNIQUE")) {
-                skipped.push({ qq: qqNum, reason: "已存在" });
-            } else {
-                skipped.push({ qq: qqNum, reason: e.message });
-            }
-        }
+    try {
+        const result = addWhitelistTransaction.immediate({ qqList, actingAdminId: req.user && req.user.id });
+        return res.json(result);
+    } catch (error) {
+        res.locals.unhandledError = error;
+        return res.status(500).json({ error: '白名单更新失败，请稍后重试' });
     }
-
-    // 记录操作日志
-    logAdminAction(req.user && req.user.id, "manage-qq-whitelist", null, JSON.stringify({ added, skipped }));
-
-    res.json({ added, skipped });
 });
 
 // 删除白名单QQ号
 router.delete("/:id", requireAdmin("manage_invites"), (req, res) => {
     const id = req.params.id;
-    db.get("SELECT id, qq FROM QQWhitelist WHERE id = ?", [id], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (!row) return res.status(404).json({ error: "白名单记录不存在" });
-        db.run("DELETE FROM QQWhitelist WHERE id = ?", [id], function (e) {
-            if (e) return res.status(500).json({ error: e.message });
-            logAdminAction(req.user && req.user.id, "delete-qq-whitelist", null, JSON.stringify({ id, qq: row.qq }));
-            res.json({ success: true });
-        });
-    });
+    try {
+        const deleted = deleteWhitelistTransaction.immediate({ id, actingAdminId: req.user && req.user.id });
+        if (!deleted) return res.status(404).json({ error: '白名单记录不存在' });
+        return res.json({ success: true });
+    } catch (error) {
+        res.locals.unhandledError = error;
+        return res.status(500).json({ error: '白名单删除失败，请稍后重试' });
+    }
 });
 
 module.exports = router;

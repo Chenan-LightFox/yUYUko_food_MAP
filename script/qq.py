@@ -22,8 +22,11 @@ COOKIE_FILE = "qq_cookies.pkl" # 用于保存登录状态的文件
 
 def init_db():
     """初始化 SQLite 数据库，如果表不存在则创建"""
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_NAME, timeout=5)
     cursor = conn.cursor()
+    cursor.execute("PRAGMA busy_timeout = 5000")
+    cursor.execute("PRAGMA journal_mode = WAL")
+    cursor.execute("PRAGMA foreign_keys = ON")
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS QQWhitelist (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -61,97 +61,98 @@ function logAuthRejected(req, action, reason, username) {
     });
 }
 
-router.post("/register", (req, res) => {
+function registrationFailure(status, reason, message) {
+    const error = new Error(message);
+    error.status = status;
+    error.reason = reason;
+    error.publicMessage = message;
+    return error;
+}
+
+const registerUserTransaction = db._raw.transaction(({ username, passwordHash, inviteHash, qq, userId }) => {
+    if (db._raw.prepare('SELECT id FROM User WHERE username = ?').get(username)) {
+        throw registrationFailure(400, 'username_exists', '住民名已被使用');
+    }
+
+    const invite = db._raw.prepare(
+        'SELECT id, max_uses, current_uses FROM InviteCode WHERE code = ?'
+    ).get(inviteHash);
+    if (!invite) throw registrationFailure(400, 'invalid_invite_code', '邀请码无效');
+    if (invite.current_uses >= invite.max_uses) {
+        throw registrationFailure(400, 'invite_code_exhausted', '邀请码已超出最大可用次数');
+    }
+
+    if (db._raw.prepare('SELECT id FROM User WHERE qq = ?').get(qq)) {
+        throw registrationFailure(400, 'qq_already_bound', '该QQ号已被其他住民绑定');
+    }
+    if (!db._raw.prepare('SELECT id FROM QQWhitelist WHERE qq = ?').get(qq)) {
+        throw registrationFailure(400, 'qq_not_whitelisted', '该QQ号不在注册白名单中，请联系管理员');
+    }
+
+    // Claim the invite within the same transaction as the user insert. The
+    // conditional update also protects the limit if another writer registered
+    // after the checks above.
+    const claimed = db._raw.prepare(
+        `UPDATE InviteCode
+         SET current_uses = current_uses + 1
+         WHERE id = ? AND current_uses < max_uses`
+    ).run(invite.id);
+    if (claimed.changes !== 1) {
+        throw registrationFailure(400, 'invite_code_exhausted', '邀请码已超出最大可用次数');
+    }
+
+    db._raw.prepare(
+        'INSERT INTO User (id, username, password, qq) VALUES (?, ?, ?, ?)'
+    ).run(userId, username, passwordHash, qq);
+    return db._raw.prepare(
+        'SELECT id, username, admin_level, (avatar_blob IS NOT NULL) AS has_avatar FROM User WHERE id = ?'
+    ).get(userId);
+});
+
+router.post("/register", async (req, res) => {
     const { username, password, inviteCode, qq } = req.body || {};
-    if (!username || !password || !inviteCode || !qq) {
+    if (typeof username !== 'string' || typeof password !== 'string'
+        || typeof inviteCode !== 'string' || !qq) {
         logAuthRejected(req, 'register', 'missing_fields', username);
         return res.status(400).json({ error: "缺少字段" });
     }
+    const normalizedUsername = username.trim();
+    const normalizedQq = String(qq).trim();
+    if (!normalizedUsername || !password || !inviteCode.trim() || !normalizedQq) {
+        logAuthRejected(req, 'register', 'missing_fields', username);
+        return res.status(400).json({ error: '缺少字段' });
+    }
 
-    // 检查用户名是否已存在
-    db.get("SELECT * FROM User WHERE username = ?", [username], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (row) {
-            logAuthRejected(req, 'register', 'username_exists', username);
-            return res.status(400).json({ error: "住民名已被使用" });
-        }
-
-        // 校验邀请码合法性
-        const hashed = hashCode(inviteCode);
-        db.get("SELECT * FROM InviteCode WHERE code = ?", [hashed], (err2, codeRow) => {
-            if (err2) return res.status(500).json({ error: err2.message });
-            if (!codeRow) {
-                logAuthRejected(req, 'register', 'invalid_invite_code', username);
-                return res.status(400).json({ error: "邀请码无效" });
-            }
-
-            const { max_uses, current_uses } = codeRow;
-
-            // 判断是否已达到最大使用次数
-            if (current_uses >= max_uses) {
-                logAuthRejected(req, 'register', 'invite_code_exhausted', username);
-                return res.status(400).json({ error: "邀请码已超出最大可用次数" });
-            }
-
-            // 校验QQ号是否已被其他账号使用
-            db.get("SELECT id FROM User WHERE qq = ?", [qq], (errQQUsed, usedRow) => {
-                if (errQQUsed) return res.status(500).json({ error: errQQUsed.message });
-                if (usedRow) {
-                    logAuthRejected(req, 'register', 'qq_already_bound', username);
-                    return res.status(400).json({ error: "该QQ号已被其他住民绑定" });
-                }
-
-            // 校验QQ号是否在白名单中
-            db.get("SELECT id FROM QQWhitelist WHERE qq = ?", [qq], (errQQ, whitelistRow) => {
-                if (errQQ) return res.status(500).json({ error: errQQ.message });
-                if (!whitelistRow) {
-                    logAuthRejected(req, 'register', 'qq_not_whitelisted', username);
-                    return res.status(400).json({ error: "该QQ号不在注册白名单中，请联系管理员" });
-                }
-
-            // 检验通过，用户注册逻辑
-            const hashPwd = hashPassword(password);
-            const userId = crypto.randomUUID();
-            db.run(
-                "INSERT INTO User (id, username, password, qq) VALUES (?, ?, ?, ?)",
-                [userId, username, hashPwd, qq],
-                async function (err3) {
-                    if (err3) return res.status(500).json({ error: err3.message });
-                    const token = jwt.sign({ id: userId, username }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-
-                    // 会话写入完成后再把 token 返回客户端，避免客户端立刻鉴权时
-                    // Redis 尚未包含该会话而被误判为登录失效。
-                    const sessionStored = await persistSession(userId, token, 'register');
-
-                    // 更新邀请码的 current_uses
-                    db.run(
-                        "UPDATE InviteCode SET current_uses = current_uses + 1 WHERE code = ?",
-                        [hashed],
-                        (err4) => {
-                            if (err4) console.error("邀请码更新失败：", err4.message); // 不影响注册流程
-                        }
-                    );
-
-                    // 返回用户信息
-                    db.get("SELECT id, username, admin_level, (avatar_blob IS NOT NULL) AS has_avatar FROM User WHERE id = ?", [userId], (e, row) => {
-                        if (e) return res.status(500).json({ error: e.message });
-                        if (row) row.has_avatar = !!row.has_avatar;
-                        logger.info('Registration succeeded', {
-                            event: 'auth.register.succeeded',
-                            userId,
-                            username: row && row.username,
-                            ip: req.ip,
-                            sessionStored
-                        });
-                        res.set('Cache-Control', 'no-store');
-                        res.status(201).json({ user: row, token });
-                    });
-                }
-            );
-            });
-            });
+    const userId = crypto.randomUUID();
+    let row;
+    try {
+        row = registerUserTransaction.immediate({
+            username: normalizedUsername,
+            passwordHash: hashPassword(password),
+            inviteHash: hashCode(inviteCode),
+            qq: normalizedQq,
+            userId
         });
+    } catch (error) {
+        if (error && error.reason) {
+            logAuthRejected(req, 'register', error.reason, normalizedUsername);
+            return res.status(error.status || 400).json({ error: error.publicMessage });
+        }
+        res.locals.unhandledError = error;
+        return res.status(500).json({ error: '注册失败，请稍后重试' });
+    }
+
+    row.has_avatar = !!row.has_avatar;
+    logger.addContext({ userId });
+    const token = jwt.sign({ id: userId, username: normalizedUsername }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    const sessionStored = await persistSession(userId, token, 'register');
+    logger.info('Registration succeeded', {
+        event: 'auth.register.succeeded',
+        username: row.username,
+        sessionStored
     });
+    res.set('Cache-Control', 'no-store');
+    return res.status(201).json({ user: row, token });
 });
 
 // 用户登录，返回 token
@@ -166,11 +167,7 @@ router.post("/login", (req, res) => {
     const hashed = hashPassword(password);
     db.get("SELECT id, username, admin_level, (avatar_blob IS NOT NULL) AS has_avatar FROM User WHERE username = ? AND password = ?", [username, hashed], async (err, row) => {
         if (err) {
-            logger.error('Login database query failed', {
-                event: 'auth.login.database_error',
-                username: typeof username === 'string' ? username.trim().slice(0, 64) : undefined,
-                error: err
-            });
+            res.locals.unhandledError = err;
             return res.status(500).json({ error: err.message });
         }
         if (!row) {
@@ -179,6 +176,7 @@ router.post("/login", (req, res) => {
         }
 
         row.has_avatar = !!row.has_avatar;
+        logger.addContext({ userId: row.id });
         const token = jwt.sign({ id: row.id, username: row.username }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
         // 必须先完成 Redis 会话写入，再把 token 返回浏览器。否则登录后的
@@ -337,11 +335,7 @@ router.post('/logout', requireAuth, async (req, res) => {
         });
         return res.json({ success: true });
     } catch (e) {
-        logger.error('Logout failed', {
-            event: 'auth.logout.failed',
-            userId: req.user && req.user.id,
-            error: e
-        });
+        res.locals.unhandledError = e;
         return res.status(500).json({ error: "暂离幻想乡失败", detail: e.message });
     }
 });

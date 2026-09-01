@@ -192,7 +192,7 @@ function writeToConsole(entry) {
         return;
     }
     const details = [];
-    for (const key of ['requestId', 'event', 'method', 'path', 'status', 'durationMs', 'userId']) {
+    for (const key of ['requestId', 'event', 'method', 'path', 'status', 'durationMs', 'ip', 'userId']) {
         if (entry[key] !== undefined) details.push(`${key}=${entry[key]}`);
     }
     const suffix = details.length ? ` ${details.join(' ')}` : '';
@@ -210,19 +210,26 @@ function emit(level, message, fields) {
     if (!shouldLog(level)) return;
     const context = contextStorage.getStore() || {};
     const safeFields = sanitize(fields || {});
+    const mergedFields = { ...sanitize(context) };
+    for (const [key, value] of Object.entries(safeFields)) {
+        // An optional per-call field must not erase a value already attached to
+        // the request context (notably the UUID learned after login/auth).
+        if (value !== undefined) mergedFields[key] = value;
+    }
     const entry = {
         timestamp: new Date().toISOString(),
         level,
         service: config.service,
         pid: process.pid,
-        ...sanitize(context),
-        ...safeFields,
+        ...mergedFields,
         message: redactText(message || '')
     };
     const line = `${JSON.stringify(entry)}\n`;
     if (fileLoggingAvailable) {
-        writeToFile('app', line);
-        if (LEVELS[level] >= LEVELS.error) writeToFile('error', line);
+        // Keep each entry in exactly one file. Older behavior duplicated every
+        // error into both app-* and error-* logs, doubling storage and search
+        // results without adding traceability.
+        writeToFile(LEVELS[level] >= LEVELS.error ? 'error' : 'app', line);
     }
     if (config.toConsole) writeToConsole(entry);
 }
@@ -241,6 +248,15 @@ const logger = {
     fatal(message, fields) { emit('fatal', message, normalizeFields(fields)); },
     runWithContext(context, callback) {
         return contextStorage.run(sanitize(context || {}), callback);
+    },
+    addContext(fields) {
+        const store = contextStorage.getStore();
+        if (!store || !fields || typeof fields !== 'object') return;
+        const safeFields = sanitize(fields);
+        for (const [key, value] of Object.entries(safeFields)) {
+            if (value === undefined) delete store[key];
+            else store[key] = value;
+        }
     },
     getContext() {
         return { ...(contextStorage.getStore() || {}) };

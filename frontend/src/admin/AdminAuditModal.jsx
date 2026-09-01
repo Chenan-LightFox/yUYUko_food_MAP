@@ -66,13 +66,15 @@ export default function AdminAuditModal({ open, onClose, backendUrl, token }) {
                             {logs.length === 0 ? (
                                 <div style={{ color: 'var(--color-text-secondary)' }}>暂无操作记录</div>
                             ) : (
-                                <ResponsiveTable minWidth={900} cellPadding="8" style={{ border: '1px solid var(--color-border)' }}>
+                                <ResponsiveTable minWidth={1240} cellPadding="8" style={{ border: '1px solid var(--color-border)' }}>
                                     <thead>
                                         <tr>
                                             <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>ID</th>
-                                            <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>管理员ID</th>
+                                            <th style={{ textAlign: 'left', padding: 8, minWidth: 160 }}>操作者 UUID</th>
                                             <th style={{ textAlign: 'left', padding: 8 }}>动作</th>
-                                            <th style={{ textAlign: 'left', padding: 8, minWidth: 80 }}>目标用户</th>
+                                            <th style={{ textAlign: 'left', padding: 8, minWidth: 160 }}>目标用户 UUID</th>
+                                            <th style={{ textAlign: 'left', padding: 8, minWidth: 120 }}>IP</th>
+                                            <th style={{ textAlign: 'left', padding: 8, minWidth: 180 }}>请求编号</th>
                                             <th style={{ textAlign: 'left', padding: 8 }}>详情</th>
                                             <th style={{ textAlign: 'left', padding: 8, minWidth: 100 }}>时间</th>
                                         </tr>
@@ -81,9 +83,11 @@ export default function AdminAuditModal({ open, onClose, backendUrl, token }) {
                                         {logs.map((l, idx) => (
                                             <tr key={l.id} style={{ borderTop: '1px solid var(--color-border)', background: idx % 2 === 0 ? 'var(--color-bg-overlay)' : undefined }}>
                                                 <td style={{ padding: 8, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.id}>{l.id}</td>
-                                                <td style={{ padding: 8, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.admin_id}>{l.admin_id}</td>
+                                                <td style={{ padding: 8, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.admin_id}>{l.admin_id || '-'}</td>
                                                 <td style={{ padding: 8 }}>{l.action}</td>
-                                                <td style={{ padding: 8 }}>{l.target_user_id || '-'}</td>
+                                                <td style={{ padding: 8, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.target_user_id}>{l.target_user_id || '-'}</td>
+                                                <td style={{ padding: 8 }}>{l.ip || '-'}</td>
+                                                <td style={{ padding: 8, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.request_id}>{l.request_id || '-'}</td>
                                                 <td style={{ padding: 8, maxWidth: 320, verticalAlign: 'top' }}>
                                                     {l.details ? (
                                                         <div style={{ maxWidth: 320 }}>

@@ -1,19 +1,29 @@
 const { db } = require('../db');
+const logger = require('./logger');
 
-function logAdminAction(admin_id, action, target_user_id = null, details = null) {
-    try {
-        db.run(
-            `INSERT INTO AdminAudit (admin_id, action, target_user_id, details) VALUES (?, ?, ?, ?)`,
-            [admin_id || null, action || null, target_user_id || null, details || null],
-            (err) => {
-                if (err) console.error('Failed to write admin audit log:', err.message);
-            }
-        );
-    } catch (e) {
-        console.error('Exception when writing admin audit log:', e && e.message);
-    }
+function auditTrace(overrides = {}) {
+    const context = logger.getContext();
+    return {
+        ip: overrides.ip || context.ip || null,
+        requestId: overrides.requestId || overrides.request_id || context.requestId || null
+    };
+}
+
+function insertAdminAction(admin_id, action, target_user_id = null, details = null, traceOverrides = {}) {
+    const trace = auditTrace(traceOverrides);
+    return db._raw.prepare(
+        `INSERT INTO AdminAudit (admin_id, action, target_user_id, details, ip, request_id)
+         VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(
+        admin_id == null ? null : String(admin_id),
+        action || null,
+        target_user_id == null ? null : String(target_user_id),
+        details || null,
+        trace.ip,
+        trace.requestId
+    );
 }
 
 module.exports = {
-    logAdminAction
+    insertAdminAction
 };

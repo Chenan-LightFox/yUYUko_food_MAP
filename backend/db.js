@@ -3,9 +3,23 @@ const path = require('path');
 const fs = require('fs');
 const logger = require('./utils/logger');
 
-const dbFile = path.join(__dirname, 'data.sqlite');
+const configuredDbFile = String(process.env.DB_FILE || '').trim();
+const dbFile = configuredDbFile
+    ? (path.isAbsolute(configuredDbFile) ? configuredDbFile : path.resolve(__dirname, configuredDbFile))
+    : path.join(__dirname, 'data.sqlite');
 const SQLITE_UUID_EXPR = "lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6)))";
 const DB_SLOW_QUERY_MS = Math.max(1, Math.min(600000, Number.parseInt(process.env.DB_SLOW_QUERY_MS || '100', 10) || 100));
+const DB_BUSY_TIMEOUT_MS = Math.max(100, Math.min(60000, Number.parseInt(process.env.DB_BUSY_TIMEOUT_MS || '5000', 10) || 5000));
+const LEGACY_USER_REFERENCE_COLUMNS = {
+    Place: ['creator_id', 'updated_by'],
+    Comment: ['user_id'],
+    AdminAudit: ['admin_id', 'target_user_id'],
+    SiteNotice: ['created_by'],
+    PlaceRequest: ['requester_id', 'reviewed_by'],
+    DinnerEvent: ['creator_id'],
+    Favorite: ['user_id'],
+    Category: ['created_by']
+};
 
 function queryFinished(operation, sql, startedAt) {
     const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
@@ -52,6 +66,21 @@ try {
 } catch (e) {
     console.error('Failed to open DB:', e && e.message);
     throw e;
+}
+
+// WAL allows readers to continue while the backend or the QQ whitelist worker
+// is writing. SQLite still serializes writers, so transactions below remain
+// deliberately short and contain no network work.
+try {
+    rawDb.pragma(`busy_timeout = ${DB_BUSY_TIMEOUT_MS}`);
+    rawDb.pragma('foreign_keys = ON');
+    rawDb.pragma('journal_mode = WAL');
+    rawDb.pragma('synchronous = NORMAL');
+} catch (error) {
+    logger.warn('Failed to apply recommended SQLite pragmas', {
+        event: 'database.pragma.failed',
+        error
+    });
 }
 
 try {
@@ -162,7 +191,7 @@ function migrateUserTableToUuidIfNeeded() {
     const hasCol = (name) => colNames.has(name);
 
     const selectExpr = [
-        `CASE WHEN typeof(id) = 'text' AND length(trim(id)) > 0 THEN id ELSE ${SQLITE_UUID_EXPR} END AS id`,
+        'id_map.new_id AS id',
         `${hasCol('username') ? 'username' : 'NULL'} AS username`,
         `${hasCol('password') ? 'password' : 'NULL'} AS password`,
         `${hasCol('avatar') ? 'avatar' : 'NULL'} AS avatar`,
@@ -179,6 +208,16 @@ function migrateUserTableToUuidIfNeeded() {
     console.log('Migrating User.id to TEXT UUID primary key...');
     rawDb.exec('BEGIN');
     try {
+        rawDb.exec(`CREATE TABLE "__User_id_map" (
+            old_id TEXT PRIMARY KEY,
+            new_id TEXT NOT NULL UNIQUE
+        );`);
+        rawDb.exec(`INSERT INTO "__User_id_map" (old_id, new_id)
+                    SELECT CAST(id AS TEXT),
+                           CASE WHEN typeof(id) = 'text' AND length(trim(id)) > 0
+                                THEN id ELSE ${SQLITE_UUID_EXPR} END
+                    FROM User;`);
+
         rawDb.exec(`CREATE TABLE IF NOT EXISTS "__User_uuid_migration" (
             id TEXT PRIMARY KEY,
             username TEXT UNIQUE,
@@ -195,16 +234,212 @@ function migrateUserTableToUuidIfNeeded() {
         );`);
 
         rawDb.exec(`INSERT INTO "__User_uuid_migration" (id, username, password, avatar, admin_level, created_time, is_banned, ban_reason, ban_expires, map_settings, qq, avatar_blob)
-                    SELECT ${selectExpr} FROM User;`);
+                    SELECT ${selectExpr}
+                    FROM User
+                    JOIN "__User_id_map" AS id_map ON id_map.old_id = CAST(User.id AS TEXT);`);
+
+        // Rewrite every known user reference with the exact old->new mapping
+        // before replacing User. References to already-deleted users are kept
+        // untouched so audit/history rows are not silently discarded.
+        for (const [tableName, columnNames] of Object.entries(LEGACY_USER_REFERENCE_COLUMNS)) {
+            const table = rawDb.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(tableName);
+            if (!table) continue;
+            const existingColumns = new Set(
+                rawDb.prepare(`PRAGMA table_info(${quoteIdentifier(tableName)})`).all().map((column) => column.name)
+            );
+            for (const columnName of columnNames) {
+                if (!existingColumns.has(columnName)) continue;
+                const column = quoteIdentifier(columnName);
+                rawDb.exec(`UPDATE ${quoteIdentifier(tableName)}
+                            SET ${column} = (
+                                SELECT new_id FROM "__User_id_map"
+                                WHERE old_id = CAST(${quoteIdentifier(tableName)}.${column} AS TEXT)
+                            )
+                            WHERE ${column} IS NOT NULL
+                              AND EXISTS (
+                                  SELECT 1 FROM "__User_id_map"
+                                  WHERE old_id = CAST(${quoteIdentifier(tableName)}.${column} AS TEXT)
+                              );`);
+            }
+        }
 
         rawDb.exec('DROP TABLE User;');
         rawDb.exec('ALTER TABLE "__User_uuid_migration" RENAME TO User;');
+        rawDb.exec('DROP TABLE "__User_id_map";');
         rawDb.exec('COMMIT');
         console.log('Migration complete: User.id is now UUID text primary key.');
     } catch (e) {
         rawDb.exec('ROLLBACK');
         throw e;
     }
+}
+
+const USER_REFERENCE_TABLES = [
+    {
+        name: 'Place',
+        userColumns: ['creator_id', 'updated_by'],
+        createSql: `CREATE TABLE "Place" (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            description TEXT,
+            latitude REAL,
+            longitude REAL,
+            category TEXT,
+            per_person_cost INTEGER,
+            creator_id TEXT,
+            created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_time DATETIME,
+            updated_by TEXT,
+            exterior_images TEXT,
+            menu_images TEXT,
+            has_vector INTEGER NOT NULL DEFAULT 0,
+            vector_updated_at DATETIME
+        )`
+    },
+    {
+        name: 'Comment',
+        userColumns: ['user_id'],
+        createSql: `CREATE TABLE "Comment" (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            place_id INTEGER,
+            user_id TEXT,
+            content TEXT,
+            rating INTEGER,
+            time DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`
+    },
+    {
+        name: 'AdminAudit',
+        userColumns: ['admin_id', 'target_user_id'],
+        requiredColumns: ['ip', 'request_id'],
+        createSql: `CREATE TABLE "AdminAudit" (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_id TEXT,
+            action TEXT,
+            target_user_id TEXT,
+            details TEXT,
+            ip TEXT,
+            request_id TEXT,
+            time DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`
+    },
+    {
+        name: 'SiteNotice',
+        userColumns: ['created_by'],
+        createSql: `CREATE TABLE "SiteNotice" (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            color_key TEXT NOT NULL,
+            created_by TEXT,
+            is_active INTEGER DEFAULT 1,
+            created_time DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`
+    },
+    {
+        name: 'PlaceRequest',
+        userColumns: ['requester_id', 'reviewed_by'],
+        createSql: `CREATE TABLE "PlaceRequest" (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            place_id INTEGER,
+            requester_id TEXT,
+            proposed TEXT,
+            note TEXT,
+            status TEXT DEFAULT 'pending',
+            reviewed_by TEXT,
+            reviewed_time DATETIME,
+            created_time DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`
+    },
+    {
+        name: 'DinnerEvent',
+        userColumns: ['creator_id'],
+        createSql: `CREATE TABLE "DinnerEvent" (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT,
+            place_name TEXT NOT NULL,
+            start_time DATETIME NOT NULL,
+            max_participants INTEGER,
+            contact_info TEXT,
+            status TEXT DEFAULT 'open',
+            creator_id TEXT NOT NULL,
+            created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_time DATETIME
+        )`
+    },
+    {
+        name: 'Favorite',
+        userColumns: ['user_id'],
+        createSql: `CREATE TABLE "Favorite" (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            place_id INTEGER NOT NULL,
+            created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, place_id)
+        )`
+    }
+];
+
+function quoteIdentifier(value) {
+    return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+function migrateUserReferenceColumnsToText() {
+    const pending = USER_REFERENCE_TABLES.filter((definition) => {
+        const table = rawDb.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(definition.name);
+        if (!table) return false;
+        const columns = rawDb.prepare(`PRAGMA table_info(${quoteIdentifier(definition.name)})`).all();
+        const byName = new Map(columns.map((column) => [column.name, column]));
+        const hasWrongIdType = definition.userColumns.some((name) => {
+            const column = byName.get(name);
+            return column && String(column.type || '').toUpperCase() !== 'TEXT';
+        });
+        const hasMissingColumn = (definition.requiredColumns || []).some((name) => !byName.has(name));
+        return hasWrongIdType || hasMissingColumn;
+    });
+    if (!pending.length) return;
+
+    const migrate = rawDb.transaction(() => {
+        for (const definition of pending) {
+            const tableName = quoteIdentifier(definition.name);
+            const backupNameValue = `__user_reference_migration_${definition.name}`;
+            const backupName = quoteIdentifier(backupNameValue);
+            const staleBackup = rawDb.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(backupNameValue);
+            if (staleBackup) throw new Error(`stale migration table exists: ${backupNameValue}`);
+
+            const schemaObjects = rawDb.prepare(
+                "SELECT type, name, sql FROM sqlite_master WHERE tbl_name = ? AND type IN ('index', 'trigger') AND sql IS NOT NULL"
+            ).all(definition.name);
+            const oldColumns = rawDb.prepare(`PRAGMA table_info(${tableName})`).all().map((column) => column.name);
+
+            rawDb.exec(`ALTER TABLE ${tableName} RENAME TO ${backupName}`);
+            rawDb.exec(definition.createSql);
+
+            const newColumns = new Set(
+                rawDb.prepare(`PRAGMA table_info(${tableName})`).all().map((column) => column.name)
+            );
+            const unknownColumns = oldColumns.filter((name) => !newColumns.has(name));
+            if (unknownColumns.length) {
+                throw new Error(`${definition.name} has columns missing from canonical schema: ${unknownColumns.join(', ')}`);
+            }
+            const insertColumns = oldColumns.map(quoteIdentifier).join(', ');
+            const selectColumns = oldColumns.map((name) => (
+                definition.userColumns.includes(name)
+                    ? `CAST(${quoteIdentifier(name)} AS TEXT)`
+                    : quoteIdentifier(name)
+            )).join(', ');
+            rawDb.exec(`INSERT INTO ${tableName} (${insertColumns}) SELECT ${selectColumns} FROM ${backupName}`);
+            rawDb.exec(`DROP TABLE ${backupName}`);
+            schemaObjects.forEach((item) => rawDb.exec(item.sql));
+        }
+    });
+
+    migrate.immediate();
+    logger.info('Normalized user reference columns to TEXT', {
+        event: 'database.migration.user_reference_text',
+        tables: pending.map((definition) => definition.name)
+    });
 }
 
 function init() {
@@ -256,7 +491,7 @@ function init() {
             longitude REAL,
             category TEXT,
             per_person_cost INTEGER,
-            creator_id INTEGER,
+            creator_id TEXT,
             created_time DATETIME DEFAULT CURRENT_TIMESTAMP
         );`);
 
@@ -273,7 +508,7 @@ function init() {
             }
         };
         addPlaceIfMissing('updated_time DATETIME');
-        addPlaceIfMissing('updated_by INTEGER');
+        addPlaceIfMissing('updated_by TEXT');
         addPlaceIfMissing('exterior_images TEXT');
         addPlaceIfMissing('menu_images TEXT');
         addPlaceIfMissing('per_person_cost INTEGER');
@@ -363,7 +598,7 @@ function init() {
         rawDb.exec(`CREATE TABLE IF NOT EXISTS "Comment" (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             place_id INTEGER,
-            user_id INTEGER,
+            user_id TEXT,
             content TEXT,
             rating INTEGER,
             time DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -371,10 +606,12 @@ function init() {
 
         rawDb.exec(`CREATE TABLE IF NOT EXISTS "AdminAudit" (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            admin_id INTEGER,
+            admin_id TEXT,
             action TEXT,
-            target_user_id INTEGER,
+            target_user_id TEXT,
             details TEXT,
+            ip TEXT,
+            request_id TEXT,
             time DATETIME DEFAULT CURRENT_TIMESTAMP
         );`);
 
@@ -383,24 +620,18 @@ function init() {
             title TEXT NOT NULL,
             content TEXT NOT NULL,
             color_key TEXT NOT NULL,
-            created_by INTEGER,
+            created_by TEXT,
             is_active INTEGER DEFAULT 1,
             created_time DATETIME DEFAULT CURRENT_TIMESTAMP
         );`);
-        try {
-            rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_sitenotice_active_created_time ON SiteNotice(is_active, created_time DESC);`);
-        } catch (e) {
-            console.warn('Failed to create idx_sitenotice_active_created_time:', e.message);
-        }
-
         rawDb.exec(`CREATE TABLE IF NOT EXISTS "PlaceRequest" (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             place_id INTEGER,
-            requester_id INTEGER,
+            requester_id TEXT,
             proposed TEXT,
             note TEXT,
             status TEXT DEFAULT 'pending',
-            reviewed_by INTEGER,
+            reviewed_by TEXT,
             reviewed_time DATETIME,
             created_time DATETIME DEFAULT CURRENT_TIMESTAMP
         );`);
@@ -444,7 +675,7 @@ function init() {
             max_participants INTEGER,
             contact_info TEXT,
             status TEXT DEFAULT 'open',
-            creator_id INTEGER NOT NULL,
+            creator_id TEXT NOT NULL,
             created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_time DATETIME
         );`);
@@ -457,7 +688,7 @@ function init() {
 
         rawDb.exec(`CREATE TABLE IF NOT EXISTS "Favorite" (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
+            user_id TEXT NOT NULL,
             place_id INTEGER NOT NULL,
             created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(user_id, place_id)
@@ -468,6 +699,15 @@ function init() {
         } catch (e) {
             console.warn('Failed to create Favorite indexes:', e.message);
         }
+
+        // SQLite cannot ALTER a column type in place. Rebuild only the legacy
+        // tables that still declare user UUID references as INTEGER, preserving
+        // rows, explicit indexes, triggers and AUTOINCREMENT values.
+        migrateUserReferenceColumnsToText();
+        rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_sitenotice_active_created_time ON SiteNotice(is_active, created_time DESC);`);
+        rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_adminaudit_request_id ON AdminAudit(request_id);`);
+        rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_adminaudit_admin_time ON AdminAudit(admin_id, time DESC);`);
+        rawDb.exec(`CREATE INDEX IF NOT EXISTS idx_adminaudit_ip_time ON AdminAudit(ip, time DESC);`);
 
     } catch (e) {
         console.error('DB init failed:', e && e.message);

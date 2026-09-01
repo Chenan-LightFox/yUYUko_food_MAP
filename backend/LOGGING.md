@@ -2,7 +2,7 @@
 
 后端启动后会同时输出可读控制台日志，并在 `backend/logs/` 写入 JSON Lines 文件：
 
-- `app-YYYY-MM-DD.log`：全部应用、请求和安全事件。
+- `app-YYYY-MM-DD.log`：`debug`、`info`、`warn` 应用、请求和安全事件。
 - `error-YYYY-MM-DD.log`：仅 `error` 与 `fatal` 事件。
 - 文件达到 `LOG_MAX_FILE_MB` 后生成 `.1.log`、`.2.log`；超过保留天数的文件会在下次启动时清理。
 
@@ -22,18 +22,24 @@ npm run logs -- --since 2h --level warn
 # 最近七天的登录事件
 npm run logs -- --since 7d --event auth.login
 
+# 按客户端 IP 或登录用户 UUID 追溯
+npm run logs -- --since 24h --ip "203.0.113.10"
+npm run logs -- --since 7d --user-id "用户 UUID"
+
 # 最近一天最多 200 条错误，输出原始 JSON
 npm run logs -- --level error --limit 200 --json
 ```
 
 ## 记录内容
 
-- 请求开始、完成、耗时、状态码、来源、IP、User-Agent、响应错误摘要。
+- 请求完成、耗时、状态码、来源、IP、登录用户 UUID、User-Agent、响应错误摘要。
 - 登录、注册、退出、鉴权拒绝、Redis 会话故障和 CORS 拒绝。
 - 所有既有 `console.log/warn/error`、未捕获异常和未处理 Promise 拒绝。
 - 提前断开的连接以及超过 `LOG_SLOW_REQUEST_MS` 的慢请求。
 - SQLite 查询错误、超过 `DB_SLOW_QUERY_MS` 的慢查询，以及高德代理故障。
-- 登录前端阶段事件 `auth.client.stage`，可判断浏览器卡在响应接收、载荷解析还是 React 状态提交。
+- 登录前端失败阶段事件 `auth.client.stage`；正常阶段只在 `LOG_LEVEL=debug` 时记录。
+
+正常请求默认只写一条完成日志；错误只进入 `error-*`，不会再在 `app-*` 中重复。每条请求日志都带 IP，完成鉴权后还会自动带用户 UUID。管理员审计记录同时保存 IP、请求编号、操作者 UUID 和目标用户 UUID。
 
 密码、JWT、Authorization、Cookie、邀请码、API Key 和头像二进制字段会被自动脱敏。请求正文不会写入访问日志。
 

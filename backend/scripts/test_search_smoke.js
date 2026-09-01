@@ -1,5 +1,11 @@
 const express = require('express');
 const assert = require('assert/strict');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'yuyuko-search-'));
+process.env.DB_FILE = path.join(tempDirectory, 'search.sqlite');
+process.env.LOG_TO_FILE = 'false';
 const { db, init } = require('../db');
 process.env.SILICONFLOW_API_KEY = '';
 process.env.DEEPSEEK_API_KEY = '';
@@ -221,10 +227,13 @@ async function main() {
         await new Promise((resolve) => server.close(resolve));
         db._raw.exec('ROLLBACK');
         db.close();
+        fs.rmSync(tempDirectory, { recursive: true, force: true });
     }
 }
 
 main().catch((error) => {
     console.error(error);
+    try { db.close(); } catch (closeError) { }
+    fs.rmSync(tempDirectory, { recursive: true, force: true });
     process.exitCode = 1;
 });

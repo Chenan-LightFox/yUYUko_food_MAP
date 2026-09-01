@@ -48,6 +48,8 @@ function formatEntry(entry) {
         entry.path || '',
         entry.status !== undefined ? `status=${entry.status}` : '',
         entry.durationMs !== undefined ? `${entry.durationMs}ms` : '',
+        entry.ip ? `ip=${entry.ip}` : '',
+        entry.userId ? `user=${entry.userId}` : '',
         entry.event ? `event=${entry.event}` : '',
         entry.stage ? `stage=${entry.stage}` : '',
         entry.detail ? `detail=${JSON.stringify(entry.detail)}` : '',
@@ -65,6 +67,8 @@ function printUsage() {
   --since 2h            时间范围：30m、2h、7d 或 ISO 时间（默认 24h）
   --level warn          最低级别：debug/info/warn/error/fatal
   --request-id ID       按请求编号精确检索
+  --ip ADDRESS          按客户端 IP 精确检索
+  --user-id UUID        按用户 UUID 精确检索
   --event TEXT          按事件名包含匹配
   --limit 100           最多输出条数（1-2000）
   --json                输出原始 JSON
@@ -84,6 +88,8 @@ function main() {
     const minimumLevel = LEVELS[requestedLevel];
     if (minimumLevel === undefined) throw new Error(`未知日志级别：${requestedLevel}`);
     const requestId = getArg('--request-id');
+    const ipFilter = getArg('--ip');
+    const userIdFilter = getArg('--user-id');
     const eventFilter = getArg('--event');
     const outputJson = hasArg('--json');
 
@@ -93,15 +99,19 @@ function main() {
     }
 
     const files = fs.readdirSync(logDirectory)
-        .filter((name) => /^app-\d{4}-\d{2}-\d{2}(?:\.\d+)?\.log$/.test(name))
+        .filter((name) => /^(app|error)-\d{4}-\d{2}-\d{2}(?:\.\d+)?\.log$/.test(name))
         .map((name) => ({ name, mtimeMs: fs.statSync(path.join(logDirectory, name)).mtimeMs }))
         .sort((a, b) => b.mtimeMs - a.mtimeMs)
         .map((item) => item.name);
     const matches = [];
+    const seenLines = new Set();
 
     for (const file of files) {
         const lines = fs.readFileSync(path.join(logDirectory, file), 'utf8').split(/\r?\n/).filter(Boolean).reverse();
         for (const line of lines) {
+            // Old logger versions duplicated errors into app-* and error-*.
+            if (seenLines.has(line)) continue;
+            seenLines.add(line);
             let entry;
             try {
                 entry = JSON.parse(line);
@@ -112,17 +122,21 @@ function main() {
             if (Number.isFinite(timestamp) && timestamp < since) continue;
             if ((LEVELS[entry.level] || 0) < minimumLevel) continue;
             if (requestId && entry.requestId !== requestId) continue;
+            if (ipFilter && entry.ip !== ipFilter) continue;
+            if (userIdFilter && entry.userId !== userIdFilter) continue;
             if (eventFilter && !String(entry.event || '').includes(eventFilter)) continue;
             matches.push(entry);
-            if (matches.length >= limit) break;
         }
-        if (matches.length >= limit) break;
     }
 
-    matches.reverse().forEach((entry) => {
+    const selected = matches
+        .sort((a, b) => (Date.parse(b.timestamp) || 0) - (Date.parse(a.timestamp) || 0))
+        .slice(0, limit)
+        .reverse();
+    selected.forEach((entry) => {
         console.log(outputJson ? JSON.stringify(entry) : formatEntry(entry));
     });
-    if (!matches.length) console.log('没有找到符合条件的日志。');
+    if (!selected.length) console.log('没有找到符合条件的日志。');
 }
 
 try {

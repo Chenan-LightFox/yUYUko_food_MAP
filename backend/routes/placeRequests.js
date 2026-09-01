@@ -3,9 +3,10 @@ const router = express.Router();
 const { db } = require("../db");
 const { requireAuth } = require("../middleware/auth");
 const requireAdmin = require("../middleware/adminAuth");
-const { logAdminAction } = require("../utils/adminAudit");
+const { insertAdminAction } = require("../utils/adminAudit");
 const { queuePlaceVectorSync } = require('../services/placeVectorService');
 const { normalizeImageUrls } = require('../utils/imageUrls');
+const { createPlaceRequest } = require('../services/placeRequestService');
 
 // 提交地点修改申请（需登录）
 router.post("/", requireAuth, (req, res) => {
@@ -13,25 +14,100 @@ router.post("/", requireAuth, (req, res) => {
     const requester_id = req.user && req.user.id;
     if (!place_id || !proposed || typeof proposed !== "object") return res.status(400).json({ error: "缺少参数或 proposed 格式错误" });
 
-    const normalizedProposed = {
-        ...proposed,
-        ...(proposed.exterior_images !== undefined ? { exterior_images: normalizeImageUrls(proposed.exterior_images) } : {}),
-        ...(proposed.menu_images !== undefined ? { menu_images: normalizeImageUrls(proposed.menu_images) } : {})
-    };
-    const proposedStr = JSON.stringify(normalizedProposed);
-    db.run(`INSERT INTO PlaceRequest (place_id, requester_id, proposed, note) VALUES (?, ?, ?, ?)`, [place_id, requester_id, proposedStr, note || ""], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
-        db.get("SELECT * FROM PlaceRequest WHERE id = ?", [this.lastID], (e, row) => {
-            if (e) return res.status(500).json({ error: e.message });
-            // log request creation
-            try {
-                logAdminAction(requester_id, 'place-request-created', null, JSON.stringify({ place_id, request_id: row.id, proposed }));
-            } catch (ex) {
-                console.error('Failed to log place request creation', ex && ex.message);
-            }
-            res.status(201).json(row);
-        });
+    try {
+        const row = createPlaceRequest({ placeId: place_id, requesterId: requester_id, proposed, note });
+        return res.status(201).json(row);
+    } catch (error) {
+        if (error && error.publicMessage) {
+            return res.status(error.status || 400).json({ error: error.publicMessage, code: error.code });
+        }
+        res.locals.unhandledError = error;
+        return res.status(500).json({ error: '修改申请提交失败，请稍后重试' });
+    }
+});
+
+function reviewFailure(status, code, message) {
+    const error = new Error(message);
+    error.status = status;
+    error.code = code;
+    error.publicMessage = message;
+    return error;
+}
+
+const reviewPlaceRequestTransaction = db._raw.transaction(({ id, action, adminId }) => {
+    const reqRow = db._raw.prepare('SELECT * FROM PlaceRequest WHERE id = ?').get(id);
+    if (!reqRow) throw reviewFailure(404, 'PLACE_REQUEST_NOT_FOUND', '申请不存在');
+    if (reqRow.status !== 'pending') {
+        throw reviewFailure(409, 'PLACE_REQUEST_ALREADY_REVIEWED', '此申请已被处理');
+    }
+
+    if (action === 'reject') {
+        const reviewed = db._raw.prepare(
+            `UPDATE PlaceRequest
+             SET status = 'rejected', reviewed_by = ?, reviewed_time = CURRENT_TIMESTAMP
+             WHERE id = ? AND status = 'pending'`
+        ).run(adminId, id);
+        if (reviewed.changes !== 1) {
+            throw reviewFailure(409, 'PLACE_REQUEST_ALREADY_REVIEWED', '此申请已被处理');
+        }
+        insertAdminAction(
+            adminId,
+            'place-request-review',
+            reqRow.requester_id || null,
+            JSON.stringify({ request_id: id, action: 'reject' })
+        );
+        return { action, placeId: reqRow.place_id, semanticChanged: false };
+    }
+
+    let proposed;
+    try {
+        proposed = JSON.parse(reqRow.proposed);
+    } catch (error) {
+        throw reviewFailure(400, 'INVALID_PLACE_REQUEST_PAYLOAD', '提议内容解析失败');
+    }
+    if (!proposed || typeof proposed !== 'object' || Array.isArray(proposed)) {
+        throw reviewFailure(400, 'INVALID_PLACE_REQUEST_PAYLOAD', '提议内容解析失败');
+    }
+
+    const keys = Object.keys(proposed).filter((key) => [
+        'name', 'description', 'latitude', 'longitude', 'category',
+        'exterior_images', 'menu_images', 'per_person_cost', 'creator_id',
+        'updated_time', 'updated_by'
+    ].includes(key));
+    if (!keys.length) throw reviewFailure(400, 'EMPTY_PLACE_REQUEST', '无可应用的变更');
+
+    const semanticChanged = keys.some((key) => ['name', 'description', 'category', 'per_person_cost'].includes(key));
+    const sets = [
+        ...keys.map((key) => `${key} = ?`),
+        ...(semanticChanged ? ['has_vector = 0'] : [])
+    ].join(', ');
+    const values = keys.map((key) => {
+        if (['exterior_images', 'menu_images'].includes(key)) {
+            return proposed[key] ? JSON.stringify(normalizeImageUrls(proposed[key])) : null;
+        }
+        return proposed[key];
     });
+    const placeUpdate = db._raw.prepare(`UPDATE Place SET ${sets} WHERE id = ?`)
+        .run(...values, reqRow.place_id);
+    if (placeUpdate.changes !== 1) {
+        throw reviewFailure(409, 'PLACE_REQUEST_TARGET_MISSING', '申请对应的地点已不存在');
+    }
+
+    const reviewed = db._raw.prepare(
+        `UPDATE PlaceRequest
+         SET status = 'approved', reviewed_by = ?, reviewed_time = CURRENT_TIMESTAMP
+         WHERE id = ? AND status = 'pending'`
+    ).run(adminId, id);
+    if (reviewed.changes !== 1) {
+        throw reviewFailure(409, 'PLACE_REQUEST_ALREADY_REVIEWED', '此申请已被处理');
+    }
+    insertAdminAction(
+        adminId,
+        'place-request-review',
+        reqRow.requester_id || null,
+        JSON.stringify({ request_id: id, action: 'approve', applied: keys })
+    );
+    return { action, placeId: reqRow.place_id, semanticChanged };
 });
 
 // 管理员获取所有申请（需 manage_places 权限）
@@ -52,60 +128,19 @@ router.post("/:id/review", requireAuth, requireAdmin("manage_places"), (req, res
     if (!id || !action) return res.status(400).json({ error: "缺少参数" });
     if (!["approve", "reject"].includes(action)) return res.status(400).json({ error: "无效的 action" });
 
-    db.get("SELECT * FROM PlaceRequest WHERE id = ?", [id], (err, reqRow) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (!reqRow) return res.status(404).json({ error: "申请不存在" });
-        if (reqRow.status !== 'pending') return res.status(400).json({ error: "此申请已被处理" });
-
-        if (action === 'reject') {
-            db.run("UPDATE PlaceRequest SET status = ?, reviewed_by = ?, reviewed_time = CURRENT_TIMESTAMP WHERE id = ?", ['rejected', adminId, id], function (e) {
-                if (e) return res.status(500).json({ error: e.message });
-                // log rejection
-                try {
-                    logAdminAction(adminId, 'place-request-review', reqRow.requester_id || null, JSON.stringify({ request_id: id, action: 'reject' }));
-                } catch (ex) {
-                    console.error('Failed to log place request rejection', ex && ex.message);
-                }
-                res.json({ success: true });
-            });
-            return;
+    let result;
+    try {
+        result = reviewPlaceRequestTransaction.immediate({ id, action, adminId });
+    } catch (error) {
+        if (error && error.publicMessage) {
+            return res.status(error.status || 400).json({ error: error.publicMessage, code: error.code });
         }
+        res.locals.unhandledError = error;
+        return res.status(500).json({ error: '审批失败，请稍后重试' });
+    }
 
-        // approve: apply proposed changes to Place record if present
-        let proposed;
-        try { proposed = JSON.parse(reqRow.proposed); } catch (e) { proposed = null; }
-        if (!proposed) return res.status(400).json({ error: "提议内容解析失败" });
-
-        // Build SET clause dynamically
-        const keys = Object.keys(proposed).filter(k => ['name', 'description', 'latitude', 'longitude', 'category', 'exterior_images', 'menu_images', 'per_person_cost', 'creator_id', 'updated_time', 'updated_by'].includes(k));
-        if (keys.length === 0) return res.status(400).json({ error: "无可应用的变更" });
-        const semanticChanged = keys.some(k => ['name', 'description', 'category', 'per_person_cost'].includes(k));
-        const sets = [
-            ...keys.map(k => `${k} = ?`),
-            ...(semanticChanged ? ['has_vector = 0'] : [])
-        ].join(', ');
-        const values = keys.map(k => {
-            if (['exterior_images', 'menu_images'].includes(k)) {
-                return proposed[k] ? JSON.stringify(normalizeImageUrls(proposed[k])) : null;
-            }
-            return proposed[k];
-        });
-
-        db.run(`UPDATE Place SET ${sets} WHERE id = ?`, [...values, reqRow.place_id], function (e) {
-            if (e) return res.status(500).json({ error: e.message });
-            db.run("UPDATE PlaceRequest SET status = ?, reviewed_by = ?, reviewed_time = CURRENT_TIMESTAMP WHERE id = ?", ['approved', adminId, id], function (e2) {
-                if (e2) return res.status(500).json({ error: e2.message });
-                // log approval
-                try {
-                    logAdminAction(adminId, 'place-request-review', reqRow.requester_id || null, JSON.stringify({ request_id: id, action: 'approve', applied: keys }));
-                } catch (ex) {
-                    console.error('Failed to log place request approval', ex && ex.message);
-                }
-                res.json({ success: true });
-                if (semanticChanged) setImmediate(() => queuePlaceVectorSync(reqRow.place_id));
-            });
-        });
-    });
+    res.json({ success: true });
+    if (result.semanticChanged) setImmediate(() => queuePlaceVectorSync(result.placeId));
 });
 
 function tryParseJSON(v) {

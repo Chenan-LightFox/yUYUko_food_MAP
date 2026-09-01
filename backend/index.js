@@ -212,12 +212,19 @@ app.post('/diagnostics/client-auth', (req, res) => {
 
     const stage = String((req.body && req.body.stage) || req.query.stage || '').trim();
     if (CLIENT_AUTH_STAGES.has(stage)) {
-        logger.info('Client authentication stage', {
+        const fields = {
             event: 'auth.client.stage',
             stage,
             detail: String((req.body && req.body.detail) || req.query.detail || '').slice(0, 160),
             userAgent: String(req.get('User-Agent') || '').slice(0, 500)
-        });
+        };
+        if (stage === 'request_failed' || stage === 'request_timed_out') {
+            logger.warn('Client authentication failed', fields);
+        } else {
+            // Successful client-side milestones are useful for deep debugging,
+            // but too redundant for the default production info level.
+            logger.debug('Client authentication stage', fields);
+        }
     }
     return res.status(204).end();
 });

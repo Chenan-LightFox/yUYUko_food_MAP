@@ -1,4 +1,5 @@
 const Redis = require("ioredis");
+const logger = require('./utils/logger');
 
 const redis = new Redis({
     host: process.env.REDIS_HOST || "127.0.0.1",
@@ -8,12 +9,14 @@ const redis = new Redis({
     retryStrategy(times) {
         // 最多重试 20 次
         if (times > 20) {
-            console.error(`Redis 已重试 ${times} 次仍未连接，停止重试。请检查 Memurai 服务状态。`);
+            logger.error('Redis reconnect limit reached', {
+                event: 'redis.reconnect_exhausted',
+                attempts: times
+            });
             return null; // 停止重试
         }
         // 重试间隔: min(times * 500ms, 10s)
         const delay = Math.min(times * 500, 10000);
-        console.warn(`Redis 断开连接，第 ${times} 次重试，等待 ${delay}ms...`);
         return delay;
     },
     // 连接超时
@@ -33,28 +36,30 @@ const redis = new Redis({
 let redisReady = false;
 
 redis.on("connect", () => {
-    redisReady = true;
-    console.log("Redis 已连接");
+    logger.debug('Redis connection established', { event: 'redis.connected' });
 });
 
 redis.on("ready", () => {
     redisReady = true;
-    console.log("Redis 就绪");
+    logger.info('Redis ready', { event: 'redis.ready' });
 });
 
 redis.on("error", (err) => {
-    console.error("Redis 错误:", err && err.message || err);
+    logger.error('Redis error', { event: 'redis.error', error: err });
     // ioredis 会自动尝试重连，这里只记录日志
 });
 
 redis.on("close", () => {
     redisReady = false;
-    console.warn("Redis 连接已关闭");
+    logger.warn('Redis connection closed', { event: 'redis.closed' });
 });
 
 redis.on("reconnecting", (ms) => {
     redisReady = false;
-    console.warn(`Redis 正在重连，将在 ${ms}ms 后尝试...`);
+    logger.warn('Redis reconnect scheduled', {
+        event: 'redis.reconnecting',
+        delayMs: ms
+    });
 });
 
 // 暴露一个健康检查方法供外部使用

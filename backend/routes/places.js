@@ -5,6 +5,7 @@ const { requireAuth } = require("../middleware/auth");
 const { hasPermission } = require("../utils/adminPermissions");
 const { queuePlaceVectorSync, deletePlaceVector } = require('../services/placeVectorService');
 const { normalizeImageUrls } = require('../utils/imageUrls');
+const { createPlaceRequest } = require('../services/placeRequestService');
 
 const PLACE_NAME_MAX_LENGTH = 120;
 const PLACE_CATEGORY_MAX_LENGTH = 240;
@@ -225,14 +226,16 @@ router.post("/:id/requests", requireAuth, (req, res) => {
     const requester_id = req.user && req.user.id;
     if (!place_id || !proposed || typeof proposed !== "object") return res.status(400).json({ error: "缺少参数或 proposed 格式错误" });
 
-    const proposedStr = JSON.stringify(proposed);
-    db.run(`INSERT INTO PlaceRequest (place_id, requester_id, proposed, note) VALUES (?, ?, ?, ?)`, [place_id, requester_id, proposedStr, note || ""], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
-        db.get("SELECT * FROM PlaceRequest WHERE id = ?", [this.lastID], (e, row) => {
-            if (e) return res.status(500).json({ error: e.message });
-            res.status(201).json(row);
-        });
-    });
+    try {
+        const row = createPlaceRequest({ placeId: place_id, requesterId: requester_id, proposed, note });
+        return res.status(201).json(row);
+    } catch (error) {
+        if (error && error.publicMessage) {
+            return res.status(error.status || 400).json({ error: error.publicMessage, code: error.code });
+        }
+        res.locals.unhandledError = error;
+        return res.status(500).json({ error: '修改申请提交失败，请稍后重试' });
+    }
 });
 
 // 更新地点（创建者或管理员）

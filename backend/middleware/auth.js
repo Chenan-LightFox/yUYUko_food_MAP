@@ -1,10 +1,27 @@
 const jwt = require("jsonwebtoken");
 const { db } = require("../db");
 const redis = require("../redis");
-const { logAdminAction } = require('../utils/adminAudit');
+const { insertAdminAction } = require('../utils/adminAudit');
 const logger = require('../utils/logger');
 
 const JWT_SECRET = process.env.JWT_SECRET || "yuyuko_secret_key";
+
+const autoUnbanTransaction = db._raw.transaction(({ userId, previousReason }) => {
+    const updated = db._raw.prepare(
+        `UPDATE User
+         SET is_banned = 0, ban_reason = NULL, ban_expires = NULL
+         WHERE id = ? AND is_banned = 1`
+    ).run(userId);
+    if (updated.changes === 1) {
+        insertAdminAction(
+            null,
+            'auto-unban',
+            userId,
+            JSON.stringify({ previous_reason: previousReason || null })
+        );
+    }
+    return updated.changes === 1;
+});
 
 function extractBearerToken(req) {
     const auth = req.get("Authorization") || req.get("authorization");
@@ -118,16 +135,12 @@ async function requireAuth(req, res, next) {
             if (user.ban_expires) {
                 const expires = new Date(user.ban_expires);
                 if (!isNaN(expires) && expires <= now) {
-                    // auto unban
-                    db.run('UPDATE User SET is_banned = 0, ban_reason = NULL, ban_expires = NULL WHERE id = ?', [userId], (e) => {
-                        if (e) console.error('Auto-unban failed:', e.message);
-                        else {
-                            try {
-                                logAdminAction(null, 'auto-unban', userId, JSON.stringify({ previous_reason: user.ban_reason || null }));
-                            } catch (ex) { console.error('Failed to log auto-unban', ex && ex.message); }
-                        }
+                    autoUnbanTransaction.immediate({
+                        userId,
+                        previousReason: user.ban_reason
                     });
-                    // reflect change in user object
+                    // Another concurrent request may have performed the same
+                    // update first; either way the expired ban is now lifted.
                     user.is_banned = 0;
                     user.ban_reason = null;
                     user.ban_expires = null;
@@ -153,6 +166,7 @@ async function requireAuth(req, res, next) {
 
         req.user = user;
         req.token = token;
+        logger.addContext({ userId: user.id });
         return next();
     } catch (err) {
         logger.error('Authentication middleware failed', {

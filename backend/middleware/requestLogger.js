@@ -3,7 +3,7 @@ const logger = require('../utils/logger');
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
 const SENSITIVE_QUERY_KEY = /password|passwd|pwd|token|authorization|secret|invite.?code|jwt|api.?key/i;
-const DEFAULT_NOISY_PREFIXES = ['/_AMapService', '/uploads'];
+const DEFAULT_NOISY_PREFIXES = ['/_AMapService', '/uploads', '/diagnostics/client-auth'];
 
 function parsePositiveInt(value, fallback, min, max) {
     const parsed = Number.parseInt(value, 10);
@@ -73,7 +73,7 @@ function requestLogger(req, res, next) {
         return originalJson(responseBody);
     };
 
-    logger.runWithContext({ requestId }, () => {
+    logger.runWithContext({ requestId, ip: req.ip }, () => {
         const baseFields = {
             method: req.method,
             path: requestPath,
@@ -85,7 +85,10 @@ function requestLogger(req, res, next) {
         };
 
         if (!noisy) {
-            logger.info('HTTP request started', {
+            // Completion records already contain status, duration, IP and UUID.
+            // Request-start entries are available at debug level only so normal
+            // production logging does not emit two records per successful call.
+            logger.debug('HTTP request started', {
                 event: 'http.request.started',
                 ...baseFields
             });
@@ -100,7 +103,8 @@ function requestLogger(req, res, next) {
                 durationMs: Number(durationMs.toFixed(1)),
                 responseContentLength: res.getHeader('Content-Length'),
                 userId: req.user && req.user.id,
-                responseError: res.locals.responseError
+                responseError: res.locals.responseError,
+                error: res.locals.unhandledError
             };
             if (res.statusCode >= 500) logger.error('HTTP request completed with server error', fields);
             else if (res.statusCode >= 400) logger.warn('HTTP request completed with client error', fields);
@@ -132,14 +136,9 @@ function errorHandler(error, req, res, next) {
     if (res.headersSent) return next(error);
     const status = Number(error.status || error.statusCode);
     const safeStatus = Number.isInteger(status) && status >= 400 && status <= 599 ? status : 500;
-    logger.error('Unhandled HTTP request error', {
-        event: 'http.request.error',
-        method: req.method,
-        path: sanitizeUrl(req.originalUrl || req.url),
-        status: safeStatus,
-        userId: req.user && req.user.id,
-        error
-    });
+    // The finish listener emits one complete error record with status, timing,
+    // IP, UUID and stack. Logging here as well would duplicate the same failure.
+    res.locals.unhandledError = error;
     const publicMessage = safeStatus >= 500 ? '服务器内部错误' : (error.publicMessage || error.message || '请求失败');
     return res.status(safeStatus).json({
         error: publicMessage,
