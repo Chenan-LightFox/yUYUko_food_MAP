@@ -15,7 +15,7 @@
 .DS_Store
 /frontend/.env
 /backend/.env
-/backend/data.sqlite
+/backend/data.sqlite*
 yUYUko_food_MAP.code-workspace
 /backend/uploads
 /backend/logs

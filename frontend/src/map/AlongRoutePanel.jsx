@@ -27,6 +27,29 @@ function formatDuration(value) {
     return `约 ${hours} 小时${rest ? ` ${rest} 分` : ''}`;
 }
 
+function normalizeCategoryQuery(value) {
+    return String(value || '')
+        .normalize('NFKC')
+        .toLocaleLowerCase()
+        .replace(/[\s·•_\-—()（）/\\]+/g, '');
+}
+
+function getCategoryMatchScore(name, rawQuery) {
+    const candidate = normalizeCategoryQuery(name);
+    const query = normalizeCategoryQuery(rawQuery);
+    if (!candidate || !query) return Number.POSITIVE_INFINITY;
+    if (candidate === query) return 0;
+    if (candidate.startsWith(query)) return 1;
+    if (candidate.includes(query) || query.includes(candidate)) return 2;
+
+    let queryIndex = 0;
+    for (const character of candidate) {
+        if (character === query[queryIndex]) queryIndex += 1;
+        if (queryIndex === query.length) return 3;
+    }
+    return Number.POSITIVE_INFINITY;
+}
+
 export default function AlongRoutePanel({
     open,
     onClose,
@@ -45,6 +68,7 @@ export default function AlongRoutePanel({
     const [trip, setTrip] = useState(null);
     const [mode, setMode] = useState('driving');
     const [query, setQuery] = useState('');
+    const [categoryQuery, setCategoryQuery] = useState('');
     const [categories, setCategories] = useState([]);
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [corridorMeters, setCorridorMeters] = useState(1000);
@@ -106,11 +130,20 @@ export default function AlongRoutePanel({
     }, [customThemeColor]);
 
     const visibleCategories = useMemo(() => {
+        const normalizedQuery = categoryQuery.trim();
+        if (!normalizedQuery) {
+            return categories
+                .filter((category) => category.is_common)
+                .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
+                .slice(0, 10);
+        }
         return categories
-            .slice()
-            .sort((left, right) => Number(!!right.is_common) - Number(!!left.is_common))
-            .slice(0, 40);
-    }, [categories]);
+            .map((category) => ({ category, score: getCategoryMatchScore(category.name, normalizedQuery) }))
+            .filter((item) => Number.isFinite(item.score))
+            .sort((left, right) => left.score - right.score || left.category.name.localeCompare(right.category.name, 'zh-CN'))
+            .slice(0, 20)
+            .map((item) => item.category);
+    }, [categories, categoryQuery]);
 
     const closePanel = () => {
         wasOpenRef.current = false;
@@ -134,6 +167,11 @@ export default function AlongRoutePanel({
             : [...current, name]);
     };
 
+    const selectCategory = (name) => {
+        toggleCategory(name);
+        setCategoryQuery('');
+    };
+
     const invalidatePlannedRoute = () => {
         requestRef.current?.abort();
         requestRef.current = null;
@@ -148,12 +186,21 @@ export default function AlongRoutePanel({
         onResults?.(null);
     };
 
-    const filterAlongRoute = async (route, controller) => {
+    const filterAlongRoute = async (route, controller, { fitMap = true } = {}) => {
         setResults([]);
         setHasSearched(false);
         onResults?.([]);
         clearRoute();
-        overlaysRef.current = drawAmapRoutes(mapRef.current, [route], customThemeColor, customThemeSecondary);
+        const plannedRoutes = planCacheRef.current?.routes || [route];
+        overlaysRef.current = drawAmapRoutes(
+            mapRef.current,
+            plannedRoutes,
+            customThemeColor,
+            customThemeSecondary,
+            fitMap ? (isNarrow ? [92, 24, 250, 24] : undefined) : false,
+            route.index,
+            handleMapRouteSelect
+        );
         const response = await searchPlacesAlongRoute(backendUrl, {
             paths: [route.searchPath.map((point) => [point.lng, point.lat])],
             query,
@@ -185,7 +232,7 @@ export default function AlongRoutePanel({
         setError('');
         setHasSearched(false);
         try {
-            await filterAlongRoute(route, controller);
+            await filterAlongRoute(route, controller, { fitMap: false });
         } catch (chooseError) {
             if (chooseError?.name !== 'AbortError') {
                 setError(chooseError?.message || '沿所选路线查找地点失败');
@@ -198,6 +245,13 @@ export default function AlongRoutePanel({
                 setBusy(false);
             }
         }
+    };
+
+    const handleMapRouteSelect = (routeIndex) => {
+        if (requestRef.current) return;
+        const route = planCacheRef.current?.routes?.find((item) => item.index === routeIndex);
+        if (!route) return;
+        handleChooseRoute(route);
     };
 
     const handleSubmit = async (event) => {
@@ -258,7 +312,15 @@ export default function AlongRoutePanel({
 
                 if (routes.length > 1) {
                     setSelectedRouteIndex(null);
-                    overlaysRef.current = drawAmapRoutes(mapRef.current, routes, customThemeColor, customThemeSecondary);
+                    overlaysRef.current = drawAmapRoutes(
+                        mapRef.current,
+                        routes,
+                        customThemeColor,
+                        customThemeSecondary,
+                        isNarrow ? [92, 24, 250, 24] : undefined,
+                        null,
+                        handleMapRouteSelect
+                    );
                     return;
                 }
                 setSelectedRouteIndex(routes[0].index);
@@ -269,7 +331,15 @@ export default function AlongRoutePanel({
             const selectedRoute = routes.find((route) => route.index === selectedRouteIndex);
             if (!selectedRoute) {
                 setRouteSummary({ routes });
-                overlaysRef.current = drawAmapRoutes(mapRef.current, routes, customThemeColor, customThemeSecondary);
+                overlaysRef.current = drawAmapRoutes(
+                    mapRef.current,
+                    routes,
+                    customThemeColor,
+                    customThemeSecondary,
+                    isNarrow ? [92, 24, 250, 24] : undefined,
+                    null,
+                    handleMapRouteSelect
+                );
                 setError('请先从下方选择一条路线');
                 return;
             }
@@ -302,38 +372,76 @@ export default function AlongRoutePanel({
         fontSize: 14
     };
     const tripName = (point, fallback) => point?.name || fallback;
+    const mobileRoutePreview = isNarrow && !!routeSummary;
 
     return (
         <section
             aria-label="顺路吃"
+            role={isNarrow ? 'dialog' : undefined}
+            aria-modal={isNarrow && !mobileRoutePreview ? true : undefined}
             style={{
-                position: 'absolute',
+                position: isNarrow ? 'fixed' : 'absolute',
                 ...(isNarrow
-                    ? { left: 10, right: 10, top: 10, bottom: 76 }
+                    ? { inset: 0 }
                     : { [placement]: 12, top: 68, bottom: 42, width: 370 }),
-                zIndex: 3600,
+                zIndex: isNarrow ? 6000 : 3600,
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-md)',
-                background: 'color-mix(in srgb, var(--color-bg-surface) 96%, transparent)',
+                border: isNarrow ? 0 : '1px solid var(--color-border)',
+                borderRadius: isNarrow ? 0 : 'var(--radius-md)',
+                background: mobileRoutePreview
+                    ? 'transparent'
+                    : (isNarrow ? 'var(--color-bg-surface)' : 'color-mix(in srgb, var(--color-bg-surface) 96%, transparent)'),
                 color: 'var(--color-text-primary)',
-                boxShadow: 'var(--shadow-surface)',
-                backdropFilter: 'blur(12px)'
+                boxShadow: isNarrow ? 'none' : 'var(--shadow-surface)',
+                backdropFilter: mobileRoutePreview || isNarrow ? 'none' : 'blur(12px)',
+                pointerEvents: mobileRoutePreview ? 'none' : 'auto'
             }}
         >
-            <header style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--color-border)' }}>
-                <span className="material-symbols-outlined" style={{ color: customThemeColor, fontSize: 24 }}>route</span>
+            <header style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+                borderBottom: '1px solid var(--color-border)',
+                ...(mobileRoutePreview ? {
+                    margin: 'max(10px, env(safe-area-inset-top)) 10px 0', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+                    background: 'color-mix(in srgb, var(--color-bg-surface) 94%, transparent)',
+                    boxShadow: 'var(--shadow-surface)', backdropFilter: 'blur(12px)', pointerEvents: 'auto'
+                } : (isNarrow ? { paddingTop: 'calc(12px + env(safe-area-inset-top))' } : {}))
+            }}>
+                {mobileRoutePreview ? (
+                    <Button
+                        type="button"
+                        onClick={invalidatePlannedRoute}
+                        aria-label="返回修改路线条件"
+                        style={{ border: 0, background: 'transparent', color: 'var(--color-text-primary)', padding: 4, lineHeight: 1 }}
+                    >
+                        <span className="material-symbols-outlined" style={{ fontSize: 24 }}>arrow_back</span>
+                    </Button>
+                ) : (
+                    <span className="material-symbols-outlined" style={{ color: customThemeColor, fontSize: 24 }}>route</span>
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <h2 style={{ margin: 0, fontSize: 17 }}>顺路吃</h2>
-                    <div style={{ marginTop: 2, color: 'var(--color-text-secondary)', fontSize: 11 }}>沿高德行程找饭联已收录地点</div>
+                    <h2 style={{ margin: 0, fontSize: 17, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {mobileRoutePreview ? `${tripName(trip?.origin, '起点')} → ${tripName(trip?.destination, '终点')}` : '顺路吃'}
+                    </h2>
+                    <div style={{ marginTop: 2, color: 'var(--color-text-secondary)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {mobileRoutePreview ? '在地图上比较路线，点击下方方案开始找店' : '沿高德行程找饭联已收录地点'}
+                    </div>
                 </div>
                 <Button type="button" onClick={closePanel} aria-label="关闭顺路吃" style={{ border: 0, background: 'transparent', color: 'var(--color-text-secondary)', fontSize: 20, padding: '2px 7px' }}>×</Button>
             </header>
 
-            <ScrollableView style={{ flex: 1 }}>
-                <form onSubmit={handleSubmit} style={{ padding: 14 }}>
+            <ScrollableView style={mobileRoutePreview ? {
+                position: 'absolute', left: 0, right: 0, bottom: 0,
+                maxHeight: selectedRouteIndex == null ? '32%' : '44%',
+                borderTop: '1px solid var(--color-border)',
+                borderRadius: '18px 18px 0 0',
+                background: 'var(--color-bg-surface)',
+                boxShadow: '0 -8px 30px rgba(0,0,0,.16)',
+                paddingBottom: 'env(safe-area-inset-bottom)',
+                pointerEvents: 'auto', overscrollBehavior: 'contain'
+            } : { flex: 1 }}>
+                {!mobileRoutePreview && <form onSubmit={handleSubmit} style={{ padding: 14 }}>
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 6 }}>高德行程分享</label>
                     <input
                         type="text"
@@ -405,9 +513,49 @@ export default function AlongRoutePanel({
                         style={fieldStyle}
                     />
 
-                    {visibleCategories.length > 0 && (
-                        <>
-                            <div style={{ marginTop: 13, fontSize: 12, fontWeight: 700 }}>标签（可多选）</div>
+                    {categories.length > 0 && (
+                        <div style={{ marginTop: 13 }}>
+                            <label htmlFor="along-route-category-search" style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 6 }}>标签（可多选）</label>
+                            <div style={{
+                                display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6,
+                                minHeight: 42, padding: '6px 10px', boxSizing: 'border-box',
+                                border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
+                                background: 'var(--color-bg-overlay)'
+                            }}>
+                                {selectedCategories.map((name) => (
+                                    <Button
+                                        type="button"
+                                        key={name}
+                                        onClick={() => toggleCategory(name)}
+                                        aria-label={`取消选择标签${name}`}
+                                        aria-pressed="true"
+                                        style={{
+                                            borderRadius: 'var(--radius-full)', border: `1px solid ${customThemeColor}`,
+                                            background: customThemeColor, color: '#fff', padding: '4px 8px', fontSize: 11
+                                        }}
+                                    >
+                                        {name} ×
+                                    </Button>
+                                ))}
+                                <span className="material-symbols-outlined" style={{ color: 'var(--color-text-muted)', fontSize: 18 }}>search</span>
+                                <input
+                                    id="along-route-category-search"
+                                    type="search"
+                                    value={categoryQuery}
+                                    onChange={(event) => setCategoryQuery(event.target.value)}
+                                    placeholder="搜索全部标签"
+                                    autoComplete="off"
+                                    style={{
+                                        flex: '1 1 120px', minWidth: 100, height: 28, padding: 0,
+                                        border: 0, outline: 'none', background: 'transparent',
+                                        color: 'var(--color-text-primary)', fontSize: 13
+                                    }}
+                                />
+                            </div>
+                            <div style={{ marginTop: 7, color: 'var(--color-text-secondary)', fontSize: 11, fontWeight: 600 }}>
+                                {categoryQuery.trim() ? '匹配标签' : '常用标签'}
+                            </div>
+                            {visibleCategories.length > 0 ? (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7 }}>
                                 {visibleCategories.map((category) => {
                                     const selected = selectedCategories.includes(category.name);
@@ -415,7 +563,7 @@ export default function AlongRoutePanel({
                                         <Button
                                             type="button"
                                             key={category.id || category.name}
-                                            onClick={() => toggleCategory(category.name)}
+                                            onClick={() => selectCategory(category.name)}
                                             aria-pressed={selected}
                                             style={{
                                                 borderRadius: 'var(--radius-full)',
@@ -431,7 +579,10 @@ export default function AlongRoutePanel({
                                     );
                                 })}
                             </div>
-                        </>
+                            ) : (
+                                <div style={{ marginTop: 7, color: 'var(--color-text-muted)', fontSize: 12 }}>没有找到匹配标签</div>
+                            )}
+                        </div>
                     )}
 
                     <label style={{ display: 'block', marginTop: 13, fontSize: 12, fontWeight: 700, marginBottom: 6 }}>离路线最远</label>
@@ -466,16 +617,27 @@ export default function AlongRoutePanel({
                                 ? '按新条件再筛选'
                                 : (routeSummary?.routes?.length > 1 ? '请先选择下方路线' : '规划路线并找店'))}
                     </Button>
-                </form>
+                </form>}
 
                 {routeSummary && (
-                    <div style={{ padding: '11px 14px', borderTop: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-overlay)', fontSize: 12 }}>
+                    <div style={{
+                        padding: mobileRoutePreview ? '8px 14px 12px' : '11px 14px',
+                        borderTop: mobileRoutePreview ? 0 : '1px solid var(--color-border)',
+                        borderBottom: '1px solid var(--color-border)',
+                        background: mobileRoutePreview ? 'var(--color-bg-surface)' : 'var(--color-bg-overlay)',
+                        fontSize: 12
+                    }}>
+                        {mobileRoutePreview && <div aria-hidden="true" style={{ width: 38, height: 4, margin: '0 auto 9px', borderRadius: 4, background: 'var(--color-border)' }} />}
                         <strong>
                             {selectedRouteIndex == null
-                                ? `高德返回 ${routeSummary.routes.length} 条路线，请选择一条`
+                                ? `共 ${routeSummary.routes.length} 条路线，选择后查找沿途美食`
                                 : (hasSearched ? `方案 ${selectedRouteIndex + 1} 沿途找到 ${results.length} 个地点` : `正在筛选方案 ${selectedRouteIndex + 1}`)}
                         </strong>
-                        <div style={{ display: 'grid', gap: 6, marginTop: 9 }}>
+                        <div className="yuyuko-custom-scrollbar" style={{
+                            display: mobileRoutePreview ? 'flex' : 'grid', gap: 7, marginTop: 9,
+                            overflowX: mobileRoutePreview ? 'auto' : 'visible', paddingBottom: mobileRoutePreview ? 3 : 0,
+                            scrollbarWidth: 'thin'
+                        }}>
                             {routeSummary.routes.map((route) => {
                                 const selected = route.index === selectedRouteIndex;
                                 return (
@@ -486,16 +648,20 @@ export default function AlongRoutePanel({
                                         onClick={() => handleChooseRoute(route)}
                                         aria-pressed={selected}
                                         style={{
-                                            width: '100%', boxSizing: 'border-box', padding: '8px 10px',
+                                            width: mobileRoutePreview ? 'min(70vw, 220px)' : '100%',
+                                            flex: mobileRoutePreview ? '0 0 min(70vw, 220px)' : undefined,
+                                            boxSizing: 'border-box', padding: mobileRoutePreview ? '10px 11px' : '8px 10px',
                                             border: `1px solid ${selected ? customThemeColor : 'var(--color-border)'}`,
                                             borderRadius: 'var(--radius-sm)',
                                             background: selected ? 'color-mix(in srgb, var(--theme-primary) 13%, var(--color-bg-surface))' : 'var(--color-bg-surface)',
                                             color: selected ? customThemeColor : 'var(--color-text-primary)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                                            display: 'flex', alignItems: mobileRoutePreview ? 'flex-start' : 'center',
+                                            flexDirection: mobileRoutePreview ? 'column' : 'row',
+                                            justifyContent: 'space-between', gap: mobileRoutePreview ? 4 : 8,
                                             textAlign: 'left', fontSize: 11
                                         }}
                                     >
-                                        <span style={{ fontWeight: 700 }}>方案 {route.index + 1}</span>
+                                        <span style={{ fontWeight: 700, fontSize: mobileRoutePreview ? 14 : 11 }}>方案 {route.index + 1}</span>
                                         <span style={{ color: selected ? customThemeColor : 'var(--color-text-secondary)' }}>
                                             {[formatDistance(route.distance), formatDuration(route.duration)].filter(Boolean).join(' · ') || '查看路线'}
                                         </span>

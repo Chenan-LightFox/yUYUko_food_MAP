@@ -223,24 +223,40 @@ export async function planAmapRoutes({ origin, destination, waypoints = [], mode
     };
 }
 
-export function drawAmapRoutes(map, routes, primaryColor, secondaryColor) {
+export function drawAmapRoutes(
+    map,
+    routes,
+    primaryColor,
+    secondaryColor,
+    fitPadding = [64, 64, 84, 64],
+    selectedRouteIndex = null,
+    onRouteSelect
+) {
     if (!map || !window.AMap || !Array.isArray(routes) || routes.length === 0) return [];
     const overlays = [];
     const palette = [primaryColor, secondaryColor || '#8D6EBA', '#E58C45', '#468AC9', '#6BA66F', '#B65C82'];
+    const highlightedRouteIndex = selectedRouteIndex == null && routes.length === 1
+        ? Number(routes[0].index) || 0
+        : selectedRouteIndex;
     routes.slice().reverse().forEach((route) => {
         const routeIndex = Number(route.index) || 0;
+        const isHighlighted = routeIndex === highlightedRouteIndex;
         const polyline = new window.AMap.Polyline({
             path: route.path.map((point) => [point.lng, point.lat]),
-            strokeColor: palette[routeIndex % palette.length],
-            strokeWeight: routeIndex === 0 ? 7 : 5,
-            strokeOpacity: routeIndex === 0 ? 0.9 : 0.64,
-            strokeStyle: routeIndex === 0 ? 'solid' : 'dashed',
+            strokeColor: isHighlighted ? primaryColor : palette[routeIndex % palette.length],
+            strokeWeight: isHighlighted ? 7 : 5,
+            strokeOpacity: isHighlighted ? 0.9 : 0.64,
+            strokeStyle: isHighlighted ? 'solid' : 'dashed',
             lineJoin: 'round',
             lineCap: 'round',
-            showDir: routeIndex === 0,
-            zIndex: 90 - routeIndex
+            showDir: isHighlighted,
+            zIndex: isHighlighted ? 100 : 90 - routeIndex,
+            cursor: !isHighlighted && typeof onRouteSelect === 'function' ? 'pointer' : 'default'
         });
         polyline.__alongRouteIndex = routeIndex;
+        if (!isHighlighted && typeof onRouteSelect === 'function') {
+            polyline.on('click', () => onRouteSelect(routeIndex));
+        }
         map.add(polyline);
         overlays.push(polyline);
     });
@@ -262,7 +278,9 @@ export function drawAmapRoutes(map, routes, primaryColor, secondaryColor) {
     });
     map.add([startMarker, endMarker]);
     overlays.push(startMarker, endMarker);
-    try { map.setFitView(overlays, false, [64, 64, 84, 64]); } catch (error) { /* best effort */ }
+    if (fitPadding !== false) {
+        try { map.setFitView(overlays, false, fitPadding); } catch (error) { /* best effort */ }
+    }
     return overlays;
 }
 

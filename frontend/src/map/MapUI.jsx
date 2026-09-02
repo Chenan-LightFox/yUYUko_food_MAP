@@ -1275,7 +1275,7 @@ export default function MapUI(props) {
                                 </Button>
                             )}
                             <div style={{ marginTop: 4, padding: '10px', borderTop: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', fontSize: 12 }}>
-                                <div>东方饭联地图 · v2.0.1</div>
+                                <div>东方饭联地图 · v2.0.2</div>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 5, marginTop: 6 }}>
                                     <a
                                         href={ICP_BEIAN_URL}

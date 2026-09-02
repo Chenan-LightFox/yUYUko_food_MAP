@@ -267,7 +267,7 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                         )}
                         <div style={{ padding: '9px 12px', fontSize: 13 }}>
                             <div style={{ fontWeight: 700 }}>关于东方饭联地图</div>
-                            <div style={{ marginTop: 4, color: 'var(--color-text-secondary)' }}>v2.0.1</div>
+                            <div style={{ marginTop: 4, color: 'var(--color-text-secondary)' }}>v2.0.2</div>
                         </div>
                     </div>
                 )}
