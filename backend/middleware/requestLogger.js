@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const logger = require('../utils/logger');
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
-const SENSITIVE_QUERY_KEY = /password|passwd|pwd|token|authorization|secret|invite.?code|jwt|api.?key/i;
+const SENSITIVE_QUERY_KEY = /password|passwd|pwd|token|authorization|secret|invite.?code|jwt|api.?key|^(q|query|keywords|minLat|maxLat|minLng|maxLng|lat|lng|latitude|longitude|location|center|bounds|city|address|origin|destination)$/i;
 const DEFAULT_NOISY_PREFIXES = ['/_AMapService', '/uploads', '/diagnostics/client-auth'];
 
 function parsePositiveInt(value, fallback, min, max) {

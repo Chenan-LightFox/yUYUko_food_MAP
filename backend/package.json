@@ -11,6 +11,9 @@
         "test:search": "node scripts/test_search_smoke.js",
         "test:preferences": "node scripts/test_preferences.js",
         "test:random": "node scripts/test_random_recommendation.js",
+        "test:journeys": "node scripts/test_journeys.js",
+        "test:journey-resolution": "node scripts/test_journey_resolution.js",
+        "test:journey-ui": "node scripts/test_journey_ui.js",
         "vectors:backfill": "node scripts/backfill_place_vectors.js"
     },
     "dependencies": {

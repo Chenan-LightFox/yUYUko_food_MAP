@@ -99,7 +99,7 @@ function nearbyCandidates(database, center) {
     });
 }
 
-function drawRecommendation(candidates, excludedIds = [], random = Math.random, personalize = null) {
+function drawRecommendation(candidates, excludedIds = [], random = Math.random, personalize = null, onDecision = null) {
     // The minimum is checked BEFORE applying the short-term repeat cooldown.
     if (candidates.length < MIN_CANDIDATES) {
         return { place: null, candidateCount: candidates.length, message: EMPTY_MESSAGE };
@@ -120,6 +120,9 @@ function drawRecommendation(candidates, excludedIds = [], random = Math.random, 
             break;
         }
     }
+    if (onDecision) onDecision({ selected_probability: selected.weight / total,
+        candidates: eligible.map(c => ({ place_id: c.place.id, probability: c.weight / total })),
+        eligible_count: eligible.length, algorithm: 'random-mixture-v1', personalized: selection.personalized });
     return { place: selected.place, distanceKm: selected.distanceKm, candidateCount: candidates.length, personalized: selection.personalized };
 }
 

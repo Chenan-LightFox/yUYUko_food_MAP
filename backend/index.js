@@ -186,6 +186,7 @@ app.use(
     })
 );
 
+app.use('/api/journeys', express.json({ limit: '256kb' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -249,6 +250,7 @@ app.use("/api/admin/notices", requireAuth, adminNoticesRouter);
 init();
 startVectorRetryWorker();
 const stopUserVectorWorker = startUserVectorWorker();
+const stopJourneyWorker = require('./services/journeyAI').startJourneyWorker();
 
 app.use('/api', searchRouter);
 app.use('/api/along-route', alongRouteRouter);
@@ -266,6 +268,8 @@ app.use("/dinners", dinnersRouter);
 app.use("/api/dinners", dinnersRouter);
 app.use("/api/favorites", favoritesRouter);
 app.use('/api/preferences', preferencesRouter);
+app.use('/api/journeys', require('./routes/journeys'));
+app.use('/api/community', require('./routes/community'));
 
 app.get("/", (req, res) => res.json({ ok: true, msg: "yUYUko Food Map Backend" }));
 
@@ -298,6 +302,7 @@ function gracefulShutdown(signal) {
     if (shutdownStarted) return;
     shutdownStarted = true;
     stopUserVectorWorker();
+    stopJourneyWorker();
     logger.info('Backend shutdown started', { event: 'server.shutdown', signal });
     const forceExit = setTimeout(() => process.exit(1), 5000);
     server.close(async (error) => {

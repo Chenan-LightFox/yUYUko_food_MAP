@@ -14,6 +14,7 @@ import defaultAvatar from '../img/default.png';
 import AlongRoutePanel from './AlongRoutePanel';
 import { recordPlaceBehavior, sharePlaceContent, copyPlaceContent } from './placeBehavior';
 import RandomFoodPanel from './RandomFoodPanel';
+import { Exposure } from '../journey/feedback';
 
 const POPUP_GHOST_CLICK_GUARD_MS = 400;
 const ICP_BEIAN_TEXT = import.meta.env.VITE_ICP_BEIAN_TEXT;
@@ -162,6 +163,7 @@ function ShareOptionButton({ icon, label, description, onClick, dark }) {
 }
 
 export default function MapUI(props) {
+    const { feedback } = props;
     const {
         places,
         mapRef,
@@ -626,18 +628,22 @@ export default function MapUI(props) {
             return;
         }
         if (!searchTerm || !searchTerm.trim()) return;
+        feedback?.beginSearch();
+        feedback?.record('search', 'search');
         setSearchResultsVisible(true);
         searchServer({ q: searchTerm, includeUnmarked: true, autoFit: false });
     };
 
     const handleClearSearchInput = () => {
+        feedback?.beginSearch();
         setSearchTerm('');
         setSearchResultsVisible(false);
         clearSearch();
         if (inputRef.current) inputRef.current.focus();
     };
 
-    const handleSelectSpItem = (item) => {
+    const handleSelectSpItem = (item, event) => {
+        feedback?.record('click', 'search', item.id, {card_id:event?.currentTarget?.dataset.feedbackCard});
         setSearchTerm(item.name || item.address);
         setSearchResultsVisible(false);
         if (onSelectSuggestion) {
@@ -662,12 +668,12 @@ export default function MapUI(props) {
                         <span onClick={onMore} style={{ cursor: 'pointer', color: customThemeSecondary || customThemeColor }}>查看更多</span>
                     )}
                 </div>
-                {items.map(item => {
+                {items.map((item, rank) => {
                     const isAmapResult = item.isMarked === false;
                     return (
-                        <div
+                        <Exposure feedback={feedback} placeId={item.id} surface="search" rank={rank}
                             key={item.id}
-                            onClick={() => handleSelectSpItem(item)}
+                            onClick={(event) => handleSelectSpItem(item,event)}
                             style={{
                                 padding: '8px 12px',
                                 cursor: 'pointer',
@@ -704,7 +710,7 @@ export default function MapUI(props) {
                                     </span>
                                 )}
                             </div>
-                        </div>
+                        </Exposure>
                     );
                 })}
             </div>
@@ -725,9 +731,9 @@ export default function MapUI(props) {
                 ? (distanceKm < 1 ? `距地图中心 ${Math.round(distanceKm * 1000)} 米` : `距地图中心 ${distanceKm.toFixed(1)} 公里`)
                 : '';
             return (
-                <div
+                <Exposure feedback={feedback} placeId={place.id} surface="search" rank={index}
                     key={`ai-recommendation-${place.id ?? index}`}
-                    onClick={() => handleSelectSpItem(place)}
+                    onClick={(event) => handleSelectSpItem(place,event)}
                     style={{
                         margin: `${index === 0 ? 10 : 0}px 10px 12px`,
                         padding: 12,
@@ -765,7 +771,7 @@ export default function MapUI(props) {
                     <div style={{ marginTop: 8, color: 'var(--color-text-primary)', fontSize: 13, lineHeight: 1.55 }}>
                         {recommendation.reason}
                     </div>
-                </div>
+                </Exposure>
             );
         });
     };
@@ -853,6 +859,7 @@ export default function MapUI(props) {
                         onFocus={stabilizeMobileSearchViewport}
                         onChange={(e) => {
                             const v = e.target.value;
+                            feedback?.beginSearch();
                             setSearchTerm(v);
                             if (!v || !v.trim()) {
                                 setSearchResultsVisible(false);
@@ -865,6 +872,8 @@ export default function MapUI(props) {
                             if (e.key === 'Enter') {
                                 e.preventDefault();
                                 if (searchTerm && searchTerm.trim()) {
+                                    feedback?.beginSearch();
+                                    feedback?.record('search', 'search');
                                     setSearchResultsVisible(true);
                                     searchServer({ q: searchTerm, includeUnmarked: true, autoFit: false });
                                 }
@@ -1037,6 +1046,7 @@ export default function MapUI(props) {
             />
 
             {randomFoodOpen && !pickerMode && <RandomFoodPanel
+                feedback={feedback}
                 mapRef={mapRef} backendUrl={backendUrl} isNarrow={isNarrow}
                 token={isAuthenticated ? token : null}
                 placement={desktopHeaderMenu === 'more' ? 'left' : 'right'}

@@ -4,6 +4,8 @@ import * as MapUtils from './map/utils';
 import * as Api from './map/api';
 import { renderMarkers } from './map/markers';
 import MapUI from './map/MapUI';
+const JourneyWorkspace = React.lazy(() => import('./journey/JourneyWorkspace'));
+import { useMapFeedback } from './journey/feedback';
 import CommentPanel from './components/CommentPanel';
 import { useTips } from "./components/Tips";
 import { useConfirm } from "./components/Confirm";
@@ -58,6 +60,9 @@ export default function MapView({
     onPickerClose
 }) {
     const containerRef = useRef(null);
+    const feedback = useMapFeedback(backendUrl, isAuthenticated ? token : null);
+    const feedbackRef = useRef(feedback);
+    feedbackRef.current = feedback;
     const mapRef = useRef(null);
     const markersRef = useRef([]);
     const geolocationRef = useRef(null);
@@ -795,7 +800,7 @@ export default function MapView({
             setPlaces(data);
             placesRef.current = data;
             if (searchResultsRef.current === null && alongRouteResultsRef.current === null) {
-                renderMarkers(mapRef.current, markersRef, data, showPopup, {
+                renderMarkers(mapRef.current, markersRef, data, (p, pos) => { feedbackRef.current.record('click', 'map', p.id); showPopup(p, pos); }, {
                     onIndividualIds: handleVisibleIndividualIds
                 });
                 // Schedule label update after markers render
@@ -960,7 +965,7 @@ export default function MapView({
             ? alongRouteResults
             : (searchResults == null ? places : searchResults);
         const visibleMapPlaces = (listToRender || []).filter((place) => place.isMarked !== false || place.showOnMap === true);
-        renderMarkers(mapRef.current, markersRef, visibleMapPlaces, showPopup, {
+        renderMarkers(mapRef.current, markersRef, visibleMapPlaces, (p, pos) => { feedbackRef.current.record('click', 'map', p.id); showPopup(p, pos); }, {
             onIndividualIds: handleVisibleIndividualIds
         });
         // 同步更新标签，避免旧标签残留
@@ -1079,7 +1084,7 @@ export default function MapView({
             const merged = mergeRecommendations(data, recommendations);
             setSearchResults(merged);
             const visibleMapPlaces = merged.filter((place) => place.isMarked !== false || place.showOnMap === true);
-            renderMarkers(mapRef.current, markersRef, visibleMapPlaces, showPopup);
+            renderMarkers(mapRef.current, markersRef, visibleMapPlaces, (p, pos) => { feedbackRef.current.record('click', 'map', p.id); showPopup(p, pos); });
         };
 
         setSearching(true);
@@ -1540,6 +1545,7 @@ export default function MapView({
                 note: "用户提交地点信息修改申请"
             };
             await Api.postPlaceRequest(backendUrl, token, payload);
+            feedback.record('correction', 'map', selectedPlace.id, { reason: 'other' });
             setManageMessage("申请已提交，管理员将会审核。");
             setManageOpen(false);
         } catch (e) {
@@ -1623,6 +1629,7 @@ export default function MapView({
     return (
         <>
             <MapUI
+                feedback={feedback}
                 places={places}
                 mapRef={mapRef}
                 userLocationMarkerRef={userLocationMarkerRef}
@@ -1698,6 +1705,9 @@ export default function MapView({
                 showTip={showTip}
             />
 
+            {!pickerMode && <React.Suspense fallback={null}><JourneyWorkspace key={`${backendUrl}:${token || 'guest'}`} backendUrl={backendUrl} token={token}
+                isAuthenticated={isAuthenticated} onRequireAuth={onRequireAuth} mapRef={mapRef} mapReady={mapReady}
+                selectedPlace={selectedPlace} feedback={feedback} onOpen={() => setAddMode(false)} /></React.Suspense>}
             {commentOpen && selectedPlace && (
                 <CommentPanel
                     place={selectedPlace}

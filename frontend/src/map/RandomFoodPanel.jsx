@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import Button from '../components/Button';
 import { fetchRandomPlace } from './api';
 import { normalizeLngLat } from './utils';
+import { Exposure, eventId, request } from '../journey/feedback';
 
-export default function RandomFoodPanel({ mapRef, backendUrl, token, isNarrow, placement, onClose, onSelectPlace }) {
+export default function RandomFoodPanel({ mapRef, backendUrl, token, isNarrow, placement, onClose, onSelectPlace, feedback }) {
     const [result, setResult] = useState(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
@@ -11,6 +12,7 @@ export default function RandomFoodPanel({ mapRef, backendUrl, token, isNarrow, p
     const recentRef = useRef([]);
     const requestRef = useRef(null);
     const closeRef = useRef(null);
+    const pendingDrawRef = useRef(null);
 
     const draw = async (reset = false) => {
         if (requestRef.current) return;
@@ -20,17 +22,26 @@ export default function RandomFoodPanel({ mapRef, backendUrl, token, isNarrow, p
             return;
         }
         if (reset) {
+            pendingDrawRef.current = null;
             centerRef.current = { lat: center.lat, lng: center.lng };
             recentRef.current = [];
         }
         const controller = new AbortController();
+        if (result?.place) feedback?.record('next', 'random', result.place.id, { decision_id: result.decision_id || null });
         requestRef.current = controller;
         setBusy(true);
         setError('');
         setResult(null);
         try {
-            const data = await fetchRandomPlace(backendUrl, centerRef.current, recentRef.current, { signal: controller.signal, token });
+            let data;
+            if (feedback?.consent?.feedback && token) {
+                // A failed network attempt can be retried without drawing a different restaurant.
+                pendingDrawRef.current ||= { draw_id: eventId(), center: centerRef.current, exclude_ids: [...recentRef.current] };
+                data = await request(backendUrl, token, '/api/community/draw', { method: 'POST', signal: controller.signal,
+                    body: JSON.stringify({ ...pendingDrawRef.current, consent_version: feedback.consent.version }) });
+            } else data = await fetchRandomPlace(backendUrl, centerRef.current, recentRef.current, { signal: controller.signal, token });
             if (requestRef.current !== controller) return;
+            pendingDrawRef.current = null;
             setResult(data);
             if (data.place) recentRef.current = [...recentRef.current, data.place.id].slice(-2);
         } catch (err) {
@@ -83,7 +94,7 @@ export default function RandomFoodPanel({ mapRef, backendUrl, token, isNarrow, p
                 {busy && <p role="status">正在挑选附近的美食…</p>}
                 {error && <p role="alert">{error}</p>}
                 {result && !place && <p>{result.message}</p>}
-                {place && <>
+                {place && <Exposure feedback={feedback} placeId={place.id} surface="random" rank={0} decisionId={result.decision_id}>
                     {result.personalized && <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-secondary)' }}>
                         已参考你的收藏、导航和分享偏好，也留一点机会尝鲜。
                     </p>}
@@ -94,11 +105,11 @@ export default function RandomFoodPanel({ mapRef, backendUrl, token, isNarrow, p
                     </p>
                     {place.description && <p style={{ fontSize: 14, lineHeight: 1.6, overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{place.description}</p>}
                     <p style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>附近有 {result.candidateCount} 家可选，换一家会避开最近两次推荐。</p>
-                </>}
+                </Exposure>}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
                 {place && <Button disabled={busy} style={{ flex: 1, minHeight: 40 }}
-                    onClick={() => { onSelectPlace(place); onClose(); }}>查看地点</Button>}
+                    onClick={() => { feedback?.record('click', 'random', place.id, { decision_id: result.decision_id || null }); onSelectPlace(place); onClose(); }}>查看地点</Button>}
                 <Button disabled={busy} style={{ ...secondaryStyle, flex: 1 }} onClick={() => draw(!centerRef.current)}>
                     {busy ? '挑选中…' : place ? '再换一家' : '再试一次'}
                 </Button>

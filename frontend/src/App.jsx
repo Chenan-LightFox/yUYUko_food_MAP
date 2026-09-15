@@ -21,6 +21,7 @@ import { DinnerCreatePage, DinnerDetailPage, DinnerListPage, isDinnerPath, parse
 import PosterExportPage from './PosterExportPage';
 import { getNoticeColorOption } from './utils/noticeColors';
 import { reportAuthStage } from './utils/authDiagnostics';
+import { preserveJourneyBeforeLeave } from './journey/navigation';
 
 function normalizeUrl(url) {
     return String(url).replace(/\/+$/, "");
@@ -61,6 +62,8 @@ function currentPathname() {
 
 export default function App() {
     const [pathname, setPathname] = useState(currentPathname());
+    const pathnameRef = useRef(pathname), navigationSequence = useRef(0);
+    pathnameRef.current = pathname;
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem("token"));
     // 游客应先看到地图价值；只有主动登录或执行受保护操作时才打开登录框。
@@ -80,12 +83,14 @@ export default function App() {
     const siteNoticeRef = useRef(null);
     const [noticeLayout, setNoticeLayout] = useState({ top: 12, banTop: 84 });
 
-    const goPath = useCallback((path) => {
+    const goPath = useCallback(async (path) => {
         if (typeof window === "undefined") return;
         if (window.location.pathname === path) {
             setPathname(path);
             return;
         }
+        const sequence = ++navigationSequence.current;
+        if (!await preserveJourneyBeforeLeave() || sequence !== navigationSequence.current) return;
         window.history.pushState({}, "", path);
         setPathname(path);
     }, []);
@@ -123,6 +128,7 @@ export default function App() {
     }, []);
 
     const handleLogout = useCallback(async () => {
+        if (!await preserveJourneyBeforeLeave()) return;
         if (token) {
             try {
                 await fetch(`${BACKEND_URL}/users/logout`, {
@@ -173,7 +179,13 @@ export default function App() {
             }
         } catch (e) { }
 
-        const onPopstate = () => setPathname(currentPathname());
+        const onPopstate = async () => {
+            const next = currentPathname(), sequence = ++navigationSequence.current;
+            const ready = await preserveJourneyBeforeLeave();
+            if (sequence !== navigationSequence.current) return;
+            if (ready) setPathname(next);
+            else window.history.replaceState(window.history.state, '', pathnameRef.current);
+        };
         window.addEventListener("popstate", onPopstate);
         return () => window.removeEventListener("popstate", onPopstate);
     }, []);

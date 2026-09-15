@@ -94,7 +94,8 @@ export function useSearchPanel(searchTerm, mapRef, backendUrl, mapReady, places)
                             { lat: knownLat, lng: knownLng },
                             { latitude: lat, longitude: lng }
                         );
-                        return Number.isFinite(distance) && distance < 50;
+                        const normalizedName = name => String(name || '').replace(/[\s（）()]/g, '').toLowerCase();
+                        return normalizedName(known.name) === normalizedName(place.name) && Number.isFinite(distance) && distance < 50;
                     });
                     if (duplicated) return null;
                     return {
