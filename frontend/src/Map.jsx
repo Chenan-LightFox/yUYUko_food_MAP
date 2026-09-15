@@ -999,11 +999,16 @@ export default function MapView({
     };
 
     const handleSelectRandomPlace = (place) => {
+        if (!place || !mapRef.current) return;
         clearSearchState({ reloadPlaces: false });
         setAlongRouteResults(null);
-        setSearchResults([place]);
+        // Map move events can fire before React effects synchronize these refs.
+        // Random discovery opens a detail popup without filtering nearby markers.
+        searchResultsRef.current = null;
+        alongRouteResultsRef.current = null;
         armSkipAutoSearch();
         handleSelectAlongRoutePlace(place);
+        loadPlacesRef.current?.(true);
     };
 
     const submitPlace = async (payload) => {

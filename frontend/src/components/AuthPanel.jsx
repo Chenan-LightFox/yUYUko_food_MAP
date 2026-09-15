@@ -248,25 +248,30 @@ const AuthPanel = forwardRef(function AuthPanel({ user, isAuth, isAdmin, onLogou
                 {moreOpen && (
                     <div role="menu" aria-label="更多功能" style={{ ...menuStyle, right: 0 }}>
                         {onOpenRandomFood && (
-                            <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); onOpenRandomFood(); }}>
-                                随机美食 (beta)
-                            </Button>
+                            <>
+                                <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); onOpenRandomFood(); }}>
+                                    随机美食
+                                </Button>
+                                {divider}
+                            </>
                         )}
                         {isAuth && (
-                            <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); isOnDinners ? onGoHome?.() : onOpenDinners?.(); }}>
-                                {isOnDinners ? '返回地图' : '聚餐活动 (beta)'}
-                            </Button>
-                        )}
-                        {divider}
-                        {isAuth && (isAdmin || isOnAdmin) && (
                             <>
-                                <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); isOnAdmin ? onGoHome?.() : onOpenAdmin?.(); }}>{isOnAdmin ? '返回地图' : '管理后台'}</Button>
+                                <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); isOnDinners ? onGoHome?.() : onOpenDinners?.(); }}>
+                                    {isOnDinners ? '返回地图' : '聚餐活动 (beta)'}
+                                </Button>
                                 {divider}
                             </>
                         )}
                         {isAuth && (
                             <>
                                 <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); isOnPosterExport ? onGoHome?.() : onOpenPosterExport?.(); }}>{isOnPosterExport ? '返回地图' : '导出海报 (beta)'}</Button>
+                                {divider}
+                            </>
+                        )}
+                        {isAuth && (isAdmin || isOnAdmin) && (
+                            <>
+                                <Button themeAware variant="menu" full onClick={() => { setMoreOpen(false); isOnAdmin ? onGoHome?.() : onOpenAdmin?.(); }}>{isOnAdmin ? '返回地图' : '管理后台'}</Button>
                                 {divider}
                             </>
                         )}
