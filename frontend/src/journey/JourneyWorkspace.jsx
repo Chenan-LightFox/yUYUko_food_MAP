@@ -6,7 +6,12 @@ import MergePreview from './MergePreview';
 import useJourneyDraft from './useJourneyDraft';
 import JourneyResolution from './JourneyResolution';
 import {applyResolutionPatch} from './resolution.mjs';
+import {getThemeColor,getThemeSecondary,pickContrastTextColor,DEFAULT_PRIMARY,DEFAULT_SECONDARY} from '../utils/theme';
 import './journey.css';
+function readPalette(){
+    const primary=getThemeColor()||DEFAULT_PRIMARY,secondary=getThemeSecondary()||DEFAULT_SECONDARY;
+    return {primary,secondary,onPrimary:pickContrastTextColor(primary),onSecondary:pickContrastTextColor(secondary)};
+}
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 const newStop=()=>({id:eventId(),name:'新地点',note:'',lng:null,lat:null,place_id:null,address:'',source:'manual',confirmed:false,visit_status:'unknown',at:'',mood:'',media_ids:[],expenses:[]});
 const newDocument=()=>({title:'我的一天',start_date:today(),end_date:today(),summary:'',stops:[]});
@@ -19,6 +24,8 @@ function PrivatePhoto({id,base,token}) {
     return url?<img src={url} alt="私人行程照片"/>:<span>图片载入中</span>;
 }
 export default function JourneyWorkspace({backendUrl:base,token,isAuthenticated,onRequireAuth,mapRef,mapReady,selectedPlace,feedback,onOpen}) {
+    const [palette,setPalette]=useState(readPalette);
+    useEffect(()=>{const update=()=>setPalette(readPalette());window.addEventListener('themechange',update);return()=>window.removeEventListener('themechange',update);},[]);
     const [open,setOpen]=useState(false),[tab,setTab]=useState('library'),[message,setMessage]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
     const [picking,setPicking]=useState(null);
     const [mergeSelection,setMergeSelection]=useState(null);
@@ -28,7 +35,7 @@ export default function JourneyWorkspace({backendUrl:base,token,isAuthenticated,
     const [cap,setCap]=useState({}),[journal,setJournal]=useState(null),[dirty,setDirty]=useState(false),[activeId,setActiveId]=useState(null),[revisions,setRevisions]=useState([]);
     const [input,setInput]=useState({text:'',city:'',start_date:today(),end_date:today(),media_ids:[],use_center:false});
     const [job,setJob]=useState(null),[jobs,setJobs]=useState([]),[media,setMedia]=useState([]),[share,setShare]=useState(null),[coverBlob,setCoverBlob]=useState(null),[coverUrl,setCoverUrl]=useState('');
-    const [shareOptions,setShareOptions]=useState({platform:'小红书',style:'自然',min:100,max:500,include_notes:false,include_expenses:false,stop_ids:[]}),[coverStyle,setCoverStyle]=useState('奶油'),[caption,setCaption]=useState(''),[useBasemap,setUseBasemap]=useState(false);
+    const [shareOptions,setShareOptions]=useState({platform:'小红书',style:'自然',min:100,max:500,include_notes:false,include_expenses:false,stop_ids:[]}),[coverStyle,setCoverStyle]=useState('主站'),[caption,setCaption]=useState(''),[useBasemap,setUseBasemap]=useState(false);
     const journalRef=useRef(journal),dirtyRef=useRef(dirty),mounted=useRef(true),focusRef=useRef(null),bodyRef=useRef(null);
     journalRef.current=journal;dirtyRef.current=dirty;
     const drafts=useJourneyDraft(base,token,journal,dirty);
@@ -90,13 +97,13 @@ export default function JourneyWorkspace({backendUrl:base,token,isAuthenticated,
         document.stops.forEach((s,index)=>{
             if(s.lng==null||s.lat==null)return;
             const content=window.document.createElement('button');content.textContent=String(index+1);content.title=s.name;content.setAttribute('aria-label',`途经点 ${index+1} ${s.name}`);
-            Object.assign(content.style,{border:'2px solid white',borderRadius:'50%',width:'34px',height:'34px',background:s.id===activeId?'#cb7248':'#295e4e',color:'white',fontWeight:'bold',cursor:'pointer',boxShadow:'0 2px 8px #0004'});
+            Object.assign(content.style,{border:'2px solid var(--color-bg-surface)',borderRadius:'50%',width:'34px',height:'34px',background:s.id===activeId?palette.primary:palette.secondary,color:s.id===activeId?palette.onPrimary:palette.onSecondary,fontWeight:'bold',cursor:'pointer',boxShadow:'var(--shadow-surface)'});
             const marker=new AMap.Marker({position:[s.lng,s.lat],content,offset:new AMap.Pixel(-17,-17),zIndex:300});marker.on('click',()=>focusStop(s.id));overlays.push(marker);
             const previous=document.stops[index-1];
-            if(previous?.lng!=null)overlays.push(new AMap.Polyline({path:[[previous.lng,previous.lat],[s.lng,s.lat]],strokeColor:'#c17350',strokeWeight:4,strokeStyle:'dashed',zIndex:150}));
+            if(previous?.lng!=null)overlays.push(new AMap.Polyline({path:[[previous.lng,previous.lat],[s.lng,s.lat]],strokeColor:palette.primary,strokeWeight:4,strokeStyle:'dashed',zIndex:150}));
         });
         map.add(overlays);return()=>{try{map.remove(overlays);}catch{}};
-    },[open,mapReady,mapRef,document,activeId,tab,focusStop]);
+    },[open,mapReady,mapRef,document,activeId,tab,focusStop,palette]);
     useEffect(()=>{
         if(!coverBlob){setCoverUrl('');return;}
         const url=URL.createObjectURL(coverBlob);setCoverUrl(url);return()=>URL.revokeObjectURL(url);
@@ -154,9 +161,9 @@ export default function JourneyWorkspace({backendUrl:base,token,isAuthenticated,
     const openWorkspace=()=>{if(!isAuthenticated||!token){onRequireAuth?.();return;}setOpen(true);onOpen?.();};
     const calendarDays=()=>{const [y,m]=month.split('-').map(Number);if(!y||m<1||m>12)return [];return Array.from({length:new Date(y,m,0).getDate()},(_,i)=>`${month}-${String(i+1).padStart(2,'0')}`);};
     return <>
-        {!open&&!picking&&<button className="journey-launch" onClick={openWorkspace}>✦ 日记 · 同好</button>}
-        {picking&&<button className="journey-launch" onClick={()=>{setPicking(null);setOpen(true);}}>点击地图选位置 · 点此取消</button>}
-        {open&&<section className="journey-workspace" aria-label="我的行程日记" onKeyDown={e=>{if(e.key==='Escape')setOpen(false);}}>
+        {!open&&!picking&&<button className="journey-launch" style={{'--journey-on-primary':palette.onPrimary}} onClick={openWorkspace}>✦ 日记 · 同好</button>}
+        {picking&&<button className="journey-launch" style={{'--journey-on-primary':palette.onPrimary}} onClick={()=>{setPicking(null);setOpen(true);}}>点击地图选位置 · 点此取消</button>}
+        {open&&<section className="journey-workspace" style={{'--journey-on-primary':palette.onPrimary}} aria-label="我的行程日记" onKeyDown={e=>{if(e.key==='Escape')setOpen(false);}}>
             <header className="journey-head"><div><h2>把一天，留在地图上</h2><small className="journey-muted">描述 → 确认 → 留存 → 分享</small></div><button ref={focusRef} onClick={()=>setOpen(false)} aria-label="收起日记">收起</button></header>
             <nav className="journey-tabs">{[['library','日历'],['input','图文生成'],['editor','编辑'],['community','同好']].map(([id,label])=><button key={id} aria-pressed={tab===id} disabled={id==='editor'&&!journal} onClick={()=>{setTab(id);if(id==='library')loadLibrary().catch(e=>notify(e.message));}}>{label}</button>)}</nav>
             {(error||message)&&<div className={`journey-status ${error?'journey-error':''}`} role={error?'alert':'status'}>{error||message}<button style={{float:'right',padding:0,minHeight:24}} aria-label="关闭提示" onClick={()=>{setError('');setMessage('');}}>×</button></div>}
@@ -229,7 +236,7 @@ export default function JourneyWorkspace({backendUrl:base,token,isAuthenticated,
                     <label className="journey-check"><input type="checkbox" checked={shareOptions.include_notes} onChange={e=>setShareOptions({...shareOptions,include_notes:e.target.checked})}/>将所选站点的描述提供给 AI</label><label className="journey-check"><input type="checkbox" checked={shareOptions.include_expenses} onChange={e=>setShareOptions({...shareOptions,include_expenses:e.target.checked})}/>包含所选站点的实际支出</label>
                     <button disabled={busy||!shareOptions.stop_ids.length} className="journey-primary" onClick={generateShare}>生成贴文与首图</button>
                     {share&&<><label>贴文（可以直接修改）<textarea rows={9} maxLength={4000} value={share.text} onChange={e=>setShare({...share,text:e.target.value})}/></label><p className="journey-muted">{Array.from(share.text).length} 字 · 目标 {share.min}–{share.max} 字{Array.from(share.text).length<share.min||Array.from(share.text).length>share.max?'，请编辑至目标范围':''}。{!share.generated?'当前为事实整理稿，AI 未配置。':''}</p>
-                        <div className="journey-actions"><label>首图风格<select value={coverStyle} onChange={e=>setCoverStyle(e.target.value)}>{['奶油','薄荷','夜色'].map(s=><option key={s}>{s}</option>)}</select></label><label>简短介绍<input value={caption} maxLength={100} onChange={e=>setCaption(e.target.value)}/></label></div>
+                        <div className="journey-actions"><label>首图风格<select value={coverStyle} onChange={e=>setCoverStyle(e.target.value)}>{['主站','奶油','薄荷','夜色'].map(s=><option key={s}>{s}</option>)}</select></label><label>简短介绍<input value={caption} maxLength={100} onChange={e=>setCaption(e.target.value)}/></label></div>
                         <label className="journey-check"><input type="checkbox" disabled={!cap.amap_export} checked={useBasemap} onChange={e=>setUseBasemap(e.target.checked)}/>使用高德地图底图{!cap.amap_export?'（待管理员配置导出授权）':''}</label>
                         <button disabled={busy} onClick={refreshCover}>更新首图预览</button>{coverUrl&&<img className="journey-cover" src={coverUrl} alt="行程分享首图预览"/>}
                         <p className="journey-muted">导出前请检查贴文、地点与首图。图片不会自动公开发布；原始照片与私人日记也不会随之上传。</p>

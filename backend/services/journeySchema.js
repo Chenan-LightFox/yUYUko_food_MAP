@@ -54,10 +54,17 @@ function initJourneySchema(db) {
       );
       CREATE TABLE IF NOT EXISTS MapConsent (
         user_id TEXT PRIMARY KEY REFERENCES User(id) ON DELETE CASCADE,
-        feedback INTEGER NOT NULL DEFAULT 0, research INTEGER NOT NULL DEFAULT 0,
-        discovery INTEGER NOT NULL DEFAULT 0, tags TEXT NOT NULL DEFAULT '[]',
+        feedback INTEGER NOT NULL DEFAULT 1, research INTEGER NOT NULL DEFAULT 1,
+        discovery INTEGER NOT NULL DEFAULT 1, tags TEXT NOT NULL DEFAULT '[]',
         version INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL
       );
+      INSERT OR IGNORE INTO MapConsent(user_id,feedback,research,discovery,tags,version,updated_at)
+        SELECT id,1,1,1,'[]',0,strftime('%Y-%m-%dT%H:%M:%fZ','now') FROM User;
+      CREATE TRIGGER IF NOT EXISTS journey_default_consent AFTER INSERT ON User
+      BEGIN
+        INSERT OR IGNORE INTO MapConsent(user_id,feedback,research,discovery,tags,version,updated_at)
+        VALUES(NEW.id,1,1,1,'[]',0,strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+      END;
       CREATE TABLE IF NOT EXISTS PublicCollection (
         id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES User(id) ON DELETE CASCADE,
         title TEXT NOT NULL, is_public INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL

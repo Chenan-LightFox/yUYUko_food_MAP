@@ -14,6 +14,8 @@ const {db,init}=require('../db');
 const nativeFetch=global.fetch;let browser,server,vite,stopWorker;
 async function main(){
     init();const id=randomUUID();db._raw.prepare('INSERT INTO User(id,username,password) VALUES(?,?,?)').run(id,'浏览器测试用户','unused');
+    // Preserve a previously saved opt-out while exercising the existing enable/disable flow.
+    db._raw.prepare('UPDATE MapConsent SET feedback=0,research=0,discovery=0,version=1 WHERE user_id=?').run(id);
     db._raw.prepare('INSERT INTO Place(id,name,category,longitude,latitude) VALUES(1,?,?,?,?)').run('测试面馆','面食',120,30);
     db._raw.prepare('INSERT INTO Place(id,name,category,longitude,latitude) VALUES(2,?,?,?,?)').run('屏幕外餐馆','面食',120,30);
     db._raw.prepare('INSERT INTO Favorite(user_id,place_id) VALUES(?,1)').run(id);
@@ -22,7 +24,8 @@ async function main(){
     const frontend=path.resolve(__dirname,'../../frontend');
     const {createServer}=await import(require('url').pathToFileURL(path.join(frontend,'node_modules/vite/dist/node/index.js')).href);
     vite=await createServer({root:frontend,server:{middlewareMode:true},appType:'custom'});
-    app.get('/__journey_ui',async(req,res)=>res.type('html').send(await vite.transformIndexHtml(req.url,`<!doctype html><html lang="zh"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}</style></head><body><div id="root"></div><script>window.__TEST_TOKEN=${JSON.stringify(token)}</script><script type="module" src="/tests/journey-harness.jsx"></script></body></html>`)));
+    const themeCss=(fs.readFileSync(path.join(frontend,'index.html'),'utf8').match(/:root(?:\[data-theme='dark'\])?\s*\{[^}]*\}/g)||[]).join('\n');
+    app.get('/__journey_ui',async(req,res)=>res.type('html').send(await vite.transformIndexHtml(req.url,`<!doctype html><html lang="zh"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${themeCss}body{margin:0}</style></head><body><div id="root"></div><script>window.__TEST_TOKEN=${JSON.stringify(token)}</script><script type="module" src="/tests/journey-harness.jsx"></script></body></html>`)));
     app.use(vite.middlewares);server=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s));});
     const playwrightPath=process.env.PLAYWRIGHT_MODULE||'playwright';
     const {chromium}=require(playwrightPath);browser=await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_CHANNEL||'msedge'});
@@ -189,6 +192,36 @@ async function main(){
     const resolutionSaved=db._raw.prepare("SELECT document FROM Journey WHERE user_id=? AND json_extract(document,'$.title')='地点澄清回归'").get(id);
     const resolved=JSON.parse(resolutionSaved.document);assert.equal(resolved.stops[0].place_id,4);assert.equal(resolved.stops[1].lng,120.01);assert.equal(resolved.stops[0].note,'等待过程中补写的描述');
     stopWorker();stopWorker=null;global.fetch=nativeFetch;
+    // Both users have ready vectors; the peer has no favorites or public collections.
+    const peer=randomUUID();db._raw.prepare('INSERT INTO User(id,username,password) VALUES(?,?,?)').run(peer,'只有向量的同好','unused');
+    const {EMBEDDING_MODEL,EMBEDDING_DIMENSIONS}=require('../services/aiClients');
+    const {ALGORITHM_VERSION}=require('../services/userPreferenceService');
+    const embedding=new Float32Array(EMBEDDING_DIMENSIONS);embedding[0]=1;
+    for(const userId of [id,peer])db._raw.prepare(`INSERT OR REPLACE INTO UserPreference
+        (user_id,vector,model,dimensions,algorithm_version,status,source_place_count,vector_place_count,total_weight,updated_at,dirty)
+        VALUES(?,?,?,?,?,'ready',1,1,5,?,0)`).run(userId,Buffer.from(embedding.buffer),EMBEDDING_MODEL,EMBEDDING_DIMENSIONS,ALGORITHM_VERSION,Date.now());
+    await page.getByRole('button',{name:'同好',exact:true}).click();
+    await page.getByLabel('允许使用我的用户向量匹配同好',{exact:false}).check();
+    await page.getByRole('button',{name:'保存设置',exact:true}).click();
+    await page.getByRole('button',{name:/只有向量的同好.*向量相似度 100%/}).click();
+    await page.getByText('暂时没有公开收藏夹。',{exact:true}).waitFor();
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth),false);
+    if(out){
+        await page.locator('.journey-body').evaluate(el=>{el.scrollTop=0;});
+        await page.screenshot({path:path.join(out,'community-vector-only-mobile.png'),fullPage:true});
+        await page.evaluate(()=>window.__TEST_THEME(true));
+        await page.screenshot({path:path.join(out,'community-theme-dark-mobile.png'),fullPage:true});
+        await page.setViewportSize({width:1280,height:900});
+        await page.screenshot({path:path.join(out,'community-theme-dark-desktop.png'),fullPage:true});
+        await page.evaluate(()=>window.__TEST_THEME(false,{theme_color:'#315DA8',theme_color_secondary:'#397569'}));
+        await page.screenshot({path:path.join(out,'community-theme-custom-desktop.png'),fullPage:true});
+        await page.evaluate(()=>window.__TEST_THEME(false));
+        await page.screenshot({path:path.join(out,'community-theme-light-desktop.png'),fullPage:true});
+    }
+    await page.getByLabel('允许使用我的用户向量匹配同好',{exact:false}).uncheck();
+    await page.getByRole('button',{name:'保存设置',exact:true}).click();
+    await page.getByText('请先开启同好发现。',{exact:true}).waitFor();
+    assert.equal(await page.getByRole('button',{name:/只有向量的同好.*向量相似度/}).count(),0);
     assert.deepEqual(errors,[]);
     console.log('Browser journey tests passed: map workspace, stop editing, persistence, share cover, private/public collections, consent, desktop and mobile.');
 }

@@ -5,10 +5,7 @@ const {sql,now,fail,string}=require('../services/journeyStore');
 const router=express.Router();
 router.use(requireAuth,(_req,res,next)=>{res.set('Cache-Control','no-store');next();});
 const run=fn=>(req,res,next)=>{try{fn(req,res);}catch(e){next(e);}};
-function consent(userId) {
-    const row=sql.prepare('SELECT * FROM MapConsent WHERE user_id=?').get(userId);
-    return row?{feedback:!!row.feedback,research:!!row.research,discovery:!!row.discovery,tags:JSON.parse(row.tags),version:row.version}:{feedback:false,research:false,discovery:false,tags:[],version:0};
-}
+const {consent,neighbors}=require('../services/communityPreferences');
 router.get('/consent',run((req,res)=>res.json(consent(req.user.id))));
 router.put('/consent',run((req,res)=>{
     const old=consent(req.user.id);
@@ -49,40 +46,7 @@ router.put('/collections/:id',run((req,res)=>{
     res.json(collection(sql.prepare('SELECT * FROM PublicCollection WHERE id=?').get(req.params.id)));
 }));
 router.delete('/collections/:id',run((req,res)=>{sql.prepare('DELETE FROM PublicCollection WHERE id=? AND user_id=?').run(req.params.id,req.user.id);res.status(204).end();}));
-function features(userId,publicOnly) {
-    const preferences=consent(userId);
-    const places=publicOnly?sql.prepare(`SELECT DISTINCT p.id,p.category,p.per_person_cost FROM PublicCollection c JOIN PublicCollectionItem i ON i.collection_id=c.id JOIN Place p ON p.id=i.place_id WHERE c.user_id=? AND c.is_public=1`).all(userId)
-        :sql.prepare('SELECT p.id,p.category,p.per_person_cost FROM Favorite f JOIN Place p ON p.id=f.place_id WHERE f.user_id=?').all(userId);
-    const vector={};
-    for(const p of places) {
-        for(const tag of String(p.category||'').split(/[,，、;；|/]/).map(t=>t.trim()).filter(Boolean)) vector[`品类:${tag}`]=(vector[`品类:${tag}`]||0)+1;
-        if(Number(p.per_person_cost)>0) {const band=Number(p.per_person_cost)<50?'50 元以内':Number(p.per_person_cost)<150?'50–150 元':'150 元以上';vector[`预算:${band}`]=(vector[`预算:${band}`]||0)+0.5;}
-    }
-    for(const tag of preferences.tags) vector[`兴趣:${tag}`]=(vector[`兴趣:${tag}`]||0)+2;
-    for(const key of Object.keys(vector)) vector[key]=Math.log1p(vector[key]);
-    const norm=Math.sqrt(Object.values(vector).reduce((s,v)=>s+v*v,0));
-    if(norm) for(const key of Object.keys(vector)) vector[key]/=norm;
-    // Tags derived from the same small profile are not independent visit evidence.
-    return {vector,signals:places.length,tag_count:preferences.tags.length};
-}
-router.get('/neighbors',run((req,res)=>{
-    const mine=features(req.user.id,true);
-    const people=sql.prepare(`SELECT u.id,u.username FROM User u JOIN MapConsent c ON c.user_id=u.id WHERE c.discovery=1 AND u.id<>? AND COALESCE(u.is_banned,0)=0 LIMIT 1000`).all(req.user.id);
-    const neighbors=people.map(u=>{
-        const other=features(u.id,true);
-        const shared=Object.keys(mine.vector).filter(k=>other.vector[k]);
-        const raw=shared.reduce((s,k)=>s+mine.vector[k]*other.vector[k],0);
-        const evidence=Math.min(mine.signals,other.signals);
-        const coverage=Math.min(1,evidence/10);
-        const similarity=raw*coverage;
-        const angle=createHash('sha256').update(u.id).digest().readUInt32BE(0)/4294967296*Math.PI*2;
-        const radius=0.15+0.8*(1-Math.min(1,similarity));
-        return {id:u.id,username:u.username,similarity,confidence:Math.min(mine.signals,other.signals)>=5?'较充分':'样本较少',
-            shared:shared.sort((a,b)=>mine.vector[b]*other.vector[b]-mine.vector[a]*other.vector[a]).slice(0,3),
-            x:Math.cos(angle)*radius,y:Math.sin(angle)*radius,signal_count:other.signals};
-    }).filter(u=>mine.signals>=3&&u.signal_count>=3&&u.similarity>0).sort((a,b)=>b.similarity-a.similarity).slice(0,30);
-    res.json({neighbors,signal_count:mine.signals,minimum_public_places:3,algorithm:'public-facets-cosine-v2',notice:'双方至少需要 3 个不同的公开收藏地点；分数按证据量收缩。距离仅表示与你的公开偏好接近程度。'});
-}));
+router.get('/neighbors',run((req,res)=>res.json(neighbors(req.user.id))));
 router.get('/users/:id/collections',run((req,res)=>{
     if(!consent(req.params.id).discovery) fail('用户未开启同好发现',404);
     const user=sql.prepare('SELECT id,username FROM User WHERE id=? AND COALESCE(is_banned,0)=0').get(req.params.id);
@@ -175,4 +139,3 @@ router.delete('/feedback',run((req,res)=>{
 router.use((err,_req,res,_next)=>res.status(err.status||500).json({error:err.status?err.message:'同好与反馈服务暂不可用'}));
 module.exports=router;
 module.exports.consent=consent;
-module.exports.features=features;

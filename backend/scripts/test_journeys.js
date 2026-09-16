@@ -76,10 +76,11 @@ async function main(){
     await call('DELETE',`/api/journeys/media/${mediaId}`,undefined,a,409);
     await call('DELETE',`/api/journeys/drafts/${mediaDraftId}`,{draft_revision:1},a,204);
     await call('DELETE',`/api/journeys/media/${mediaId}`,undefined,a,204);
-    const consent0=await call('GET','/api/community/consent');assert.equal(consent0.feedback,false);assert.equal(consent0.discovery,false);
+    const consent0=await call('GET','/api/community/consent');assert.equal(consent0.feedback,true);assert.equal(consent0.research,true);assert.equal(consent0.discovery,true);
+    const disabled=await call('PUT','/api/community/consent',{version:consent0.version,feedback:false,research:false,discovery:false});
     const event={id:randomUUID(),session_id:randomUUID(),kind:'click',surface:'map',place_id:places[0]};
-    assert.equal((await call('POST','/api/community/feedback',{events:[event],consent_version:0})).accepted,0);
-    let consent=await call('PUT','/api/community/consent',{version:0,feedback:true,research:true,discovery:true,tags:['面食']});
+    assert.equal((await call('POST','/api/community/feedback',{events:[event],consent_version:disabled.version})).accepted,0);
+    let consent=await call('PUT','/api/community/consent',{version:disabled.version,feedback:true,research:true,discovery:true,tags:['面食']});
     const observation=await call('POST','/api/community/observations',{consent_version:consent.version,place_ids:[places[0],places[1]]},a,201);
     const obsInput={snapshot_id:randomUUID(),search_session_id:randomUUID(),render_revision:randomUUID(),consent_version:consent.version,place_ids:[places[0],places[1]]};
     const obs1=await call('POST','/api/community/observations',obsInput,a,201);
@@ -119,12 +120,19 @@ async function main(){
     await call('PUT',`/api/community/collections/${cb.id}`,{title:'公开面食',place_ids:[places[0]],is_public:true},b);
     assert.equal((await call('GET','/api/community/neighbors')).neighbors.length,0);
     let bc=await call('PUT','/api/community/consent',{version:0,discovery:true,tags:['面食']},b);
-    assert.equal((await call('GET','/api/community/neighbors')).neighbors.length,0,'One shared tag and one place must not produce a neighbor');
+    assert.equal((await call('GET','/api/community/neighbors')).neighbors.length,0,'Tags and collections cannot replace a missing user vector');
     for(const id of [a,b])for(const place of places.slice(1,3))sql.prepare('INSERT INTO Favorite(user_id,place_id) VALUES(?,?)').run(id,place);
     const ca=await call('POST','/api/community/collections',{title:'甲公开收藏'},a,201);
     await call('PUT',`/api/community/collections/${ca.id}`,{title:'甲公开收藏',place_ids:places.slice(0,3),is_public:true});
     await call('PUT',`/api/community/collections/${cb.id}`,{title:'乙公开收藏',place_ids:places.slice(0,3),is_public:true},b);
-    const neighbors=await call('GET','/api/community/neighbors');assert.ok(neighbors.neighbors[0].similarity<=0.300001);assert.equal(neighbors.neighbors[0].id,b);assert.ok(!JSON.stringify(neighbors).includes('vector'));
+    const {EMBEDDING_DIMENSIONS}=require('../services/aiClients');
+    const embedding=new Float32Array(EMBEDDING_DIMENSIONS);embedding[0]=1;
+    for(const place of places.slice(0,3)){
+        sql.prepare('INSERT INTO place_vectors(place_id,embedding) VALUES(?,?)').run(BigInt(place),Buffer.from(embedding.buffer));
+        sql.prepare('UPDATE Place SET has_vector=1 WHERE id=?').run(place);
+    }
+    sql.prepare('UPDATE UserPreference SET dirty=1').run();
+    const neighbors=await call('GET','/api/community/neighbors');assert.ok(neighbors.neighbors[0].similarity>0.999);assert.equal(neighbors.neighbors[0].id,b);assert.ok(!('vector' in neighbors.neighbors[0]));
     assert.equal((await call('GET',`/api/community/users/${b}/collections`)).collections.length,1);
     await call('PUT','/api/community/consent',{...bc,discovery:false},b);
     assert.equal((await call('GET','/api/community/neighbors')).neighbors.length,0);
