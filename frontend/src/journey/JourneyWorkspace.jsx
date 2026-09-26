@@ -23,7 +23,7 @@ function PrivatePhoto({id,base,token}) {
     },[id,base,token]);
     return url?<img src={url} alt="私人行程照片"/>:<span>图片载入中</span>;
 }
-export default function JourneyWorkspace({backendUrl:base,token,isAuthenticated,onRequireAuth,mapRef,mapReady,selectedPlace,feedback,onOpen}) {
+export default React.forwardRef(function JourneyWorkspace({backendUrl:base,token,isAuthenticated,onRequireAuth,mapRef,mapReady,selectedPlace,feedback,onOpen},ref) {
     const [palette,setPalette]=useState(readPalette);
     useEffect(()=>{const update=()=>setPalette(readPalette());window.addEventListener('themechange',update);return()=>window.removeEventListener('themechange',update);},[]);
     const [open,setOpen]=useState(false),[tab,setTab]=useState('library'),[message,setMessage]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
@@ -159,6 +159,7 @@ export default function JourneyWorkspace({backendUrl:base,token,isAuthenticated,
         setCoverBlob(await makeCover(share.cover,coverStyle,caption,mapBlob));
     });
     const openWorkspace=()=>{if(!isAuthenticated||!token){onRequireAuth?.();return;}setOpen(true);onOpen?.();};
+    React.useImperativeHandle(ref,()=>({open:openWorkspace}));
     const calendarDays=()=>{const [y,m]=month.split('-').map(Number);if(!y||m<1||m>12)return [];return Array.from({length:new Date(y,m,0).getDate()},(_,i)=>`${month}-${String(i+1).padStart(2,'0')}`);};
     return <>
         {!open&&!picking&&<button className="journey-launch" style={{'--journey-on-primary':palette.onPrimary}} onClick={openWorkspace}>✦ 日记 · 同好</button>}
@@ -248,4 +249,4 @@ export default function JourneyWorkspace({backendUrl:base,token,isAuthenticated,
             </div>
         </section>}
     </>;
-}
+});

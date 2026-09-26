@@ -1333,6 +1333,9 @@ export default function MapUI(props) {
                             <Button themeAware variant="menu" full disabled={!mapReady} onClick={() => runMobileMoreAction(openRandomFood)}>
                                 随机美食
                             </Button>
+                            <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(props.onOpenJourney)}>
+                                日记 · 同好
+                            </Button>
                             {isAuthenticated && (
                                 <Button themeAware variant="menu" full onClick={() => runMobileMoreAction(onOpenDinners)}>
                                     聚餐活动 (beta)

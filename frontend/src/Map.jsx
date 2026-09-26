@@ -60,6 +60,7 @@ export default function MapView({
     onPickerClose
 }) {
     const containerRef = useRef(null);
+    const journeyRef = useRef(null);
     const feedback = useMapFeedback(backendUrl, isAuthenticated ? token : null);
     const feedbackRef = useRef(feedback);
     feedbackRef.current = feedback;
@@ -1695,6 +1696,7 @@ export default function MapView({
                 isAdmin={isAdmin}
                 onRequireAuth={onRequireAuth}
                 onOpenDinners={onOpenDinners}
+                onOpenJourney={() => journeyRef.current?.open()}
                 onOpenMine={onOpenMine}
                 onLogout={onLogout}
                 onOpenAdmin={onOpenAdmin}
@@ -1710,7 +1712,7 @@ export default function MapView({
                 showTip={showTip}
             />
 
-            {!pickerMode && <React.Suspense fallback={null}><JourneyWorkspace key={`${backendUrl}:${token || 'guest'}`} backendUrl={backendUrl} token={token}
+            {!pickerMode && <React.Suspense fallback={null}><JourneyWorkspace ref={journeyRef} key={`${backendUrl}:${token || 'guest'}`} backendUrl={backendUrl} token={token}
                 isAuthenticated={isAuthenticated} onRequireAuth={onRequireAuth} mapRef={mapRef} mapReady={mapReady}
                 selectedPlace={selectedPlace} feedback={feedback} onOpen={() => setAddMode(false)} /></React.Suspense>}
             {commentOpen && selectedPlace && (
